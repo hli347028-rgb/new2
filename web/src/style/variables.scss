@@ -1,0 +1,58 @@
+// ==================== 黑金主题颜色变量 ====================
+
+// 品牌金色
+$brand-gold: #D4AF37;
+$brand-gold-light: #F1DC9B;
+$brand-gold-dark: #B8941F;
+
+// 背景色
+$bg-main: #050505;
+$bg-card: #121212;
+$bg-card-hover: #1A1A1A;
+
+// 文字颜色
+$text-primary: #FFFFFF;
+$text-muted: #FFFFFF;
+$text-inverse: #000000;
+
+// 边框颜色
+$border-color: rgba(212, 175, 55, 0.2);
+$border-light: rgba(255, 255, 255, 0.06);
+
+// 渐变
+$gradient-gold: linear-gradient(135deg, #F1DC9B 0%, #D4AF37 100%);
+$gradient-gold-vertical: linear-gradient(180deg, #F1DC9B 0%, #D4AF37 100%);
+
+// 字体大小
+$font-primary: 12px;
+$font-secondary: 14px;
+$font-tertiary: 16px;
+$font-large: 18px;
+$font-xl: 20px;
+$font-xxl: 24px;
+
+// 间距系统
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+$spacing-xxl: 48px;
+
+// 圆角
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+$radius-xxl: 24px;
+
+// 阴影
+$shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+$shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+$shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
+$shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.6);
+
+// 过渡
+$transition-fast: 0.2s ease;
+$transition-base: 0.3s ease;
+$transition-slow: 0.5s ease;

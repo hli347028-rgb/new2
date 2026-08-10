@@ -1,0 +1,38 @@
+server:
+  http:
+    addr: 0.0.0.0:9000
+    timeout: 5s
+  grpc:
+    addr: 0.0.0.0:9100
+    timeout: 5s
+data:
+  database:
+    driver: mysql
+    host: 127.0.0.1
+    port: 3306
+    user: aix
+    password: "replace-with-a-strong-database-password"
+    dbname: aix
+  redis:
+    addr: 127.0.0.1:6379
+    read_timeout: 0.2s
+    write_timeout: 0.2s
+auth:
+  jwt_secret: "replace-with-a-long-random-secret"
+  bootstrap_addresses:
+    - "0x0000000000000000000000000000000000000000"
+  admin_addresses:
+    - "0x0000000000000000000000000000000000000000"
+  admin_account: admin
+  admin_password: "replace-with-a-strong-admin-password"
+  challenge_ttl: 5m
+wallet:
+  deposit_address: "replace-with-your-deposit-address"
+  deposit_addresses:
+    - "replace-with-your-deposit-address"
+  usdt_contract: "0x55d398326f99059fF775485246999027B3197955"
+  usdt_decimals: 18
+  rpc_url: ""
+  min_subscribe: "100"
+  min_withdraw: "10"
+  withdraw_fee_rate: 0.06

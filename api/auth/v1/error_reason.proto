@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package auth.v1;
+
+option go_package = "backend/api/auth/v1;v1";
+option java_multiple_files = true;
+
+enum ErrorReason {
+  AUTH_UNSPECIFIED = 0;
+  INVALID_ADDRESS = 1;
+  INVALID_SIGNATURE = 2;
+  CHALLENGE_NOT_FOUND = 3;
+  CHALLENGE_EXPIRED = 4;
+  INVITE_CODE_REQUIRED = 5;
+  INVITE_CODE_INVALID = 6;
+  USER_NOT_FOUND = 7;
+}

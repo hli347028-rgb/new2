@@ -1,0 +1,268 @@
+syntax = "proto3";
+
+package wallet.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "backend/api/wallet/v1;v1";
+
+service Wallet {
+  rpc GetBalance (GetBalanceRequest) returns (GetBalanceReply) {
+    option (google.api.http) = { get: "/v1/wallet/balance" };
+  }
+
+  rpc CreateRecharge (CreateRechargeRequest) returns (CreateRechargeReply) {
+    option (google.api.http) = { post: "/v1/wallet/recharge" body: "*" };
+  }
+
+  rpc ConfirmRecharge (ConfirmRechargeRequest) returns (ConfirmRechargeReply) {
+    option (google.api.http) = { post: "/v1/wallet/recharge/confirm" body: "*" };
+  }
+
+  rpc ListRecharges (ListRechargesRequest) returns (ListRechargesReply) {
+    option (google.api.http) = { get: "/v1/wallet/recharges" };
+  }
+
+  rpc CreateWithdraw (CreateWithdrawRequest) returns (CreateWithdrawReply) {
+    option (google.api.http) = { post: "/v1/wallet/withdraw" body: "*" };
+  }
+
+  rpc ClaimToAccount (ClaimToAccountRequest) returns (ClaimToAccountReply) {
+    option (google.api.http) = { post: "/v1/wallet/claim" body: "*" };
+  }
+
+  rpc ListWithdrawals (ListWithdrawalsRequest) returns (ListWithdrawalsReply) {
+    option (google.api.http) = { get: "/v1/wallet/withdrawals" };
+  }
+
+  rpc ListProducts (ListProductsRequest) returns (ListProductsReply) {
+    option (google.api.http) = { get: "/v1/wallet/products" };
+  }
+
+  rpc Subscribe (SubscribeRequest) returns (SubscribeReply) {
+    option (google.api.http) = { post: "/v1/wallet/subscribe" body: "*" };
+  }
+
+  rpc ListOrders (ListOrdersRequest) returns (ListOrdersReply) {
+    option (google.api.http) = { get: "/v1/wallet/orders" };
+  }
+
+  rpc ListReleaseRecords (ListReleaseRecordsRequest) returns (ListReleaseRecordsReply) {
+    option (google.api.http) = { get: "/v1/wallet/releases" };
+  }
+
+  rpc ListReferralRewards (ListReferralRewardsRequest) returns (ListReferralRewardsReply) {
+    option (google.api.http) = { get: "/v1/wallet/referral-rewards" };
+  }
+
+  rpc ListEcoRewards (ListEcoRewardsRequest) returns (ListEcoRewardsReply) {
+    option (google.api.http) = { get: "/v1/wallet/eco-rewards" };
+  }
+
+  rpc ListClaimRecords (ListClaimRecordsRequest) returns (ListClaimRecordsReply) {
+    option (google.api.http) = { get: "/v1/wallet/claims" };
+  }
+}
+
+message GetBalanceRequest { string token = 1; }
+message GetBalanceReply {
+  string address = 1;
+  string balance = 2;
+  string released_balance = 3;
+  // 可领取金额：当前释放余额池（与 released_balance 一致，可划入钱包）
+  string claimable_amount = 4;
+  // 待释放金额：下一结算日预估日释放合计（尚未入账，不可领取/提现）
+  string pending_amount = 5;
+  // 已领取金额：历史领取（划入钱包）累计
+  string claimed_amount = 6;
+  // 总节点数：认购订单数
+  int32 total_nodes = 7;
+  // 服务端当前时间（unix 秒，用于倒计时）
+  int64 server_time = 8;
+  // 下次释放时间（中国时区次日 0 点 unix 秒）
+  int64 next_release_at = 9;
+  // 未出局金额：Σ max(出局目标 - 已释放, 0)
+  string unexited_amount = 10;
+}
+
+message CreateRechargeRequest {
+  string token = 1;
+  string amount = 2;
+}
+message CreateRechargeReply {
+  int64 recharge_id = 1;
+  string amount = 2;
+  string deposit_address = 3;
+  string usdt_contract = 4;
+  string token_symbol = 5;
+  string message = 6;
+  int64 expire_at = 7;
+  bool dev_mode = 8;
+  repeated string deposit_addresses = 9;
+  repeated string split_amounts = 10;
+}
+
+message ConfirmRechargeRequest {
+  string token = 1;
+  int64 recharge_id = 2;
+  string tx_hash = 3;
+  string signature = 4;
+  repeated string tx_hashes = 5;
+}
+message ConfirmRechargeReply {
+  string balance = 1;
+  string amount = 2;
+}
+
+message ListRechargesRequest { string token = 1; }
+message RechargeRecord {
+  int64 id = 1;
+  string amount = 2;
+  string tx_hash = 3;
+  string status = 4;
+  int64 created_at = 5;
+  int64 confirmed_at = 6;
+}
+message ListRechargesReply { repeated RechargeRecord recharges = 1; }
+
+message CreateWithdrawRequest {
+  string token = 1;
+  string amount = 2;
+  string to_address = 3;
+  string signature = 4;
+  int64 withdraw_at = 5;
+}
+message CreateWithdrawReply {
+  int64 withdraw_id = 1;
+  string amount = 2;
+  string fee = 3;
+  string net_amount = 4;
+  string to_address = 5;
+  string balance = 6;
+  string status = 7;
+  string released_balance = 8;
+}
+
+message ClaimToAccountRequest {
+  string token = 1;
+  string amount = 2;
+}
+message ClaimToAccountReply {
+  string balance = 1;
+  string released_balance = 2;
+  string amount = 3;
+}
+
+message ListWithdrawalsRequest { string token = 1; }
+message WithdrawalRecord {
+  int64 id = 1;
+  string amount = 2;
+  string fee = 3;
+  string net_amount = 4;
+  string to_address = 5;
+  string status = 6;
+  string tx_hash = 7;
+  int64 created_at = 8;
+}
+message ListWithdrawalsReply { repeated WithdrawalRecord withdrawals = 1; }
+
+message ListProductsRequest {}
+message Product {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  string price = 4;
+  int32 stock = 5;
+}
+message ListProductsReply { repeated Product products = 1; }
+
+message SubscribeRequest {
+  string token = 1;
+  int64 product_id = 2;
+  int32 quantity = 3;
+  // 直接按 USDT 金额认购（前端 app_server/buy 传 amount 时使用）
+  string amount = 4;
+}
+message SubscribeReply {
+  int64 order_id = 1;
+  string product_name = 2;
+  string total_amount = 3;
+  string balance = 4;
+}
+
+message ListOrdersRequest { string token = 1; }
+message Order {
+  int64 id = 1;
+  int64 product_id = 2;
+  string product_name = 3;
+  int32 quantity = 4;
+  string total_amount = 5;
+  int64 created_at = 6;
+  string status = 7;
+  string exit_multiplier = 8;
+  string exit_target = 9;
+  string released_amount = 10;
+  int32 release_day = 11;
+  int32 cycle_day = 12;
+}
+message ListOrdersReply { repeated Order orders = 1; }
+
+message ListReleaseRecordsRequest { string token = 1; }
+message ReleaseRecord {
+  int64 id = 1;
+  int64 order_id = 2;
+  string settlement_date = 3;
+  string rate = 4;
+  string amount = 5;
+  int32 release_day = 6;
+  int64 created_at = 7;
+  // 该订单是用户的第几笔认购（从 1 起）
+  int32 order_index = 8;
+  // 该笔静态释放产生的代数奖励合计（给上级的每代分红之和）
+  string referral_distributed = 9;
+  // 出局倍数
+  string exit_multiplier = 10;
+  // 金额 = 释放数量 * 出局倍数（与管理端变异数据「金额」一致）
+  string money = 11;
+}
+message ListReleaseRecordsReply { repeated ReleaseRecord records = 1; }
+
+message ListReferralRewardsRequest { string token = 1; }
+message ReferralReward {
+  int64 id = 1;
+  int64 source_user_id = 2;
+  int64 source_order_id = 3;
+  int32 generation = 4;
+  string base_amount = 5;
+  string rate = 6;
+  string reward_amount = 7;
+  string settlement_date = 8;
+  int64 created_at = 9;
+  string source_address = 10;
+  // 来源用户的第几笔订单（从 1 起）
+  int32 order_index = 11;
+}
+message ListReferralRewardsReply { repeated ReferralReward rewards = 1; }
+
+message ListEcoRewardsRequest { string token = 1; }
+message EcoReward {
+  int64 id = 1;
+  string settlement_date = 2;
+  string community_level = 3;
+  string community_stake = 4;
+  string base_amount = 5;
+  string base_rate = 6;
+  string base_reward = 7;
+  string equal_reward = 8;
+  string total_reward = 9;
+  int64 created_at = 10;
+}
+message ListEcoRewardsReply { repeated EcoReward rewards = 1; }
+
+message ListClaimRecordsRequest { string token = 1; }
+message ClaimRecord {
+  int64 id = 1;
+  string amount = 2;
+  int64 created_at = 3;
+}
+message ListClaimRecordsReply { repeated ClaimRecord claims = 1; }

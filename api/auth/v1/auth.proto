@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package auth.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "backend/api/auth/v1;v1";
+option java_multiple_files = true;
+
+// Web3 钱包登录服务
+service Auth {
+  // 获取签名挑战消息（前端用钱包 personal_sign 签名）
+  rpc GetChallenge (GetChallengeRequest) returns (GetChallengeReply) {
+    option (google.api.http) = {
+      get: "/v1/auth/challenge"
+    };
+  }
+
+  // 提交地址与签名完成登录
+  rpc Login (LoginRequest) returns (LoginReply) {
+    option (google.api.http) = {
+      post: "/v1/auth/login"
+      body: "*"
+    };
+  }
+
+  // 查询当前用户信息及邀请关系
+  rpc GetProfile (GetProfileRequest) returns (GetProfileReply) {
+    option (google.api.http) = {
+      get: "/v1/auth/profile"
+    };
+  }
+
+  // 查询指定地址的直推下级（用于团队树懒加载）
+  rpc ListInvitees (ListInviteesRequest) returns (ListInviteesReply) {
+    option (google.api.http) = {
+      get: "/v1/auth/invitees"
+    };
+  }
+}
+
+message GetChallengeRequest {
+  string address = 1;
+}
+
+message GetChallengeReply {
+  string message = 1;
+  int64 expire_at = 2;
+}
+
+message LoginRequest {
+  string address = 1;
+  string signature = 2;
+  // 首次登录必填：已登录用户的地址作为邀请码
+  string invite_code = 3;
+}
+
+message LoginReply {
+  string token = 1;
+  int64 expire_at = 2;
+  bool is_new_user = 3;
+  string address = 4;
+  string inviter_address = 5;
+}
+
+message GetProfileRequest {
+  string token = 1;
+}
+
+message GetProfileReply {
+  string address = 1;
+  string inviter_address = 2;
+  int32 invitee_count = 3;
+  int64 created_at = 4;
+  repeated DownlineInvitee downline_invitees = 5;
+  int32 total_downline_count = 6;
+  string community_level = 7;
+  string community_stake = 8;
+  string team_stake = 9;
+  string share_profit_total = 10;
+  string eco_reward_total = 11;
+}
+
+message DownlineInvitee {
+  string address = 1;
+  // 代数：1=直接邀请，2=第二代，以此类推
+  int32 generation = 2;
+  int64 created_at = 3;
+}
+
+message ListInviteesRequest {
+  string token = 1;
+  // 留空则查询当前登录用户
+  string address = 2;
+}
+
+message InviteeNode {
+  string address = 1;
+  string team_stake = 2;
+  int32 direct_count = 3;
+  int64 created_at = 4;
+  // 出局金额：该用户认购订单出局目标合计
+  string exit_amount = 5;
+  // 社区等级 V1-V9
+  string community_level = 6;
+}
+
+message ListInviteesReply {
+  repeated InviteeNode invitees = 1;
+}
