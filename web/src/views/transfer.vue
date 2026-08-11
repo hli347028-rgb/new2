@@ -120,15 +120,21 @@
           <div v-if="recordLoading" class="record-loading">
             <van-loading type="spinner" color="#1597E5" />
           </div>
+          <div v-else-if="recordError" class="empty-state record-error">
+            <p>{{ $t('transfer.fetchRecordsFailed') }}</p>
+            <button type="button" class="retry-btn" @click="loadTransferRecords(recordPage)">
+              {{ $t('common.retry') }}
+            </button>
+          </div>
           <template v-else-if="records.length > 0">
             <div class="order-list" v-for="item in records" :key="item.id">
               <div class="table-row">
                 <span v-if="mode === 'self'" class="wallet-direction">{{ $t('transfer.rechargeToReward') }}</span>
                 <span v-else class="counterparty-cell">
-                  <strong>{{ item.direction === 'in' ? $t('transfer.in') : $t('transfer.out') }} · {{ relationshipText(item.relationship) }}</strong>
-                  <small>{{ formatAddress(item.counterparty_address) }}</small>
+                  <strong>{{ recordDirection(item) === 'in' ? $t('transfer.in') : $t('transfer.out') }} · {{ relationshipText(item) }}</strong>
+                  <small>{{ formatAddress(counterpartyAddress(item)) }}</small>
                 </span>
-                <span class="amount-cell" :class="item.direction === 'in' ? 'income' : mode === 'user' ? 'outcome' : ''">
+                <span class="amount-cell" :class="recordDirection(item) === 'in' ? 'income' : mode === 'user' ? 'outcome' : ''">
                   {{ signedAmount(item) }} USDT
                 </span>
                 <span class="time-cell">{{ formatUnixTime(item.created_at) }}</span>
@@ -136,7 +142,7 @@
             </div>
           </template>
           <div v-else class="empty-state">
-            <p>{{ recordsUnavailable ? $t('transfer.recordsUnavailable') : $t('transfer.noRecords') }}</p>
+            <p>{{ $t('transfer.noRecords') }}</p>
           </div>
 
           <div class="pagination-wrapper" v-if="!recordLoading && recordPageCount > 1">
@@ -164,17 +170,38 @@ import request from '@/tools/request'
 type TransferMode = 'self' | 'user'
 type TransferDirection = 'all' | 'in' | 'out'
 
-interface TransferRecord {
+interface PageResult<T> {
+  page: number
+  page_size: number
+  total: number
+  list: T[]
+}
+
+interface SelfTransferRecord {
   id: number
   asset: 'USDT'
   amount: string
-  from_wallet: 'recharge' | 'reward'
+  from_wallet: 'recharge'
   to_wallet: 'reward'
   created_at: number
-  direction?: 'in' | 'out'
-  relationship?: 'upline' | 'downline'
-  counterparty_address?: string
 }
+
+interface LinealTransferRecord {
+  id: number
+  direction: Exclude<TransferDirection, 'all'>
+  relationship: 'upline' | 'downline'
+  counterparty_user_id: number
+  counterparty_address: string
+  asset: 'USDT'
+  amount: string
+  from_wallet: 'reward'
+  to_wallet: 'reward'
+  created_at: number
+}
+
+type TransferRecord = SelfTransferRecord | LinealTransferRecord
+
+const RECORD_PAGE_SIZE = 10
 
 const router = useRouter()
 const { t: $t, locale } = useI18n()
@@ -188,7 +215,7 @@ const records = ref<TransferRecord[]>([])
 const recordPage = ref(1)
 const recordPageCount = ref(1)
 const recordLoading = ref(false)
-const recordsUnavailable = ref(false)
+const recordError = ref(false)
 const direction = ref<TransferDirection>('all')
 let recordRequestId = 0
 
@@ -266,51 +293,69 @@ const formatUnixTime = (timestamp: number) => {
   return new Date(timestamp * 1000).toLocaleString(dateLocales[locale.value] || locale.value, { hour12: false })
 }
 
-const relationshipText = (relationship?: TransferRecord['relationship']) => {
-  if (relationship === 'upline') return $t('transfer.upline')
-  if (relationship === 'downline') return $t('transfer.downline')
+const isLinealRecord = (item: TransferRecord): item is LinealTransferRecord => 'direction' in item
+
+const recordDirection = (item: TransferRecord) => isLinealRecord(item) ? item.direction : undefined
+
+const counterpartyAddress = (item: TransferRecord) => isLinealRecord(item) ? item.counterparty_address : undefined
+
+const relationshipText = (item: TransferRecord) => {
+  if (!isLinealRecord(item)) return '-'
+  if (item.relationship === 'upline') return $t('transfer.upline')
+  if (item.relationship === 'downline') return $t('transfer.downline')
   return '-'
 }
 
 const signedAmount = (item: TransferRecord) => {
-  if (mode.value === 'self') return item.amount
+  if (!isLinealRecord(item)) return item.amount
   return `${item.direction === 'in' ? '+' : '-'}${item.amount}`
 }
 
 const loadTransferRecords = async (page = 1) => {
+  const parsedPage = Number(page)
+  const requestedPage = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1
   const requestId = ++recordRequestId
   const requestedMode = mode.value
   const requestedDirection = direction.value
+  recordPage.value = requestedPage
   recordLoading.value = true
-  recordsUnavailable.value = false
+  recordError.value = false
 
   try {
-    const url = requestedMode === 'self'
-      ? '/v1/wallet/transfer-records/self'
-      : '/v1/wallet/transfer-records/lineal'
     const params: Record<string, string | number> = {
-      page,
-      page_size: 10,
+      page: requestedPage,
+      page_size: RECORD_PAGE_SIZE,
     }
-    if (requestedMode === 'user') params.direction = requestedDirection
-
-    const result: any = await request.get(url, { params, silent: true })
+    const result: PageResult<TransferRecord> = requestedMode === 'self'
+      ? await request.get<PageResult<SelfTransferRecord>>('/v1/wallet/transfer-records/self', {
+          params,
+          silent: true,
+        })
+      : await request.get<PageResult<LinealTransferRecord>>('/v1/wallet/transfer-records/lineal', {
+          params: { ...params, direction: requestedDirection },
+          silent: true,
+        })
     if (
       requestId !== recordRequestId ||
       requestedMode !== mode.value ||
       requestedDirection !== direction.value
     ) return
 
-    records.value = Array.isArray(result?.list) ? result.list : []
-    recordPage.value = Number(result?.page || page)
-    recordPageCount.value = Math.max(1, Math.ceil(Number(result?.total || 0) / Number(result?.page_size || 10)))
+    const responsePage = Number(result.page)
+    const responsePageSize = Number(result.page_size)
+    const responseTotal = Number(result.total)
+    records.value = Array.isArray(result.list) ? result.list : []
+    recordPage.value = Number.isInteger(responsePage) && responsePage > 0 ? responsePage : requestedPage
+    recordPageCount.value = Math.max(1, Math.ceil(
+      (Number.isFinite(responseTotal) ? responseTotal : 0) /
+      (Number.isInteger(responsePageSize) && responsePageSize > 0 ? responsePageSize : RECORD_PAGE_SIZE),
+    ))
   } catch (error: any) {
     if (requestId !== recordRequestId) return
     records.value = []
-    recordPage.value = 1
     recordPageCount.value = 1
-    recordsUnavailable.value = error?.response?.status === 404
-    if (!recordsUnavailable.value && error?.response?.status !== 401) {
+    recordError.value = true
+    if (error?.response?.status !== 401) {
       showFailToast(error?.response?.data?.message || error?.message || $t('transfer.fetchRecordsFailed'))
     }
   } finally {
@@ -808,6 +853,23 @@ onMounted(async () => {
     margin: 0;
     color: $text-muted;
     font-size: 12px;
+  }
+
+  .record-error {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .retry-btn {
+    min-width: 76px;
+    height: 30px;
+    padding: 0 16px;
+    border: 1px solid $brand-primary;
+    border-radius: $radius-sm;
+    background: rgba(21, 151, 229, 0.12);
+    color: $brand-primary-light;
+    font-size: 12px;
+    cursor: pointer;
   }
 
   .pagination-wrapper {

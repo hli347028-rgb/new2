@@ -26,7 +26,7 @@ export default {
     operationFailed: 'Thao tác thất bại',
     close: 'Đóng',
     protocol: 'Giao thức', gotIt: 'Đã hiểu', languageSwitch: 'Chuyển ngôn ngữ', switchWallet: 'Đổi ví', back: 'Quay lại',
-    days: '{count} ngày'
+    days: '{count} ngày', retry: 'Thử lại'
   },
   index: {
     welcomeSubtitle: 'Chuỗi ứng dụng truy xuất AI đầu tiên trên thế giới',

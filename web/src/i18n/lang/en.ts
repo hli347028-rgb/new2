@@ -26,7 +26,7 @@ export default {
     operationFailed: 'Operation failed',
     close: 'Close',
     protocol: 'Protocol', gotIt: 'Got it', languageSwitch: 'Language', switchWallet: 'Switch Wallet', back: 'Back',
-    days: '{count} days'
+    days: '{count} days', retry: 'Retry'
   },
   index: {
     welcomeSubtitle: "World's First AI Traceability App Chain",

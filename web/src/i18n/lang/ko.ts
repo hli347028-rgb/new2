@@ -26,7 +26,7 @@ export default {
     operationFailed: '작업 실패',
     close: '닫기',
     protocol: '프로토콜', gotIt: '알겠습니다', languageSwitch: '언어 변경', switchWallet: '지갑 전환', back: '뒤로',
-    days: '{count}일'
+    days: '{count}일', retry: '다시 시도'
   },
   index: {
     welcomeSubtitle: '세계 최초 AI 추적 앱 체인',

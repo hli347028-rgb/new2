@@ -26,7 +26,7 @@ export default {
     operationFailed: '操作に失敗しました',
     close: '閉じる',
     protocol: 'プロトコル', gotIt: 'わかりました', languageSwitch: '言語切替', switchWallet: 'ウォレット切替', back: '戻る',
-    days: '{count} 日'
+    days: '{count} 日', retry: '再試行'
   },
   index: {
     welcomeSubtitle: '世界初のAIトレースアプリチェーン',

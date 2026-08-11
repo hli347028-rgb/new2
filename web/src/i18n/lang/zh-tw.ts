@@ -26,7 +26,7 @@ export default {
     operationFailed: '操作失敗',
     close: '關閉',
     protocol: '協議', gotIt: '我知道了', languageSwitch: '語言切換', switchWallet: '切換錢包', back: '返回',
-    days: '{count} 天'
+    days: '{count} 天', retry: '重試'
   },
   index: {
     welcomeSubtitle: '全球首個 AI 溯源應用鏈',
