@@ -46,6 +46,7 @@ const getPartnerImage = (index: number) => {
 <style lang="scss" scoped>
 .partners-wall {
   margin-top: 20px;
+  margin-bottom: 60px;
   overflow: hidden;
 
   .wall-row {
