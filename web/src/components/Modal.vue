@@ -84,7 +84,7 @@ watch(() => props.visible, (newVal) => {
 }
 
 .modal {
-  background: rgba(20, 20, 20, 0.95);
+  background: rgba(8, 19, 30, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
   width: 100%;
@@ -145,7 +145,7 @@ watch(() => props.visible, (newVal) => {
 
   .modal-btn {
     padding: 12px 32px;
-    background: linear-gradient(135deg, $brand-gold 0%, #d4a837 100%);
+    background: linear-gradient(135deg, $brand-primary 0%, #087BC1 100%);
     color: #000;
     border: none;
     border-radius: 24px;
@@ -156,7 +156,7 @@ watch(() => props.visible, (newVal) => {
 
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(212, 175, 55, 0.3);
+      box-shadow: 0 8px 24px rgba(21, 151, 229, 0.3);
     }
 
     &:active {

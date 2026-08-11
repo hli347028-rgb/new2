@@ -89,8 +89,8 @@ const handleBack = () => {
       .box-1 {
         padding: 26px 20px;
         color: #fff;
-        background: #383729;
-        border: 1px solid #83703b;
+        background: #0D1B2A;
+        border: 1px solid #075FB8;
         border-radius: 12px;
         padding: 15px 30px 15px 15px;
         align-items: center;
@@ -103,7 +103,7 @@ const handleBack = () => {
         span {
           &:nth-child(2) {
             font-size: 18px;
-            color: rgb(255, 209, 39);
+            color: rgb(21, 151, 229);
           }
         }
       }

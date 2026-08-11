@@ -12,8 +12,8 @@
 </template>
 <script setup lang="ts">
 import ChildrenHeader from '../../components/header/childrenHeader.vue'
-import { dwebServiceWorker } from "@plaoc/plugins"
 import lang from '@/i18n/index'
+import { restartCurrentApp } from '@/tools/plaocRuntime'
 import { useI18n } from 'vue-i18n'
 import Toggle from '../../components/Toggle/Toggle.vue'
 import { ref } from 'vue'
@@ -23,10 +23,10 @@ let toast: any = ref(null)
 
 let checked = ref(localStorage.getItem('lan') === 'en' ? true : false)
 
-const switchUser = () => {
+const switchUser = async () => {
   localStorage.removeItem("token");
   localStorage.removeItem("account");
-  dwebServiceWorker.restart()
+  await restartCurrentApp()
 }
 
 const onChangeLanguage = (value: boolean) => {

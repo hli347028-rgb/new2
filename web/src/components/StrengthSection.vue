@@ -147,7 +147,7 @@ onUnmounted(() => {
     .card-border {
       position: relative;
       padding: 2px;
-      background: linear-gradient(180deg, #F1DC9B 0%, #D4AF37 100%);
+      background: linear-gradient(180deg, #8FDFFF 0%, #1597E5 100%);
       border-radius: 20px;
       height: 100%;
     }
@@ -158,7 +158,7 @@ onUnmounted(() => {
       left: 50%;
       transform: translateX(-50%);
       padding: 6px 24px;
-      background: linear-gradient(180deg, #F1DC9B 0%, #D4AF37 51%, #B8941F 100%);
+      background: linear-gradient(180deg, #8FDFFF 0%, #1597E5 51%, #075FB8 100%);
       color: #000;
       font-size: 13px;
       font-weight: 800;
@@ -172,7 +172,7 @@ onUnmounted(() => {
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      background: rgba(20, 20, 20, 0.6);
+      background: rgba(8, 19, 30, 0.6);
       backdrop-filter: blur(10px);
       border-radius: 18px;
       padding: 0 0 20px;
@@ -195,7 +195,7 @@ onUnmounted(() => {
 
       .card-desc {
         font-size: 12px;
-        color: $text-muted;
+        color: rgba(244, 250, 255, 0.9);
         text-align: center;
         margin: 0;
         line-height: 1.5;

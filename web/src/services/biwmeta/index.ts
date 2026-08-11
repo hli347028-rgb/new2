@@ -1,20 +1,27 @@
-import { dwebServiceWorker, windowPlugin } from "@plaoc/plugins"
 import { type $WALLET_PLAOC_PATH_RESPONSE, type $WALLET_PLAOC_PATH_REQUEST_PARAMETER, $WALLET_PLAOC_PATH, type $WEALLET_SIGNATURE_RESPONSE, $WALLET_SIGNATURE_TYPE } from "./types";
 import { PromiseOut } from "@bnqkl/util-web/extends-promise-out";
+import { isPlaocRuntime } from '@/tools/plaocRuntime';
+
+const getPlaocPlugins = async () => {
+    if (!isPlaocRuntime()) {
+        throw new Error('PLaOC runtime is unavailable in a regular browser');
+    }
+    return import('@plaoc/plugins');
+};
 
 /** 是否有安装应用 */
-const canOpenId = (id: `${string}.dweb`) => dwebServiceWorker.has(id);
+const canOpenId = async (id: `${string}.dweb`) => (await getPlaocPlugins()).dwebServiceWorker.has(id);
 
 /** 窗口最大化
  *  该api正常是项目启动的时候调用，不然应用是窗口模式
  */
-const appMaximize = () => windowPlugin.maximize();
+const appMaximize = async () => (await getPlaocPlugins()).windowPlugin.maximize();
 
 /** 应用聚焦 */
-const focusWindow = () => windowPlugin.focusWindow();
+const focusWindow = async () => (await getPlaocPlugins()).windowPlugin.focusWindow();
 
 /** 重启 */
-const restart = () => dwebServiceWorker.restart();
+const restart = async () => (await getPlaocPlugins()).dwebServiceWorker.restart();
 
 /** 调用对应biw钱包获取相对应数据 */
 const getBIWMetaAppData = <
@@ -45,7 +52,8 @@ const getBIWMetaAppData = <
         body: signaturedata,
     };
     const promiseOut = new PromiseOut<$WALLET_PLAOC_PATH_RESPONSE[T]>();
-    dwebServiceWorker.fetch(url.href, init)
+    getPlaocPlugins()
+        .then(({ dwebServiceWorker }) => dwebServiceWorker.fetch(url.href, init))
         .then(async (res: any) => {
             if (res.ok) {
                 const dataJson = await res.json();

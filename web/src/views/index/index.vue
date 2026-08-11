@@ -227,7 +227,7 @@ const getLan = () => window.localStorage.getItem('lan') || 'zh'
   font-size: 14px!important;
 }
 .selected-lan {
-  color: #3640f0!important;
+  color: #087BC1!important;
 }
 </style>
 <style scoped lang="less">

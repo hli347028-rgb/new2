@@ -214,7 +214,7 @@ const handleBack = () => {
         display: flex;
         flex-direction: column;
         gap: 10px;
-        background: #29313C;
+        background: #0D1B2A;
         border-radius: 6px;
         padding: 15px;
         .order-header {

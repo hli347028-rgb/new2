@@ -1,10 +1,13 @@
 import { join } from "path";
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import postcssPluginPx2rem from "postcss-plugin-px2rem";
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+    const env = loadEnv(mode, process.cwd(), '')
+    const proxyTarget = env.VITE_PROXY_TARGET || 'http://127.0.0.1:9000'
+    return {
     plugins: [vue({
         reactivityTransform: true,
     }),],
@@ -19,10 +22,14 @@ export default defineConfig({
         port: 9200,
         strictPort: true,
         proxy: {
-          '/v1': {
-            target: 'http://127.0.0.1:9000',
+          '/api': {
+            target: proxyTarget,
             changeOrigin: true,
           },
+          '/v1': {
+            target: proxyTarget,
+            changeOrigin: true,
+          }
         }
     },
     build: {
@@ -46,5 +53,6 @@ export default defineConfig({
                 }),
             ]
         },
+    }
     }
 })

@@ -1,164 +1,280 @@
 <template>
-  <div class="page">
+  <div class="mine-page">
     <Header />
-    <div class="main">
-      <section class="hero-card">
-        <div class="item">
-          <label>充值钱包</label>
-          <b>{{ fmt(p.usdt_recharge) }} <small>USDT</small></b>
-        </div>
-        <div class="item">
-          <label>奖励钱包</label>
-          <b>{{ fmt(p.usdt_reward) }} <small>USDT</small></b>
-        </div>
-        <div class="item">
-          <label>AIX 代币数</label>
-          <b class="gold">{{ fmt(p.aix_balance) }}</b>
-        </div>
-        <div class="item">
-          <label>静态总收益</label>
-          <b>{{ fmt(p.static_usdt_total) }} <small>USDT</small></b>
-        </div>
-      </section>
-
-      <section class="actions">
-        <button @click="$router.push('/recharge')">充值</button>
-        <button @click="$router.push('/transfer')">划转</button>
-        <button @click="$router.push('/withdraw')">提现 AIX</button>
-      </section>
-
-      <section class="card">
-        <div class="row"><span>剩余出局额度</span><b>{{ fmt(p.unexited_amount) }} U</b></div>
-        <div class="row"><span>订单数</span><b>{{ p.total_nodes || 0 }}</b></div>
-        <div class="row"><span>管理级别</span><b>W{{ p.mgmt_level || 0 }}</b></div>
-        <div class="row"><span>预估日静态</span><b>{{ fmt(p.pending_amount) }} U</b></div>
-      </section>
-
-      <section class="card">
-        <h3>奖励流水</h3>
-        <div v-if="!rewards.length" class="empty">暂无流水</div>
-        <div v-for="r in rewards" :key="r.id" class="reward">
-          <div class="left">
-            <div class="type">{{ typeText(r.type) }}</div>
-            <div class="time">{{ formatTime(r.created_time) }}</div>
+    <div class="container">
+      <div class="airdrop-card">
+        <div class="card-bg"></div>
+        <div class="card-content">
+          <div class="card-header">
+            <img src="/assets/logo.png" alt="logo" class="card-logo" />
+            <h2 class="card-title">{{ $t('mine.tokenAirdrop') }}</h2>
           </div>
-          <div class="amt">+{{ fmt(r.amount) }} {{ r.asset }}</div>
+
+          <div class="stats-list">
+            <div class="stats-row">
+              <span class="stats-name">{{ $t('mine.claimableAmount') }}</span>
+              <span class="stats-value green">0</span>
+            </div>
+            <div class="stats-row">
+              <span class="stats-name">{{ $t('mine.pendingAmount') }}</span>
+              <span class="stats-value accent">0</span>
+            </div>
+            <div class="stats-row">
+              <span class="stats-name">{{ $t('mine.claimedAmount') }}</span>
+              <span class="stats-value green">0</span>
+            </div>
+            <div class="stats-row">
+              <span class="stats-name">{{ $t('mine.totalNodes') }}</span>
+              <span class="stats-value accent">0</span>
+            </div>
+            <div class="stats-row">
+              <span class="stats-name">{{ $t('mine.releaseCountdown') }}</span>
+              <span class="stats-value purple">--</span>
+            </div>
+          </div>
+
+          <button class="claim-btn">{{ $t('mine.claimAirdrop') }}</button>
         </div>
-      </section>
+        <div class="deco-circle top"></div>
+        <div class="deco-circle bottom"></div>
+      </div>
+
+      <div class="record-section">
+        <div class="section-title-wrap">
+          <div class="title-bar"></div>
+          <h3 class="section-title">{{ $t('mine.claimRecord') }}</h3>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header">
+            <span>{{ $t('mine.time') }}</span>
+            <span>{{ $t('mine.amount') }}</span>
+          </div>
+          <div class="empty-state">
+            <p>{{ $t('common.noData') }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="safe-bottom"></div>
     </div>
-    <Tabbar />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
 import Header from '@/components/Header.vue'
-import Tabbar from '@/components/Tabbar.vue'
-import userPerson from '@/pinia/person'
-import { listRewards } from '@/api/aix'
-import dayjs from 'dayjs'
-
-const person = userPerson()
-const p = computed(() => person.profile)
-const rewards = ref<any[]>([])
-
-const fmt = (v: any) => {
-  const n = Number(v || 0)
-  if (Number.isNaN(n)) return '0'
-  return n.toLocaleString(undefined, { maximumFractionDigits: 6 })
-}
-
-const typeText = (t: string) =>
-  ({
-    static_aix: '静态释放',
-    dynamic_usdt: '直推奖',
-    mgmt: '管理奖',
-    transfer_in: '转入',
-    transfer_out: '转出',
-  } as Record<string, string>)[t] || t
-
-const formatTime = (ts: number) => (ts ? dayjs.unix(ts).format('MM-DD HH:mm') : '-')
-
-onMounted(async () => {
-  await person.refreshProfile()
-  try {
-    const res = await listRewards()
-    rewards.value = res.rewards || []
-  } catch {
-    rewards.value = []
-  }
-})
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 @use '@/style/variables.scss' as *;
 
-.page {
+.mine-page {
   min-height: 100vh;
-  background: $bg-main;
-  color: #fff;
-  padding-bottom: 72px;
+  padding-top: 64px;
 }
-.main { padding: 72px 16px 24px; }
-.hero-card {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  background: linear-gradient(160deg, rgba(212, 175, 55, 0.18), $bg-card 55%);
-  border: 1px solid $border-color;
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 12px;
-  .item label {
-    display: block;
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.55);
-    margin-bottom: 4px;
-  }
-  b { font-size: 16px; }
-  .gold { color: $brand-gold; }
-  small { font-size: 11px; color: rgba(255, 255, 255, 0.45); font-weight: 400; }
+
+.container {
+  padding: 0 15px;
 }
-.actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
-  button {
-    height: 40px;
-    border-radius: 10px;
-    border: 1px solid $border-color;
-    background: $bg-card;
-    color: $brand-gold-light;
-    font-size: 13px;
-  }
-}
-.card {
-  background: $bg-card;
-  border: 1px solid $border-color;
+
+.airdrop-card {
+  position: relative;
+  margin-top: 25px;
+  overflow: hidden;
   border-radius: 12px;
-  padding: 14px 16px;
-  margin-bottom: 12px;
-  h3 { margin: 0 0 10px; color: $brand-gold-light; font-size: 15px; }
-  .row {
+
+  .card-bg {
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    background: rgba(8, 19, 30, 0.6);
+    backdrop-filter: blur(10px);
+  }
+
+  .card-content {
+    position: relative;
+    z-index: 10;
+    padding: 20px;
+  }
+
+  .card-header {
     display: flex;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid $border-light;
-    font-size: 13px;
-    span { color: rgba(255, 255, 255, 0.55); }
-    &:last-child { border-bottom: none; }
+    align-items: center;
+    margin-bottom: 15px;
+
+    .card-logo {
+      width: 25px;
+      height: 25px;
+      border-radius: 10px;
+    }
+
+    .card-title {
+      margin: 0 0 0 8px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+    }
+  }
+
+  .stats-list {
+    margin-bottom: 10px;
+
+    .stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      .stats-name {
+        font-size: 14px;
+        color: #fff;
+      }
+
+      .stats-value {
+        font-size: 16px;
+        font-weight: bold;
+
+        &.green {
+          color: $brand-primary;
+        }
+
+        &.accent {
+          color: $brand-primary-light;
+        }
+
+        &.purple {
+          color: $brand-primary;
+        }
+      }
+    }
+  }
+
+  .claim-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 11px 0;
+    background: transparent;
+    color: $brand-primary;
+    font-size: 16px;
+    font-weight: bold;
+    border: 1px solid $brand-primary;
+    border-radius: 24px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: $gradient-primary;
+      color: $text-inverse;
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+
+  .deco-circle {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+
+    &.top {
+      top: 0;
+      right: 0;
+      width: 100px;
+      height: 100px;
+      transform: translate(50%, -50%);
+    }
+
+    &.bottom {
+      bottom: 0;
+      left: 0;
+      width: 75px;
+      height: 75px;
+      transform: translate(-50%, 50%);
+      background: rgba(255, 255, 255, 0.03);
+    }
   }
 }
-.empty { text-align: center; color: rgba(255, 255, 255, 0.4); padding: 16px 0; font-size: 13px; }
-.reward {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid $border-light;
-  .type { font-size: 13px; }
-  .time { font-size: 11px; color: rgba(255, 255, 255, 0.4); margin-top: 2px; }
-  .amt { color: $brand-gold; font-weight: 600; font-size: 13px; }
+
+.record-section {
+  margin-top: 20px;
+
+  .section-title-wrap {
+    position: relative;
+    margin-bottom: 10px;
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+
+    .title-bar {
+      position: absolute;
+      left: -10px;
+      top: 50%;
+      width: 4px;
+      height: 16px;
+      border-radius: 2px;
+      background: linear-gradient(180deg, #1597E5 0%, #075FB8 100%);
+      transform: translateY(-50%);
+    }
+
+    .section-title {
+      margin: 0 0 0 8px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+    }
+  }
+}
+
+.table-card {
+  margin-top: 10px;
+  min-height: 300px;
+  overflow: hidden;
+  border: 1px solid $border-color;
+  border-radius: 11px;
+  background: rgba(8, 19, 30, 0.6);
+  backdrop-filter: blur(10px);
+  padding: 11px 0;
+
+  .table-header {
+    display: flex;
+    align-items: center;
+    background: #030A11;
+    padding: 8px 0;
+    margin: -11px 0 0;
+
+    span {
+      flex: 1;
+      text-align: center;
+      font-size: 10px;
+      color: $text-muted;
+    }
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 250px;
+
+    p {
+      margin-top: 8px;
+      font-size: 12px;
+      color: $text-muted;
+    }
+  }
+}
+
+.safe-bottom {
+  height: 50px;
 }
 </style>

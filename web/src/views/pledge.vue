@@ -132,17 +132,17 @@ const handleSubmit = () => {
     margin-top: 16px;
     padding: 12px 0;
     background: transparent;
-    color: $brand-gold;
+    color: $brand-primary;
     font-size: 16px;
     font-weight: bold;
-    border: 1px solid $brand-gold;
+    border: 1px solid $brand-primary;
     border-radius: 24px;
     cursor: pointer;
     text-align: center;
     transition: all 0.3s ease;
 
     &:hover {
-      background: $gradient-gold;
+      background: $gradient-primary;
       color: $text-inverse;
     }
 
@@ -168,7 +168,7 @@ const handleSubmit = () => {
 .modal-content {
   width: 100%;
   max-width: 414px;
-  background: rgba(20, 20, 20, 0.8);
+  background: rgba(8, 19, 30, 0.8);
   backdrop-filter: blur(10px);
   border-radius: 32px 32px 0 0;
   padding: 20px 24px 32px;
@@ -214,14 +214,14 @@ const handleSubmit = () => {
       justify-content: center;
       min-height: 70px;
       padding: 10px 5px 15px;
-      border: 0.5px solid rgba(212, 175, 55, 0.2);
+      border: 0.5px solid rgba(21, 151, 229, 0.2);
       border-radius: 10px;
       background: $bg-card;
       cursor: pointer;
       transition: all 0.3s ease;
 
       &.active {
-        background: $gradient-gold;
+        background: $gradient-primary;
         border-color: transparent;
         transform: scale(1.05);
 
@@ -283,8 +283,8 @@ const handleSubmit = () => {
 
     .input-wrap {
       flex: 1;
-      background: #0A0A0A;
-      border: 0.5px solid rgba(212, 175, 55, 0.15);
+      background: #030A11;
+      border: 0.5px solid rgba(21, 151, 229, 0.15);
       border-radius: 8px;
       padding: 10px 12px;
 
@@ -306,16 +306,16 @@ const handleSubmit = () => {
       width: 54px;
       height: 41px;
       background: transparent;
-      color: $brand-gold;
+      color: $brand-primary;
       font-size: 13px;
       font-weight: bold;
-      border: 1px solid $brand-gold;
+      border: 1px solid $brand-primary;
       border-radius: 10px;
       cursor: pointer;
       transition: all 0.3s ease;
 
       &:hover {
-        background: $gradient-gold;
+        background: $gradient-primary;
         color: $text-inverse;
       }
     }
@@ -338,7 +338,7 @@ const handleSubmit = () => {
   }
 
   .highlight {
-    color: $brand-gold;
+    color: $brand-primary;
     font-weight: bold;
   }
 
@@ -346,17 +346,17 @@ const handleSubmit = () => {
     width: 100%;
     padding: 12px 0;
     background: transparent;
-    color: $brand-gold;
+    color: $brand-primary;
     font-size: 14px;
     font-weight: bold;
-    border: 1px solid $brand-gold;
+    border: 1px solid $brand-primary;
     border-radius: 24px;
     cursor: pointer;
     text-align: center;
     transition: all 0.3s ease;
 
     &:hover {
-      background: $gradient-gold;
+      background: $gradient-primary;
       color: $text-inverse;
     }
 

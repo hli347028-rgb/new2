@@ -27,7 +27,7 @@
     v-model:show="showShippingAddress"
     position="right"
     :duration="0.2"
-    :style="{ width: '100%', height: '100%', background: '#171C21' }"
+    :style="{ width: '100%', height: '100%', background: '#03070B' }"
   >
     <ShippingAddressDialog :changeShippingAddress="changeShippingAddress" />
   </van-popup>
@@ -135,8 +135,8 @@ const handleBack = () => {
         .shop-item {
           width: calc(50% - 5px);
           box-sizing: border-box;
-          background: #171c21;
-          border: 1px solid #33383f;
+          background: #03070B;
+          border: 1px solid #183247;
           border-radius: 8px;
           padding: 10px;
           display: flex;
@@ -157,7 +157,7 @@ const handleBack = () => {
             border: 0;
             height: 30px;
             text-align: center;
-            color: #ffd127;
+            color: #1597E5;
           }
         }
       }

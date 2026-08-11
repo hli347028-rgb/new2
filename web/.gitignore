@@ -27,3 +27,7 @@ dist-ssr
 
 # bundle output
 bundle/
+
+# local env (do not commit)
+.env
+.env.local

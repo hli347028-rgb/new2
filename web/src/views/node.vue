@@ -3,13 +3,39 @@
     <Header />
 
     <div class="content">
-      <button class="recharge-top-btn" type="button" :disabled="recharging" @click="openRecharge">
-        {{ $t('recharge.recharge') }}
-      </button>
+      <div class="page-header">
+        <div class="mode-tabs" role="radiogroup">
+          <label class="mode-option" :class="{ active: activeMode === 'recharge', disabled: submitting }">
+            <input
+              type="radio"
+              name="subscribe-mode"
+              value="recharge"
+              :checked="activeMode === 'recharge'"
+              :disabled="submitting"
+              @change="switchMode('recharge')"
+            />
+            <span class="radio-dot" aria-hidden="true"></span>
+            <strong>{{ $t('node.reportOrder') }}</strong>
+          </label>
+          <label class="mode-option" :class="{ active: activeMode === 'reward', disabled: submitting }">
+            <input
+              type="radio"
+              name="subscribe-mode"
+              value="reward"
+              :checked="activeMode === 'reward'"
+              :disabled="submitting"
+              @change="switchMode('reward')"
+            />
+            <span class="radio-dot" aria-hidden="true"></span>
+            <strong>{{ $t('node.reinvest') }}</strong>
+          </label>
+        </div>
 
-      <div class="balance-card">
-        <span class="balance-label">{{ $t('node.walletBalance') }}</span>
-        <span class="balance-value">{{ displayBalance }} <small>USDT</small></span>
+        <div class="balance-card">
+          <span>{{ activeMode === 'recharge' ? $t('node.rechargeWalletBalance') : $t('node.rewardWalletBalance') }}</span>
+          <strong>{{ accountBalance }} <small>USDT</small></strong>
+        </div>
+        <p class="mode-tip">{{ $t('node.referralRewardTip') }}</p>
       </div>
 
       <div class="node-tiers">
@@ -17,38 +43,31 @@
           v-for="tier in nodeTiers"
           :key="tier.price"
           class="tier-card"
+          :class="{ active: selectedTier === tier.price }"
         >
           <div class="tier-header">
-            <span class="tier-price">{{ tier.price }}</span>
-            <span class="tier-unit">USDT</span>
+            <div class="tier-price">{{ tier.price }}</div>
+            <div class="tier-unit">USDT</div>
           </div>
-          <button
-            class="subscribe-btn"
-            :disabled="subscribing"
-            @click="handleSubscribe(tier.price)"
-          >
-            {{ $t('node.subscribeNow') }}
+          <button class="subscribe-btn" :disabled="submitting" @click="handleSubscribe(tier.price)">
+            {{ actionText }}
           </button>
         </div>
       </div>
 
-      <div class="custom-section">
-        <div class="custom-label">{{ $t('node.customAmount', { min: minAmount }) }}</div>
+      <div class="custom-amount">
+        <p class="custom-hint">{{ $t('node.customAmountHint', { amount: minSubscribe }) }}</p>
         <div class="custom-row">
           <input
             v-model="customAmount"
             class="custom-input"
             type="number"
-            inputmode="decimal"
-            :placeholder="$t('node.minPlaceholder', { min: minAmount })"
-            :min="minAmount"
+            :min="minSubscribe"
+            step="1"
+            :placeholder="$t('node.minPlaceholder', { amount: minSubscribe })"
           />
-          <button
-            class="subscribe-btn custom-btn"
-            :disabled="subscribing"
-            @click="handleCustomSubscribe"
-          >
-            {{ $t('node.subscribeNow') }}
+          <button class="subscribe-btn custom-btn" :disabled="submitting" @click="handleCustomSubscribe">
+            {{ actionText }}
           </button>
         </div>
       </div>
@@ -63,239 +82,156 @@
           <div class="table-header">
             <span>{{ $t('node.amount') }}</span>
             <span>{{ $t('node.status') }}</span>
+            <span>{{ $t('node.fundingSource') }}</span>
             <span>{{ $t('node.time') }}</span>
           </div>
-          <div v-for="(item, index) in orderList" :key="index" class="table-row">
-            <span>{{ item.amount }}</span>
-            <span>{{ getStatusText(item.status) }}</span>
-            <span>{{ item.createdAt }}</span>
+          <div class="order-list" v-for="(item, index) in orderList" :key="index">
+            <div class="table-row">
+              <span>{{ item.total_amount ?? item.amount }}</span>
+              <span>{{ orderStatusText(item.status) }}</span>
+              <span>{{ fundingSourceText(item.product_name) }}</span>
+              <span>{{ item.created_at ?? item.createdAt }}</span>
+            </div>
           </div>
           <div class="empty-state" v-if="orderList.length === 0">
             <p>{{ $t('common.noData') }}</p>
           </div>
-          <div class="pagination-wrapper" v-if="orderList.length > 0">
-            <Pagination
-              v-model="allPage"
-              :page-count="allPageCount"
-              mode="simple"
-              @change="getOrderList"
-            />
-          </div>
         </div>
       </div>
     </div>
-
-    <van-popup
-      v-model:show="showRecharge"
-      round
-      position="center"
-      :style="{ width: '86%', maxWidth: '360px', background: '#1c1c1e' }"
-    >
-      <div class="recharge-dialog">
-        <div class="recharge-dialog-title">{{ $t('recharge.recharge') }}</div>
-        <div class="recharge-dialog-balance">
-          {{ $t('node.walletBalance') }}：{{ displayBalance }} USDT
-        </div>
-        <input
-          v-model="rechargeAmount"
-          class="recharge-input"
-          type="number"
-          inputmode="decimal"
-          :placeholder="$t('recharge.enterAmount')"
-          :min="0"
-          step="any"
-        />
-        <p class="recharge-tip">{{ $t('node.rechargeTip') }}</p>
-        <button
-          class="subscribe-btn"
-          type="button"
-          :disabled="recharging"
-          @click="handleRecharge"
-        >
-          {{ $t('recharge.recharge') }}
-        </button>
-      </div>
-    </van-popup>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Header from '@/components/Header.vue'
 import request from '@/tools/request'
-import userPerson from '@/pinia/person'
-import { ETH } from '@/tools/contract'
 import { showSuccessToast, showFailToast, showLoadingToast, closeToast } from 'vant'
-import { Pagination } from 'vant'
+import userPerson from '@/pinia/person'
+import { errMsg, listAixOrders, subscribeAix } from '@/api/aix'
 
 const { t: $t } = useI18n()
 const person = userPerson()
-const userinfo = computed(() => person.userinfo)
 
-const minAmount = 100
-const nodeTiers = [
-  { price: 100 },
-  { price: 500 },
-  { price: 1000 },
-  { price: 3000 },
-]
+type SubscribeMode = 'recharge' | 'reward'
 
-const customAmount = ref('')
-const orderList = ref<any[]>([])
-const allPage = ref(1)
-const allPageCount = ref(1)
-const subscribing = ref(false)
-const showRecharge = ref(false)
-const rechargeAmount = ref('')
-const recharging = ref(false)
+const activeMode = ref<SubscribeMode>('recharge')
+const accountBalance = computed(() => {
+  const profile = person.profile
+  return activeMode.value === 'recharge'
+    ? profile?.usdt_recharge || '0.00'
+    : profile?.usdt_reward || '0.00'
+})
+const actionText = computed(() => activeMode.value === 'recharge'
+  ? $t('node.reportNow')
+  : $t('node.reinvestNow'))
 
-const formatBalance = (v: unknown) => {
-  const n = Number(v)
-  if (!Number.isFinite(n)) return '0'
-  return n.toFixed(4).replace(/\.?0+$/, '') || '0'
+interface NodeTier {
+  price: number
 }
 
-const displayBalance = computed(() =>
-  formatBalance(userinfo.value.balanceUsdt || userinfo.value.usdt || '0')
-)
+const selectedTier = ref<number | null>(null)
+const orderList = ref<any[]>([])
+const nodeTiers = ref<NodeTier[]>([])
+const minSubscribe = ref(100)
+const customAmount = ref('')
+const submitting = ref(false)
 
-const refreshUser = async () => {
+const switchMode = (mode: SubscribeMode) => {
+  if (submitting.value) return
+  activeMode.value = mode
+  selectedTier.value = null
+  customAmount.value = ''
+}
+
+const getSubscribeTiers = async () => {
   try {
-    await person.getUser()
-  } catch (e) {
-    console.error('[node] getUser failed', e)
+    const res: any = await request.get('app_server/subscribe_tiers')
+    minSubscribe.value = Math.max(100, Number(res.min_subscribe_amount || 100))
+    nodeTiers.value = (res.tiers || []).map((v: string | number) => ({
+      price: Number(v),
+    })).filter((t: NodeTier) => t.price > 0)
+  } catch {
+    nodeTiers.value = [
+      { price: 100 },
+      { price: 500 },
+      { price: 1000 },
+      { price: 3000 },
+    ]
+    minSubscribe.value = 100
   }
 }
 
-const getOrderList = async (page: number = 1) => {
-  await request.get('app_server/order_list', {
-    params: { page },
-  }).then((res: any) => {
-    allPageCount.value = Math.ceil(res.count / 10)
-    orderList.value = res.list
-  })
+const getOrderList = async () => {
+  try {
+    const res: any = await listAixOrders()
+    orderList.value = res.orders || []
+  } catch {
+    orderList.value = []
+  }
 }
 
-const getStatusText = (status: string) => {
-  if (status === '1') return $t('node.statusEarning')
-  if (status === '2') return $t('node.statusCompleted')
-  return $t('node.statusPending')
+const fundingSourceText = (source: string) => source === 'reward'
+  ? $t('node.rewardSource')
+  : $t('node.rechargeSource')
+
+const orderStatusText = (status: string | number) => {
+  const s = String(status)
+  if (s === '1' || s === 'active') return $t('node.statusActive')
+  if (s === '2' || s === 'exited') return $t('node.statusExited')
+  return s || '-'
 }
 
 const handleSubscribe = async (amount: number) => {
-  if (subscribing.value) return
-  if (!amount || amount < minAmount) {
-    showFailToast($t('node.minAmountTip', { min: minAmount }))
+  if (submitting.value) return
+
+  if (!amount || amount < minSubscribe.value) {
+    showFailToast($t('node.minSubscribeAmount', { amount: minSubscribe.value }))
     return
   }
-
-  subscribing.value = true
-  showLoadingToast({ message: $t('node.subscribeNow'), duration: 0, overlay: true })
+  const mode = activeMode.value
+  const bal = Number(accountBalance.value)
+  if (Number.isFinite(bal) && amount > bal) {
+    showFailToast($t('common.insufficientBalance'))
+    return
+  }
+  selectedTier.value = amount
+  submitting.value = true
+  showLoadingToast({ message: $t('common.loading'), duration: 0 })
   try {
-    // 使用钱包余额认购（管理端充值后可直接认购）
-    await request.post('app_server/buy', { amount: String(amount) })
+    await subscribeAix(String(amount), mode)
     closeToast()
-    showSuccessToast($t('node.subscribeSuccess'))
-    await Promise.all([getOrderList(allPage.value), refreshUser()])
+    showSuccessToast(mode === 'recharge'
+      ? $t('node.reportSuccess')
+      : $t('node.reinvestSuccess'))
+    customAmount.value = ''
+    await Promise.all([person.refreshProfile(), getOrderList()])
   } catch (error: any) {
     closeToast()
-    const msg = String(error?.message || error?.msg || '')
-    if (msg.includes('balance') || msg.includes('余额') || msg.includes('INSUFFICIENT')) {
-      showFailToast($t('common.insufficientBalance'))
-    } else {
-      showFailToast(msg || $t('node.subscribeFailed'))
-    }
+    showFailToast(errMsg(error, mode === 'recharge'
+      ? $t('node.reportFailed')
+      : $t('node.reinvestFailed')))
   } finally {
-    subscribing.value = false
+    submitting.value = false
   }
 }
 
 const handleCustomSubscribe = () => {
   const amount = Number(customAmount.value)
-  if (!Number.isFinite(amount) || amount < minAmount) {
-    showFailToast($t('node.minAmountTip', { min: minAmount }))
+  if (!amount || Number.isNaN(amount)) {
+    showFailToast($t('node.enterSubscribeAmount'))
     return
   }
   handleSubscribe(amount)
 }
 
-const openRecharge = () => {
-  rechargeAmount.value = ''
-  showRecharge.value = true
-}
-
-const handleRecharge = async () => {
-  if (recharging.value) return
-  const amount = Number(rechargeAmount.value)
-  if (!Number.isFinite(amount) || amount <= 0) {
-    showFailToast($t('node.rechargeAmountInvalid'))
-    return
-  }
-
-  recharging.value = true
-  showLoadingToast({ message: $t('recharge.recharge'), duration: 0, overlay: true })
-  try {
-    const created: any = await request.post('app_server/deposit', {
-      amount: String(amount),
-    })
-    const rechargeId = created?.recharge_id || created?.rechargeId
-    const depositAddresses: string[] = (created?.deposit_addresses || created?.depositAddresses || [])
-      .map((v: any) => String(v || '').trim())
-      .filter(Boolean)
-    const depositAddress = created?.deposit_address || created?.depositAddress || depositAddresses[0]
-    const splitAmounts: string[] = (created?.split_amounts || created?.splitAmounts || [])
-      .map((v: any) => String(v || '').trim())
-      .filter(Boolean)
-    const usdtContract = created?.usdt_contract || created?.usdtContract
-    const message = created?.message
-    const addrs = depositAddresses.length > 0 ? depositAddresses : (depositAddress ? [String(depositAddress)] : [])
-    if (!rechargeId || addrs.length === 0 || !message) {
-      throw new Error($t('node.rechargeFailed'))
-    }
-
-    // 多收款地址时各 50%（后端已按地址数均分，尾差落在最后一笔）
-    const amounts = splitAmounts.length === addrs.length
-      ? splitAmounts
-      : addrs.map((_, i) => {
-          if (addrs.length === 1) return String(amount)
-          const half = Math.floor((Number(amount) * 1e8) / addrs.length) / 1e8
-          if (i < addrs.length - 1) return String(half)
-          return String(Number((Number(amount) - half * (addrs.length - 1)).toFixed(8)))
-        })
-
-    const txHashes: string[] = []
-    for (let i = 0; i < addrs.length; i++) {
-      const txHash = await ETH.transferUSDT(addrs[i], amounts[i], usdtContract)
-      txHashes.push(txHash)
-    }
-    const signature = await ETH.signMessage(message)
-    await request.post('app_server/deposit_confirm', {
-      recharge_id: rechargeId,
-      tx_hash: txHashes.join(','),
-      tx_hashes: txHashes,
-      signature,
-    })
-
-    closeToast()
-    showSuccessToast($t('node.rechargeSuccess'))
-    showRecharge.value = false
-    rechargeAmount.value = ''
-    await refreshUser()
-  } catch (error: any) {
-    closeToast()
-    const msg = String(
-      error?.response?.data?.message || error?.message || error?.msg || error || ''
-    )
-    showFailToast(msg || $t('node.rechargeFailed'))
-  } finally {
-    recharging.value = false
-  }
-}
-
 onMounted(async () => {
-  await refreshUser()
-  getOrderList()
+  await Promise.all([
+    getSubscribeTiers(),
+    getOrderList(),
+    person.refreshProfile()
+  ])
 })
 </script>
 
@@ -304,286 +240,452 @@ onMounted(async () => {
 
 .node-page {
   min-height: 100vh;
-  background: #121212;
+  background: linear-gradient(180deg, #030A11 0%, #0D1B2A 100%);
 }
 
 .content {
-  padding: 88px 16px 40px;
-  max-width: 480px;
+  padding: 60px 20px 40px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
-.recharge-top-btn {
-  width: 100%;
-  height: 44px;
-  margin-bottom: 12px;
-  border: 1px solid rgba(229, 182, 76, 0.55);
-  border-radius: 999px;
-  background: transparent;
-  color: #e5b64c;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.15s ease;
+.page-header {
+  margin-bottom: 20px;
 
-  &:active:not(:disabled) {
-    transform: scale(0.98);
+  .mode-tabs {
+    display: flex;
+    width: 220px;
+    box-sizing: border-box;
+    margin: 0 auto;
+    padding: 0;
   }
 
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
+  .mode-option {
+    position: relative;
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 34px;
+    box-sizing: border-box;
+    padding: 4px 10px;
+    background: transparent;
+    border: 0;
+    color: rgba(244, 250, 255, 0.78);
+    cursor: pointer;
+    transition: color $transition-fast;
+
+    & + .mode-option {
+      border-left: 1px solid rgba(143, 223, 255, 0.38);
+    }
+
+    input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    strong {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .radio-dot {
+      position: relative;
+      flex: 0 0 auto;
+      width: 13px;
+      height: 13px;
+      box-sizing: border-box;
+      border: 1px solid rgba(200, 220, 236, 0.72);
+      border-radius: 50%;
+      transition: all $transition-fast;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 3px;
+        background: $brand-primary;
+        border-radius: 50%;
+        opacity: 0;
+        transform: scale(0.35);
+        transition: all $transition-fast;
+      }
+    }
+
+    &.active {
+      color: #fff;
+
+      .radio-dot {
+        border-color: $brand-primary;
+        background: transparent;
+        box-shadow: 0 0 5px rgba(33, 182, 234, 0.3);
+
+        &::after {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    }
+
+    &.disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
   }
-}
 
-.balance-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  padding: 16px 18px;
-  background: #1c1c1e;
-  border-radius: 16px;
-  border: 1px solid rgba(229, 182, 76, 0.25);
-}
+  .balance-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    padding: 11px 14px;
+    background: rgba(21, 151, 229, 0.07);
+    border: 1px solid rgba(21, 151, 229, 0.14);
+    border-radius: 12px;
 
-.recharge-dialog {
-  padding: 22px 18px 20px;
-}
+    > span {
+      color: $text-muted;
+      font-size: 11px;
+    }
 
-.recharge-dialog-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #fff;
-  text-align: center;
-  margin-bottom: 12px;
-}
+    strong {
+      color: $brand-primary-light;
+      font-size: 16px;
+      font-weight: 600;
 
-.recharge-dialog-balance {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.55);
-  text-align: center;
-  margin-bottom: 16px;
-}
-
-.recharge-input {
-  width: 100%;
-  height: 46px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(229, 182, 76, 0.3);
-  background: #121212;
-  color: #e5b64c;
-  font-size: 16px;
-  outline: none;
-  box-sizing: border-box;
-
-  &::placeholder {
-    color: rgba(255, 255, 255, 0.35);
+      small {
+        font-size: 10px;
+        font-weight: 500;
+        opacity: 0.7;
+      }
+    }
   }
-}
 
-.recharge-tip {
-  margin: 10px 0 16px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.45);
-  line-height: 1.4;
-}
-
-.balance-label {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.balance-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: #e5b64c;
-
-  small {
-    font-size: 13px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.55);
-    margin-left: 4px;
+  .mode-tip {
+    margin: 8px 2px 0;
+    color: #fff;
+    font-size: 10px;
+    line-height: 1.55;
   }
 }
 
 .node-tiers {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.tier-card {
-  background: #1c1c1e;
-  border-radius: 16px;
-  padding: 20px 18px 16px;
-}
-
-.tier-header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
   margin-bottom: 16px;
 }
 
-.tier-price {
-  font-size: 36px;
-  font-weight: 700;
-  line-height: 1;
-  color: #e5b64c;
-  letter-spacing: 0.5px;
-}
+.custom-amount {
+  margin-bottom: 40px;
 
-.tier-unit {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.55);
-  font-weight: 500;
+  .custom-hint {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 10px;
+  }
+
+  .custom-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .custom-input {
+    flex: 1;
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    color: #fff;
+    font-size: 15px;
+    outline: none;
+
+    &:focus {
+      border-color: $brand-primary;
+    }
+  }
+
+  .custom-btn {
+    flex-shrink: 0;
+    min-width: 120px;
+    width: auto;
+    height: 44px;
+    padding: 0 20px;
+  }
 }
 
 .subscribe-btn {
-  width: 100%;
-  height: 44px;
+  padding: 8px 20px;
+  background: $gradient-primary;
+  color: $text-inverse;
   border: none;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #f2d378 0%, #c49331 100%);
-  color: #111;
-  font-size: 15px;
-  font-weight: 700;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.15s ease;
+  transition: all 0.3s ease;
+  width: 100%;
 
-  &:active:not(:disabled) {
-    transform: scale(0.98);
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, $brand-primary-light 0%, $brand-primary 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(21, 151, 229, 0.3);
   }
 
   &:disabled {
-    opacity: 0.55;
+    opacity: 0.5;
     cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
   }
-}
-
-.custom-section {
-  margin-top: 22px;
-}
-
-.custom-label {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.55);
-  margin-bottom: 10px;
-}
-
-.custom-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.custom-input {
-  flex: 1;
-  min-width: 0;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: #1a1a1a;
-  color: #fff;
-  font-size: 14px;
-  outline: none;
-
-  &::placeholder {
-    color: rgba(255, 255, 255, 0.35);
-  }
-
-  &:focus {
-    border-color: rgba(229, 182, 76, 0.65);
-  }
-
-  /* hide number spinners */
-  &::-webkit-outer-spin-button,
-  &::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  appearance: textfield;
-}
-
-.custom-btn {
-  width: auto;
-  min-width: 108px;
-  padding: 0 18px;
-  flex-shrink: 0;
 }
 
 .record-section {
-  margin-top: 28px;
-}
+  margin-top: 20px;
 
-.section-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-}
+  .section-title-wrap {
+    position: relative;
+    margin-bottom: 10px;
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
 
-.title-bar {
-  width: 3px;
-  height: 16px;
-  border-radius: 2px;
-  background: #e5b64c;
-}
+    .title-bar {
+      position: absolute;
+      left: -10px;
+      top: 50%;
+      width: 4px;
+      height: 16px;
+      border-radius: 2px;
+      background: linear-gradient(180deg, #1597E5 0%, #075FB8 100%);
+      transform: translateY(-50%);
+    }
 
-.section-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.table-card {
-  background: #1c1c1e;
-  border-radius: 16px;
-  padding: 4px 0 8px;
-  overflow: hidden;
-}
-
-.table-header,
-.table-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.4fr;
-  align-items: center;
-  padding: 12px 16px;
-  font-size: 13px;
-}
-
-.table-header {
-  color: rgba(255, 255, 255, 0.45);
-  font-weight: 500;
-}
-
-.table-row {
-  color: rgba(255, 255, 255, 0.85);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.empty-state {
-  padding: 36px 16px;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.35);
-  font-size: 13px;
-
-  p {
-    margin: 0;
+    .section-title {
+      margin: 0 0 0 8px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+    }
   }
 }
 
-.pagination-wrapper {
+.table-card {
+  margin-top: 10px;
+  min-height: 300px;
+  overflow: hidden;
+  border: 1px solid $border-color;
+  border-radius: 11px;
+  background: rgba(8, 19, 30, 0.6);
+  backdrop-filter: blur(10px);
+  padding: 11px 0;
+
+  .table-header {
+    display: flex;
+    align-items: center;
+    background: #030A11;
+    padding: 8px 0;
+    margin: -11px 0 0;
+
+    span {
+      flex: 1;
+      text-align: center;
+      font-size: 10px;
+      color: $text-muted;
+    }
+  }
+
+  .order-list {
+    .table-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid $border-light;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      span {
+        flex: 1;
+        text-align: center;
+        font-size: 14px;
+        color: $text-primary;
+      }
+    }
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 250px;
+
+    p {
+      margin-top: 8px;
+      font-size: 12px;
+      color: $text-muted;
+    }
+  }
+
+  .pagination-wrapper {
+    padding: 16px 0;
+    display: flex;
+    justify-content: center;
+  }
+}
+
+.tier-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(21, 151, 229, 0.3);
+    transform: translateY(-4px);
+  }
+
+  &.active {
+    background: rgba(21, 151, 229, 0.1);
+    border-color: $brand-primary;
+    box-shadow: 0 0 20px rgba(21, 151, 229, 0.2);
+  }
+
+  .tier-header {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    min-width: 0;
+    
+    .tier-price {
+      font-size: 20px;
+      font-weight: 500;
+      color: $brand-primary;
+      line-height: 1;
+    }
+
+    .tier-unit {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  .subscribe-btn {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 104px;
+    min-height: 34px;
+    padding: 6px 14px;
+    border-radius: 9px;
+    font-size: 13px;
+  }
+
+  .tier-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin-bottom: 16px;
+  }
+
+  .tier-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    .info-label {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .info-value {
+      font-size: 18px;
+      font-weight: 500;
+      color: #fff;
+    }
+  }
+
+  .tier-status {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+
+    &.available {
+      background: rgba(21, 151, 229, 0.2);
+      color: $brand-primary;
+    }
+
+    &.full {
+      background: rgba(255, 59, 59, 0.2);
+      color: #ff3b3b;
+    }
+
+    &.coming {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.6);
+    }
+  }
+}
+
+.action-section {
   display: flex;
   justify-content: center;
-  padding: 8px 0 12px;
+  padding: 20px 0;
 
-  :deep(.van-pagination) {
-    --van-pagination-item-default-color: rgba(255, 255, 255, 0.65);
+  .subscribe-btn {
+    padding: 16px 48px;
+    background: linear-gradient(135deg, $brand-primary 0%, #087BC1 100%);
+    color: #000;
+    border: none;
+    border-radius: 32px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(21, 151, 229, 0.3);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+}
+
+@keyframes gradient-move {
+  0% {
+    background-position: 100% 50%;
+  }
+  50% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
   }
 }
 </style>

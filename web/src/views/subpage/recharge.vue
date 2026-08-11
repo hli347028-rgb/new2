@@ -9,7 +9,7 @@
   />
   <div class="page-main">
     <div class="withdraw-info">
-      <p class="withdraw-balance">USDT: {{ userinfo.amountUsdt || 0.0000 }}</p>
+      <p class="withdraw-balance">USDT: {{ userinfo.usdt || 0.0000 }}</p>
       <p class="withdraw-balance">BRC20: {{ userinfo.rawNew || 0.0000 }}</p>
       <button class="withdraw-btn" @click="showWithdraw"><van-icon name="balance-pay" />{{ lang('充值') }}</button>
     </div>
@@ -195,7 +195,7 @@ getAmountList()
         margin-top: 20px;
         border-top-left-radius: 20px;
         border-top-right-radius: 20px;
-        background: linear-gradient(0deg,rgba(35,40,44,0),#252b4b);
+        background: linear-gradient(0deg,rgba(35,40,44,0),#0B2135);
         display: flex;
         align-items: center;
         justify-content: flex-start;
@@ -208,7 +208,7 @@ getAmountList()
             &::before {
               width: 25px;
               height: 2px;
-              background: 0% 0% / cover rgb(54, 64, 240);
+              background: 0% 0% / cover rgb(8, 123, 193);
               content: '';
               display: block;
               position: absolute;
@@ -307,7 +307,7 @@ getAmountList()
     }
     .recharge {
       min-height: 200px;
-      background: rgba(23, 28, 33, .8);
+      background: rgba(8, 19, 30, .8);
       border: 1px solid #666;
       border-radius: 18px;
       padding: 15px;

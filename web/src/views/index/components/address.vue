@@ -128,7 +128,7 @@ const saveAddress = async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: #29313C;
+  background: #0D1B2A;
   border-radius: 6px;
   padding: 50px 30px 30px 30px;
   gap: 20px;
@@ -140,7 +140,7 @@ const saveAddress = async () => {
     width: 100px;
     height: 32px;
     line-height: 32px;
-    background: #F8B204;
+    background: #1597E5;
     border: 0;
     border-radius: 4px;
     display: inline-block;
@@ -154,7 +154,7 @@ const saveAddress = async () => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  background: #29313C;
+  background: #0D1B2A;
   border-radius: 6px;
   padding: 10px 10px 30px 10px;
   gap: 5px;
@@ -167,7 +167,7 @@ const saveAddress = async () => {
   .address-editor-item {
     width: 100%;
     display: flex;
-    --van-cell-background: #2A2A2A;
+    --van-cell-background: #102235;
     .address-label {
       padding: 10px 0;
       padding-left: 15px;
@@ -177,7 +177,7 @@ const saveAddress = async () => {
     width: 100px;
     height: 32px;
     line-height: 32px;
-    background: #F8B204;
+    background: #1597E5;
     border: 0;
     border-radius: 4px;
     display: inline-block;

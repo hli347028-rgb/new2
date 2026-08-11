@@ -1,27 +1,28 @@
-// ==================== 黑金主题颜色变量 ====================
+// ==================== AIX 冰蓝科技主题 ====================
 
-// 品牌金色
-$brand-gold: #D4AF37;
-$brand-gold-light: #F1DC9B;
-$brand-gold-dark: #B8941F;
+// 品牌色：取自 Logo 的电光蓝、冰蓝高光和深蓝阴影
+$brand-primary: #1597E5;
+$brand-primary-light: #8FDFFF;
+$brand-primary-dark: #075FB8;
+$brand-accent: #21B6EA;
 
 // 背景色
-$bg-main: #050505;
-$bg-card: #121212;
-$bg-card-hover: #1A1A1A;
+$bg-main: #03070B;
+$bg-card: #08131E;
+$bg-card-hover: #0D1B2A;
 
 // 文字颜色
-$text-primary: #FFFFFF;
-$text-muted: #FFFFFF;
-$text-inverse: #000000;
+$text-primary: #F4FAFF;
+$text-muted: #9FB3C8;
+$text-inverse: #02070C;
 
 // 边框颜色
-$border-color: rgba(212, 175, 55, 0.2);
-$border-light: rgba(255, 255, 255, 0.06);
+$border-color: rgba(21, 151, 229, 0.25);
+$border-light: rgba(143, 223, 255, 0.10);
 
 // 渐变
-$gradient-gold: linear-gradient(135deg, #F1DC9B 0%, #D4AF37 100%);
-$gradient-gold-vertical: linear-gradient(180deg, #F1DC9B 0%, #D4AF37 100%);
+$gradient-primary: linear-gradient(135deg, #8FDFFF 0%, #1597E5 52%, #075FB8 100%);
+$gradient-primary-vertical: linear-gradient(180deg, #8FDFFF 0%, #1597E5 52%, #075FB8 100%);
 
 // 字体大小
 $font-primary: 12px;

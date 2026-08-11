@@ -18,6 +18,7 @@ type UserPO struct {
 	AixBalance      decimal.Decimal `gorm:"column:aix_balance;type:decimal(36,18);default:0;not null"`       // AIX 代币数（静态换算入账）
 	StaticUsdtTotal decimal.Decimal `gorm:"column:static_usdt_total;type:decimal(36,18);default:0;not null"` // 静态总收益（USDT 金本位累计）
 	MgmtLevel       int32           `gorm:"column:mgmt_level;default:0;not null"`
+	MgmtLevelLocked bool            `gorm:"column:mgmt_level_locked;default:false;not null"`
 	LargeAreaPerf   decimal.Decimal `gorm:"column:large_area_perf;type:decimal(36,18);default:0;not null"`
 	SmallAreaPerf   decimal.Decimal `gorm:"column:small_area_perf;type:decimal(36,18);default:0;not null"`
 	TeamPerf        decimal.Decimal `gorm:"column:team_perf;type:decimal(36,18);default:0;not null"`

@@ -52,3 +52,13 @@ taurus-deploy.tar.gz
 taurus-deploy.zip
 *.pem
 backend.sql
+
+# Local source snapshots and migration scratch files
+_upstream_aix/
+ken008009-aix-source/
+web-before-ken008009/
+_backendAdapter.integration.ts
+
+# Nginx runtime state (keep nginx.conf and helper scripts)
+nginx/logs/
+*.pid

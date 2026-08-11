@@ -200,13 +200,13 @@ const handleBack = () => {
             height: 28px;
             line-height: 28px;
             text-align: center;
-            background-color: #2d2d2d;
+            background-color: #102235;
             color: #8ab4f8;
             border-radius: 50%;
             margin-right: 12px;
             font-size: 14px;
             font-weight: normal;
-            border: 1px solid #3d3d3d;
+            border: 1px solid #183247;
           }
         }
         .investment-details {
@@ -215,7 +215,7 @@ const handleBack = () => {
           li {
             display: flex;
             padding: 8px 0;
-            border-bottom: 1px solid #2d2d2d;
+            border-bottom: 1px solid #102235;
             &:last-child {
               border-bottom: none;
             }
@@ -235,8 +235,8 @@ const handleBack = () => {
         .purchase-btn {
           width: 100%;
           padding: 12px 20px;
-          background-color: #cab255;
-          color: #121212;
+          background-color: #1597E5;
+          color: #08131E;
           border: none;
           border-radius: 8px;
           font-size: 16px;
@@ -249,8 +249,8 @@ const handleBack = () => {
       .shop-item {
         width: calc(50% - 5px);
         box-sizing: border-box;
-        background: #171c21;
-        border: 1px solid #33383f;
+        background: #03070B;
+        border: 1px solid #183247;
         border-radius: 8px;
         padding: 10px;
         display: flex;
@@ -271,7 +271,7 @@ const handleBack = () => {
           border: 0;
           height: 30px;
           text-align: center;
-          color: #ffd127;
+          color: #1597E5;
         }
       }
     }

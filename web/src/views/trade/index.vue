@@ -122,7 +122,7 @@ const setMax = () => {
   width: 90%;
   min-height: 200px;
   margin: 15px auto;
-  background: #29313C;
+  background: #0D1B2A;
   border-radius: 10px;
   box-shadow: @bs1;
   padding: 15px;
@@ -136,7 +136,7 @@ const setMax = () => {
     display: flex;
   }
   .trade-table {
-    background: #202630;
+    background: #08131E;
     margin-bottom: 20px;
     border-radius: 6px;
     ul {
@@ -169,7 +169,7 @@ const setMax = () => {
         line-height: 40px;
         text-align: center;
         border-radius: 6px;
-        background: #202630;
+        background: #08131E;
         color: #CCC;
         display: flex;
         align-items: center;
@@ -194,7 +194,7 @@ const setMax = () => {
         display: flex;
         height: 42px;
         border-radius: 12px;
-        background: #202630;
+        background: #08131E;
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button {
             -webkit-appearance: none;

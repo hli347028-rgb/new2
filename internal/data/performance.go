@@ -14,8 +14,9 @@ import (
 // principal. A direct referral and all of its descendants form one branch.
 func refreshPerformance(db *gorm.DB, sourceUserID int64) error {
 	type userNode struct {
-		ID        int64
-		InviterID *int64
+		ID              int64
+		InviterID       *int64
+		MgmtLevelLocked bool
 	}
 	type principalRow struct {
 		UserID int64
@@ -23,7 +24,7 @@ func refreshPerformance(db *gorm.DB, sourceUserID int64) error {
 	}
 
 	var users []userNode
-	if err := db.Model(&UserPO{}).Select("id", "inviter_id").Find(&users).Error; err != nil {
+	if err := db.Model(&UserPO{}).Select("id", "inviter_id", "mgmt_level_locked").Find(&users).Error; err != nil {
 		return err
 	}
 	var principals []principalRow
@@ -36,8 +37,10 @@ func refreshPerformance(db *gorm.DB, sourceUserID int64) error {
 
 	children := make(map[int64][]int64, len(users))
 	parents := make(map[int64]int64, len(users))
+	userByID := make(map[int64]userNode, len(users))
 	stake := make(map[int64]decimal.Decimal, len(users))
 	for _, user := range users {
+		userByID[user.ID] = user
 		stake[user.ID] = decimal.Zero
 		if user.InviterID != nil {
 			children[*user.InviterID] = append(children[*user.InviterID], user.ID)
@@ -86,7 +89,7 @@ func refreshPerformance(db *gorm.DB, sourceUserID int64) error {
 				return fmt.Errorf("invite relationship contains a cycle at user %d", parentID)
 			}
 			seen[parentID] = true
-			targets = append(targets, userNode{ID: parentID})
+			targets = append(targets, userByID[parentID])
 			currentID = parentID
 		}
 	}
@@ -102,12 +105,15 @@ func refreshPerformance(db *gorm.DB, sourceUserID int64) error {
 		}
 		large, small, team := biz.CalcAreaPerformance(branches)
 		level := biz.MgmtLevelByPerf(small)
-		if err := db.Model(&UserPO{}).Where("id = ?", user.ID).Updates(map[string]interface{}{
+		updates := map[string]interface{}{
 			"large_area_perf": large,
 			"small_area_perf": small,
 			"team_perf":       team,
-			"mgmt_level":      level,
-		}).Error; err != nil {
+		}
+		if !user.MgmtLevelLocked {
+			updates["mgmt_level"] = level
+		}
+		if err := db.Model(&UserPO{}).Where("id = ?", user.ID).Updates(updates).Error; err != nil {
 			return err
 		}
 	}

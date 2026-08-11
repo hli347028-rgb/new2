@@ -120,8 +120,9 @@ func (uc *WalletUsecase) CreateRecharge(ctx context.Context, tokenString, amount
 		return nil, err
 	}
 	amountDec, err := ParseAmount(amount)
-	if err != nil || !amountDec.GreaterThan(decimal.Zero) {
-		return nil, errors.BadRequest("INVALID_AMOUNT", "USDT 充值金额必须大于0")
+	minRecharge := decimal.NewFromInt(5)
+	if err != nil || amountDec.LessThan(minRecharge) {
+		return nil, errors.BadRequest("INVALID_AMOUNT", "USDT 充值金额不能小于5")
 	}
 	depositAddress := uc.walletCfg.GetDepositAddress()
 	if !uc.IsDevMode() {

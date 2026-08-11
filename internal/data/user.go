@@ -271,6 +271,7 @@ func (r *userRepo) AdminUpdateUser(ctx context.Context, update *biz.AdminUserUpd
 			level = int32(n)
 		}
 		updates["mgmt_level"] = level
+		updates["mgmt_level_locked"] = true
 	}
 	if update.CommunityStake != "" {
 		v, err := decimal.NewFromString(update.CommunityStake)
@@ -418,22 +419,23 @@ func (r *userRepo) DeductBalance(ctx context.Context, userID int64, amount strin
 
 func (r *userRepo) toBiz(ctx context.Context, po *UserPO) *biz.User {
 	user := &biz.User{
-		ID:              po.ID,
-		Address:         po.Address,
-		InviteCode:      po.InviteCode,
-		UsdtRecharge:    po.UsdtRecharge.String(),
-		UsdtReward:      po.UsdtReward.String(),
-		AixBalance:      po.AixBalance.String(),
-		StaticUsdtTotal: po.StaticUsdtTotal.String(),
-		MgmtLevel:       po.MgmtLevel,
-		LargeAreaPerf:   po.LargeAreaPerf.String(),
-		SmallAreaPerf:   po.SmallAreaPerf.String(),
-		TeamPerf:        po.TeamPerf.String(),
-		Status:          po.Status,
-		InviterID:       po.InviterID,
-		Role:            po.Role,
-		CreatedTime:     po.CreatedTime,
-		UpdatedTime:     po.UpdatedTime,
+		ID:                   po.ID,
+		Address:              po.Address,
+		InviteCode:           po.InviteCode,
+		UsdtRecharge:         po.UsdtRecharge.String(),
+		UsdtReward:           po.UsdtReward.String(),
+		AixBalance:           po.AixBalance.String(),
+		StaticUsdtTotal:      po.StaticUsdtTotal.String(),
+		MgmtLevel:            po.MgmtLevel,
+		CommunityLevelLocked: po.MgmtLevelLocked,
+		LargeAreaPerf:        po.LargeAreaPerf.String(),
+		SmallAreaPerf:        po.SmallAreaPerf.String(),
+		TeamPerf:             po.TeamPerf.String(),
+		Status:               po.Status,
+		InviterID:            po.InviterID,
+		Role:                 po.Role,
+		CreatedTime:          po.CreatedTime,
+		UpdatedTime:          po.UpdatedTime,
 	}
 	if po.InviterID != nil {
 		var addr string

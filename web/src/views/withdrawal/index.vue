@@ -1,291 +1,472 @@
 <template>
   <div class="withdrawal-page">
-    <ChildrenHeader />
-    <div class="withdrawal-main">
-      <div class="content-box">
-        <div class="content-box-title">
-          {{lang('提现金额')}}
-        </div>
-        <!-- 标签栏 -->
-        <div class="tab-title">
-          <div class="tab-link" :class="{'tab-link-active': tabMenu === 1}" @click="tabMenu = 1">USDT{{ lang('提现') }}</div>
-          <div class="tab-link" :class="{'tab-link-active': tabMenu === 2}" @click="tabMenu = 2">ISPAY{{ lang('提现') }}</div>
-        </div>
+    <Header />
 
-        <!-- 标签内容 -->
-        <div class="tabs-container">
-          <!-- 标签A内容 -->
-          <div class="tab-content" v-if="tabMenu === 1">
-            <div class="block">
-              <div class="content-box-content">
-                <input class="form-input" v-model="amountUsdt" @input="checkUsdtMax" type="number" :placeholder="lang('请输入金额')" />
-                <div class="form-sidebar">
-                  <button class="all-amount-btn" @click="handleAllAmount()">{{lang('全部')}}</button>
-                  <div class="form-balance">{{lang('余额')}}: {{ userinfo.usdt }}</div>
-                </div>
-              </div>
-              <div class="content-box-info">
-                <p>{{ lang('最小数量') }}: {{userinfo.withdrawMin}}</p>
-                <p>{{ lang('手续费') }}: {{ amountRound(Number(userinfo.withdrawRate) * amountUsdt) }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- 标签B内容 -->
-          <div class="tab-content" v-if="tabMenu === 2">
-            <div class="block">
-              <div class="content-box-content">
-                <input class="form-input" v-model="amountBiw" @input="checkBiwMax" type="number" :placeholder="lang('请输入金额')" />
-                <div class="form-sidebar">
-                  <button class="all-amount-btn" @click="handleAllAmount()">{{lang('全部')}}</button>
-                  <div class="form-balance">{{lang('余额')}}: {{ userinfo.raw.replace(/[^\d.]/g, '') }}</div>
-                </div>
-              </div>
-              <div class="content-box-info">
-                <p>{{ lang('最小数量') }}: {{userinfo.withdrawMinTwo}}</p>
-                <p>{{ lang('手续费') }}: {{ amountRound(Number(userinfo.withdrawRateTwo) * amountBiw) }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 确认按钮 -->
-        <button
-          v-if="tabMenu === 1"
-          class="withdrawal-btn"
-          :disabled="!amountUsdt || loading"
-          @click="handleWithdrawal()"
-        >
-          {{ loading ? lang('处理中...') : lang('确认') }}
-        </button>
-        <button
-          v-if="tabMenu === 2"
-          class="withdrawal-btn"
-          :disabled="!amountBiw || loading"
-          @click="handleWithdrawal()"
-        >
-          {{ loading ? lang('处理中...') : lang('确认') }}
-        </button>
+    <div class="content">
+      <div class="page-header">
+        <h1 class="page-title">{{ $t('withdraw.title') }}</h1>
+        <p class="page-subtitle">AIX {{ $t('withdraw.title') }}</p>
+        <p class="page-balance">{{ $t('withdraw.availableBalance') }}: {{ aixBalance }} AIX</p>
       </div>
 
-      <!-- 提现详情列表 -->
-      <div class="withdrawal-list">
-        <div class="withdrawal-list-title">{{ lang('提现详情') }}</div>
-        <div class="withdrawal-list-content">
-          <div class="table">
-            <div class="table-header">
-              <div class="table-row">
-                <div class="table-cell">{{lang('日期')}}</div>
-                <div class="table-cell">{{lang('金额')}}</div>
-              </div>
-            </div>
-            <div class="table-body">
-              <div class="table-row" v-for="(item, index) in amountList" :key="index">
-                <div class="table-cell">{{item.createdAt}}</div>
-                <div class="table-cell">{{item.amount}}</div>
-              </div>
+      <div class="withdraw-form">
+        <div class="form-hint-row">
+          <p class="form-hint">{{ $t('withdraw.amount') }}</p>
+          <button type="button" class="all-btn" @click="handleAllAmount()">
+            {{ $t('withdraw.all') }}
+          </button>
+        </div>
+        <div class="form-row">
+          <input
+            class="form-input"
+            v-model="amountAix"
+            @input="checkAixAmount"
+            type="text"
+            inputmode="decimal"
+            :placeholder="$t('withdraw.enterAmount')"
+          />
+          <button
+            class="subscribe-btn custom-btn"
+            :disabled="!amountAix || loading"
+            @click="handleWithdrawal()"
+          >
+            {{ loading ? $t('withdraw.processing') : $t('withdraw.confirm') }}
+          </button>
+        </div>
+        <div class="form-info">
+          <p>{{ $t('withdraw.fee') }}: 0 AIX</p>
+        </div>
+      </div>
+
+      <div class="record-section">
+        <div class="section-title-wrap">
+          <div class="title-bar"></div>
+          <h3 class="section-title">{{ $t('withdraw.details') }}</h3>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header table-header-3">
+            <span>{{ $t('node.amount') }}</span>
+            <span>{{ $t('withdraw.received') }}</span>
+            <span>{{ $t('withdraw.status') }}</span>
+          </div>
+          <div class="order-list" v-for="(item, index) in amountList" :key="index">
+            <div class="table-row table-row-3">
+              <span>{{ item.amount }}</span>
+              <span>{{ item.relAmount || '-' }}</span>
+              <span class="status-cell">
+                {{ withdrawStatusText(item.status) }}
+                <small v-if="item.tx_hash" class="tx-hint">{{ String(item.tx_hash).slice(0, 10) }}…</small>
+                <small class="muted">{{ item.createdAt }}</small>
+              </span>
             </div>
           </div>
-          <div class="empty-data" v-if="amountList.length === 0"></div>
-          <Pagination
-            v-model="allPage"
-            :page-count="allPageCount"
-            mode="simple"
-            @change="getAmountList"
-          />
+          <div class="empty-state" v-if="amountList.length === 0">
+            <p>{{ $t('withdraw.noRecords') }}</p>
+          </div>
+          <div class="pagination-wrapper" v-if="amountList.length > 0 && allPageCount > 1">
+            <Pagination
+              v-model="allPage"
+              :page-count="allPageCount"
+              mode="simple"
+              @change="getAmountList"
+            />
+          </div>
         </div>
       </div>
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
-import ChildrenHeader from '../../components/header/childrenHeader.vue'
-import fetchSign from '../../pinia/fetchSign'
-import userPerson from "@/pinia/person";
-import request from "@/tools/request";
-import { Pagination, showToast } from "vant";
-import lang from '@/i18n/index'
-import { ref, computed } from 'vue'
+import Header from '@/components/Header.vue'
+import userPerson from '@/pinia/person'
+import request from '@/tools/request'
+import { Pagination, showToast } from 'vant'
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
-const person = userPerson();
-const userinfo = computed(() => person.userinfo);
-const sign = computed(() => person.sign);
+const { t: $t } = useI18n()
+const person = userPerson()
+const aixBalance = computed(() => String(person.profile?.aix_balance || '0'))
 
-let allPage = ref(1);
-let allPageCount = ref(1);
-let amountUsdt: any = ref('')
-let usdtSite: string = ref('')
-let ispaySite: string = ref('')
-let amountBiw: any = ref('')
-let amountISPay: any = ref('')
-let amount: any = ref('')
-let tabMenu: number = ref(1)
-let loading = ref(false)
-let amountList: any[] = ref([])
+const allPage = ref(1)
+const allPageCount = ref(1)
+const amountAix = ref('')
+const loading = ref(false)
+const amountList = ref<any[]>([])
 
-const amountRound = (num: number) => {
-  return Math.round(num * 100) / 100
+const withdrawStatusText = (status: string) => {
+  switch (status) {
+    case 'pending': return $t('withdraw.statusPendingReview')
+    case 'rewarded':
+    case 'approved': return $t('withdraw.statusPaying')
+    case 'doing': return $t('withdraw.statusPaying')
+    case 'pass': return $t('withdraw.statusReceived')
+    case 'rejected': return $t('withdraw.statusRejected')
+    case 'cancelled': return $t('withdraw.statusCancelled')
+    default: return status || '-'
+  }
 }
 
 const getAmountList = async (page: number = 1) => {
-    await request.get("app_server/withdraw_list", {
-      params: {
-        page
-      }
-    }).then((res: any) => {
-      allPageCount.value = Math.ceil(res.count / 10);
-      amountList.value = res.list
+  try {
+    const res: any = await request.get('app_server/withdraw_list', {
+      params: { page }
     })
+    allPageCount.value = Math.max(1, Math.ceil(Number(res.count || 0) / 10))
+    amountList.value = res.list || []
+    allPage.value = page
+  } catch {
+    amountList.value = []
+  }
 }
-
-getAmountList()
 
 const handleAllAmount = () => {
-  if (tabMenu.value === 1) {
-    if (Number(userinfo.value.usdt) < 0.1) return false
-    amountUsdt.value = userinfo.value.usdt
-  }
-  if (tabMenu.value === 2) {
-    const biw = userinfo.value.raw.replace(/[^\d.]/g, '')
-    if (Number(biw) < 0.1) return false
-    amountBiw.value = biw
-  }
-}
-
-const checkUsdtMax = (e: any) => {
-  const currentNum = Number(e.target.value)
-  const maxNum = Number(userinfo.value.usdt)
-
-  if (currentNum > maxNum) {
-    amountUsdt.value = maxNum
-  }
-}
-
-const checkBiwMax = (e: any) => {
-  const currentNum = Number(e.target.value)
-  const maxNum = Number(userinfo.value.raw)
-
-  if (currentNum > maxNum) {
-    amountBiw.value = maxNum
-  }
-}
-
-const handleWithdrawal = async() => {
-  if (tabMenu.value !== 1) {
-    showToast({
-      message: lang("暂未开通"),
-      position: 'center',
-      duration: 2000,
-    });
+  const max = Number(aixBalance.value)
+  if (!Number.isFinite(max) || max <= 0) {
+    showToast({ message: $t('withdraw.insufficientBalance'), position: 'center' })
     return
   }
+  amountAix.value = String(max)
+}
+
+const checkAixAmount = (e: any) => {
+  // 仅规范化数字格式，不按可提余额钳制输入（超额在提交时由前端/后端校验）
+  let raw = String(e?.target?.value ?? amountAix.value ?? '')
+  raw = raw.replace(/[^\d.]/g, '')
+  const parts = raw.split('.')
+  if (parts.length > 2) {
+    raw = parts[0] + '.' + parts.slice(1).join('')
+  }
+  if (parts[1] != null && parts[1].length > 8) {
+    raw = parts[0] + '.' + parts[1].slice(0, 8)
+  }
+  amountAix.value = raw
+}
+
+const handleWithdrawal = async () => {
   if (loading.value) return
+  const amount = Number(amountAix.value)
+  const maxBal = Number(aixBalance.value)
+  if (!Number.isFinite(amount) || amount <= 0) {
+    showToast({ message: $t('withdraw.enterAmount'), position: 'center' })
+    return
+  }
+  if (!Number.isFinite(maxBal) || maxBal <= 0) {
+    showToast({
+      message: $t('withdraw.insufficientHint'),
+      position: 'center',
+    })
+    return
+  }
+  if (amount > maxBal) {
+    showToast({ message: $t('withdraw.insufficientBalance'), position: 'center' })
+    return
+  }
   loading.value = true
-
-  await request.post("app_server/withdraw", {
-    amount: tabMenu.value === 1 ? amountUsdt.value : amountBiw.value,
-    sign: sign.value
-  }).then((res: any) => {
-    loading.value = false
-
+  try {
+    const res: any = await request.post('app_server/withdraw', {
+      amount: String(amount),
+      nosuccess: true,
+    })
     if (res.status === 'ok') {
       showToast({
-        message: lang("提现成功"),
+        message: $t('withdraw.submittedProcessing'),
         position: 'center',
         duration: 2000,
-      });
+      })
+      amountAix.value = ''
+      await person.refreshProfile?.()
+      await getAmountList(1)
     } else {
       showToast({
-        message: res.status,
+        message: res.message || $t('common.operationFailed'),
         position: 'center',
         duration: 2000,
-      });
-		}
-  }).catch((err) => {
+      })
+    }
+  } catch (e: any) {
+    const msg = e?.response?.data?.message || (typeof e === 'string' ? e : '') || $t('common.operationFailed')
+    showToast({ message: msg, position: 'center', duration: 2000 })
+  } finally {
     loading.value = false
-    showToast({
-      message: '提现失败',
-      position: 'center',
-      duration: 2000,
-    });
-  })
+  }
 }
 
+onMounted(async () => {
+  await Promise.all([
+    person.getUser?.(),
+    person.refreshProfile?.(),
+    getAmountList(),
+  ])
+})
 </script>
-<style scoped lang="less">
-@import "./styles/index.less";
+
+<style lang="scss" scoped>
+@use '@/style/variables.scss' as *;
 
 .withdrawal-page {
-  width: 100%;
   min-height: 100vh;
+  background: linear-gradient(180deg, #030A11 0%, #0D1B2A 100%);
 }
 
-/* 标签栏样式 */
-.tab-title {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  background-color: #29313C;
-  padding: 10px 0;
-  margin: 10px 0;
+.content {
+  padding: 90px 20px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.tab-link {
-  color: #CCC;
-  padding: 10px 20px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.tab-link-active {
-  color: #FCD434;
-  font-weight: bold;
-}
-
-/* 标签内容容器 */
-.tabs-container {
+.page-header {
+  text-align: center;
   margin-bottom: 20px;
+
+  .page-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+
+  .page-subtitle {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .page-balance {
+    font-size: 14px;
+    color: $brand-primary;
+    margin-top: 8px;
+  }
 }
 
-.tab-content {
-  padding: 10px;
+.withdraw-form {
+  margin-bottom: 40px;
+
+  .form-hint-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .form-hint {
+    margin: 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .all-btn {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: $brand-primary;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .form-input {
+    flex: 1;
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    color: #fff;
+    font-size: 15px;
+    outline: none;
+    caret-color: $brand-primary;
+    -webkit-text-fill-color: #fff;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+      -webkit-text-fill-color: rgba(255, 255, 255, 0.4);
+    }
+
+    &:focus {
+      border-color: $brand-primary;
+    }
+  }
+
+  .form-info {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    p {
+      margin: 0;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
 }
 
-/* 块样式 */
-.block {
-  padding: 10px;
-  background-color: #333;
-  border-radius: 8px;
-  margin-bottom: 10px;
-}
-
-/* 按钮样式 */
-.all-amount-btn {
-  padding: 5px 15px;
-  background-color: transparent;
-  border: 1px solid #FCD434;
-  color: #FCD434;
-  border-radius: 15px;
-  cursor: pointer;
-  font-size: 14px;
-  margin-right: 10px;
-}
-
-.withdrawal-btn {
-  width: 100%;
-  padding: 12px;
-  background-color: #FCD434;
-  color: #000;
+.subscribe-btn {
+  padding: 8px 20px;
+  background: $gradient-primary;
+  color: $text-inverse;
   border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  font-weight: bold;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 400;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  width: 100%;
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, $brand-primary-light 0%, $brand-primary 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(21, 151, 229, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  &.custom-btn {
+    flex-shrink: 0;
+    min-width: 120px;
+    width: auto;
+    height: 44px;
+    padding: 0 20px;
+  }
 }
 
-.withdrawal-btn:disabled {
-  background-color: #999;
-  cursor: not-allowed;
+.record-section {
+  margin-top: 20px;
+
+  .section-title-wrap {
+    position: relative;
+    margin-bottom: 10px;
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+
+    .title-bar {
+      position: absolute;
+      left: -10px;
+      top: 50%;
+      width: 4px;
+      height: 16px;
+      border-radius: 2px;
+      background: linear-gradient(180deg, #1597E5 0%, #075FB8 100%);
+      transform: translateY(-50%);
+    }
+
+    .section-title {
+      margin: 0 0 0 8px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+    }
+  }
+}
+
+.table-card {
+  margin-top: 10px;
+  min-height: 300px;
+  overflow: hidden;
+  border: 1px solid $border-color;
+  border-radius: 11px;
+  background: rgba(8, 19, 30, 0.6);
+  backdrop-filter: blur(10px);
+  padding: 11px 0;
+
+  .table-header {
+    display: flex;
+    align-items: center;
+    background: #030A11;
+    padding: 8px 0;
+    margin: -11px 0 0;
+
+    span {
+      flex: 1;
+      text-align: center;
+      font-size: 10px;
+      color: $text-muted;
+    }
+  }
+
+  .order-list {
+    .table-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid $border-light;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      span {
+        flex: 1;
+        text-align: center;
+        font-size: 14px;
+        color: $text-primary;
+      }
+    }
+  }
+
+  .status-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+
+    .tx-hint {
+      font-size: 10px;
+      color: $text-muted;
+    }
+  }
+
+  .cancel-btn {
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    background: transparent;
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .muted {
+    font-size: 11px;
+    color: $text-muted;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 250px;
+
+    p {
+      margin-top: 8px;
+      font-size: 12px;
+      color: $text-muted;
+    }
+  }
+
+  .pagination-wrapper {
+    padding: 16px 0;
+    display: flex;
+    justify-content: center;
+  }
 }
 </style>

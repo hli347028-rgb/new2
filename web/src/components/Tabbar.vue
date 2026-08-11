@@ -1,20 +1,71 @@
 <template>
-  <nav class="tabbar">
-    <div class="item" :class="{ active: path === '/' }" @click="$router.push('/')">首页</div>
-    <div class="item" :class="{ active: path === '/order' }" @click="$router.push('/order')">报单</div>
-    <div class="item" :class="{ active: path === '/mine' }" @click="$router.push('/mine')">资产</div>
-    <div class="item" :class="{ active: path === '/team' }" @click="$router.push('/team')">团队</div>
-  </nav>
+  <div class="tabbar">
+    <div
+      v-for="tab in tabs"
+      :key="tab.path"
+      class="tab-item"
+      :class="{ active: isActive(tab.path) }"
+      @click="handleTabClick(tab.path)"
+    >
+      <img :src="isActive(tab.path) ? tab.activeIcon : tab.icon" :alt="$t(tab.name)" />
+      <span class="tab-label">{{ $t(tab.name) }}</span>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+
+interface TabItem {
+  path: string
+  name: string
+  icon: string
+  activeIcon: string
+}
+
+/** 底栏仅主路径：首页 / 认购 / 社区 / 资产 */
+const tabs: TabItem[] = [
+  {
+    path: '/',
+    name: 'tab.home',
+    icon: '/assets/tabbar/home.svg',
+    activeIcon: '/assets/tabbar/home-active.svg'
+  },
+  {
+    path: '/node',
+    name: 'tab.nodeSubscription',
+    icon: '/assets/tabbar/pledge.svg',
+    activeIcon: '/assets/tabbar/pledge-active.svg'
+  },
+  {
+    path: '/community',
+    name: 'tab.community',
+    icon: '/assets/tabbar/community.svg',
+    activeIcon: '/assets/tabbar/community-active.svg'
+  },
+  {
+    path: '/wallet',
+    name: 'tab.myAssets',
+    icon: '/assets/tabbar/mine.svg',
+    activeIcon: '/assets/tabbar/mine-active.svg'
+  }
+]
+
 const route = useRoute()
-const path = computed(() => route.path)
+const router = useRouter()
+
+const isActive = (path: string) => {
+  return route.path === path
+}
+
+const handleTabClick = (path: string) => {
+  if (route.path !== path) {
+    router.push(path)
+  }
+}
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 @use '@/style/variables.scss' as *;
 
 .tabbar {
@@ -22,26 +73,37 @@ const path = computed(() => route.path)
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 100%;
   max-width: 414px;
-  height: 56px;
+  width: 100%;
   display: flex;
-  background: rgba(18, 18, 18, 0.96);
-  border-top: 1px solid $border-color;
+  justify-content: space-around;
+  align-items: center;
+  background: $bg-main;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
   z-index: 100;
 }
 
-.item {
-  flex: 1;
+.tab-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 13px;
+  gap: 4px;
+  cursor: pointer;
+  opacity: 0.6;
 
   &.active {
-    color: $brand-gold;
-    font-weight: 600;
+    opacity: 1;
+  }
+
+  img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .tab-label {
+    font-size: 11px;
+    color: #fff;
   }
 }
 </style>

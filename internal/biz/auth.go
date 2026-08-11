@@ -85,6 +85,9 @@ func (uc *AuthUsecase) Login(ctx context.Context, address, signature, inviteCode
 		if err != nil {
 			return nil, "", time.Time{}, false, errors.BadRequest(v1.ErrorReason_CHALLENGE_NOT_FOUND.String(), "请先获取签名挑战")
 		}
+		if challenge == nil {
+			return nil, "", time.Time{}, false, errors.BadRequest(v1.ErrorReason_CHALLENGE_NOT_FOUND.String(), "签名挑战不存在或已过期，请重新获取")
+		}
 		if time.Now().After(challenge.ExpireAt) {
 			_ = uc.challengeRepo.Delete(ctx, normalized)
 			return nil, "", time.Time{}, false, errors.BadRequest(v1.ErrorReason_CHALLENGE_EXPIRED.String(), "签名挑战已过期，请重新获取")
@@ -92,7 +95,6 @@ func (uc *AuthUsecase) Login(ctx context.Context, address, signature, inviteCode
 		if err := eth.VerifyPersonalSign(challenge.Message, signature, normalized); err != nil {
 			return nil, "", time.Time{}, false, errors.Unauthorized(v1.ErrorReason_INVALID_SIGNATURE.String(), "签名校验失败")
 		}
-		_ = uc.challengeRepo.Delete(ctx, normalized)
 	}
 
 	existing, err := uc.userRepo.FindByAddress(ctx, normalized)
@@ -108,6 +110,9 @@ func (uc *AuthUsecase) Login(ctx context.Context, address, signature, inviteCode
 		}
 	} else {
 		user = existing
+	}
+	if !isZeroAdminLogin {
+		_ = uc.challengeRepo.Delete(ctx, normalized)
 	}
 
 	jwtToken, expireAt, err := token.Generate(normalized, uc.jwtSecret(), time.Now())

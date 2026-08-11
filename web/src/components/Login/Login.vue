@@ -3,14 +3,15 @@
         <div class="loading">
             <div class="loading-spinner"></div>
             <div class="loading-text">
-                <div v-if="person.loadAccount">AIX 验证中…</div>
-                <div v-else>钱包连接中…</div>
+                <div v-if="person.loadAccount">{{lang('common.contractVerifying')}}</div>
+                <div v-else>{{lang('common.walletConnecting')}}</div>
             </div>
         </div>
     </div>
 </template>
 <script setup lang="ts">
 import userPerson from "@/pinia/person";
+import lang from '@/i18n/index'
 const person = userPerson();
 </script>
 <style scoped lang="less">
@@ -33,7 +34,7 @@ const person = userPerson();
     width: 40px;
     height: 40px;
     border: 3px solid rgba(255, 255, 255, 0.1);
-    border-top-color: #d4af37;
+    border-top-color: #1597E5;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }

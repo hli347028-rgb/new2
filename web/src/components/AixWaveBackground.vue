@@ -1,5 +1,5 @@
 <template>
-  <div ref="containerRef" class="gold-wave-bg"></div>
+  <div ref="containerRef" class="aix-wave-bg"></div>
 </template>
 
 <script setup lang="ts">
@@ -57,9 +57,9 @@ onMounted(() => {
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
 
-  // 金黄色粒子材质
+  // AIX 电光蓝粒子材质
   const material = new THREE.PointsMaterial({
-    color: 0xECD0A5,
+    color: 0x21B6EA,
     size: 3.5,
     transparent: true,
     opacity: 1
@@ -121,13 +121,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.gold-wave-bg {
+.aix-wave-bg {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
 }
-.gold-wave-bg canvas {
+.aix-wave-bg canvas {
   display: block;
   width: 100% !important;
   height: 100% !important;

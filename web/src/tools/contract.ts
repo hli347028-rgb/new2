@@ -5,6 +5,10 @@ import { showFailToast } from 'vant' // 导入用于显示提示信息的组件
 import abi from './abi.json' // 导入智能合约 ABI
 import lang from '@/i18n/index'
 
+const AIX_CHAIN_ID = Number(import.meta.env.VITE_CHAINID || 86233268)
+const AIX_CHAIN_ID_HEX = `0x${AIX_CHAIN_ID.toString(16)}`
+const AIX_RPC_URL = import.meta.env.VITE_RPC_URL || 'https://rpc1.eoeo.info'
+
 /* 链接钱包类 */
 export class ETH {
   public static provider: any = undefined // 提供者
@@ -19,29 +23,27 @@ export class ETH {
     }
 
     try {
-      if (import.meta.env.VITE_RPC_URL) {
-        await ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x38' }]
-        })
-      }
+      // 先尝试切换
+      await ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: AIX_CHAIN_ID_HEX }]
+      })
     } catch (error: any) {
-      if (!import.meta.env.VITE_RPC_URL) {
-        // 本地开发不强制切链
-      } else if (error.code === 4902) {
+      // 4902 = 链不存在，走添加流程
+      const errorCode = error?.code ?? error?.data?.originalError?.code
+      if (errorCode === 4902) {
         await ethereum.request({
           method: 'wallet_addEthereumChain',
           params: [
             {
-              chainId: '0x38',
-              chainName: 'Binance Smart Chain',
-              rpcUrls: ['https://bsc-dataseed.binance.org/'],
+              chainId: AIX_CHAIN_ID_HEX,
+              chainName: 'AIX Network',
+              rpcUrls: [AIX_RPC_URL],
               nativeCurrency: {
-                name: 'BNB',
-                symbol: 'BNB',
+                name: 'AIX',
+                symbol: 'AIX',
                 decimals: 18
-              },
-              blockExplorerUrls: ['https://bscscan.com']
+              }
             }
           ]
         })
@@ -53,11 +55,11 @@ export class ETH {
     ETH.provider = new ethers.providers.Web3Provider(ethereum)
     const chainId = Number(await ethereum.request({ method: 'eth_chainId' }))
     console.log('chainId', chainId)
-    // alert(chainId)
-    // if (chainId !== 56 && chainId !== 1) {
-    //     showFailToast(lang("请连接BSC主网"));
-    //     throw lang("请连接BSC主网");
-    // }
+    if (chainId !== AIX_CHAIN_ID) {
+      const message = `请切换至 AIX Network（Chain ID: ${AIX_CHAIN_ID}）`
+      showFailToast(message)
+      throw new Error(message)
+    }
     ETH.account = ethers.utils.getAddress(
       (await ethereum.request({ method: 'eth_requestAccounts' }))[0]
     )
@@ -112,31 +114,7 @@ export class ETH {
   }
   // 签名
   public static async signMessage(message?: string): Promise<string> {
-    const text = message || ETH.account
-    return await ETH.signer.signMessage(text)
-  }
-  /** 向平台收款地址转入 USDT，返回交易哈希 */
-  public static async transferUSDT(to: string, amount: string, contractAddress?: string): Promise<string> {
-    await ETH.getAccount()
-    const usdtAddress = contractAddress || import.meta.env.VITE_USDT
-    if (!usdtAddress) {
-      throw new Error('USDT 合约未配置')
-    }
-    const ERC20_ABI = [
-      'function transfer(address to, uint256 amount) returns (bool)',
-      'function decimals() view returns (uint8)',
-      'function balanceOf(address) view returns (uint256)'
-    ]
-    const contract = new ethers.Contract(usdtAddress, ERC20_ABI, ETH.signer)
-    const decimals = await contract.decimals()
-    const value = ethers.utils.parseUnits(String(amount), decimals)
-    const balance = await contract.balanceOf(ETH.account)
-    if (balance.lt(value)) {
-      throw new Error('USDT余额不足')
-    }
-    const tx = await contract.transfer(to, value)
-    const receipt = await tx.wait()
-    return receipt?.transactionHash || tx.hash
+    return await ETH.signer.signMessage(message || ETH.account.toLowerCase())
   }
   static parseUnits(n: any, dec: number): BigNumber {
     return ethers.utils.parseUnits(`${n}`, dec)

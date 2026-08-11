@@ -1,11 +1,18 @@
 <template>
-  <a-modal forceRender :maskClosable="false" v-model:open="isOpen" :footer="null" centered destroyOnClose :title="null" @ok="handleOk">
+  <a-modal :maskClosable="false" v-model:open="isOpen" :footer="null" centered destroyOnClose :title="null" @ok="handleOk">
     <div class='withdraw-dialog'>
-      <div class="dialog-title">{{ type === 'USDT' ? lang('当前USDT余额') : lang('当前ISPAY余额') }}：{{type === 'USDT' ? userinfo.usdt : type === 'NEWISPAY' ? userinfo.ispayAmount : userinfo.raw}}</div>
+      <div class="dialog-title">{{ type === 'USDT' ? lang('当前USDT余额') : lang('当前ISPAY余额') }}：{{type === 'USDT' ? userinfo.amountGet : type === 'NEWISPAY' ? userinfo.ispayAmount : userinfo.raw}}</div>
       <div class="dialog-main">
-        <a-input-number style="width: 100%" v-model:value="amount" :max="type === 'USDT' ? userinfo.usdt : type === 'NEWISPAY' ? userinfo.ispayAmount : userinfo.raw" size="large" :placeholder="lang('请输入数量')" />
+        <a-input-number
+          autofocus
+          style="width: 100%"
+          v-model:value="amount"
+          :min="0"
+          :precision="2"
+          size="large"
+          :placeholder="lang('请输入数量')"
+        />
         <div class="dialog-info">
-        <p><QuestionCircleOutlined style="margin-right: 5px" />{{ lang('最小提现数量') }}: {{userinfo.withdrawMinTwo}}</p>
         <p>{{lang('手续费')}}：{{ amountRound(Number(userinfo.withdrawRate) * (amount || 0)) }}</p>
         </div>
       </div>
@@ -14,7 +21,6 @@
   </a-modal>
 </template>
 <script setup>
-import { QuestionCircleOutlined } from '@ant-design/icons-vue';
 import userPerson from "@/pinia/person";
 import fetchSign from '@/pinia/fetchSign'
 import { showToast } from 'vant'
@@ -40,9 +46,20 @@ const amountRound = (num) => {
   return Math.round(num * 100) / 100
 }
 
+const balanceMax = $computed(() => {
+  const raw = type === 'USDT'
+    ? userinfo.amountGet
+    : type === 'NEWISPAY'
+      ? userinfo.ispayAmount
+      : userinfo.raw
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : 0
+})
+
 const open = (t) => {
   console.log('WithdrawDialog open', t)
   type = t
+  amount = null
   isOpen = true
 }
 
@@ -50,26 +67,32 @@ const handleWithdrawal = async () => {
   console.log('WithdrawDialog handleWithdrawal', amount)
   if (loading) return
   loading = true
-  if (amount < userinfo.withdrawMinTwo) {
+  const amt = Number(amount)
+  if (!Number.isFinite(amt) || amt <= 0) {
     loading = false
-    return showToast(lang('提现数量不能小于最小提现数量'))
+    return showToast(lang('recharge.enterAmount'))
   }
-  if (type === 'NEWISPAY' ? amount > userinfo.ispayAmount : amount > userinfo.usdt) {
+  if (balanceMax <= 0) {
     loading = false
-    return showToast(lang('提现数量不能大于余额'))
+    return showToast(lang('withdraw.insufficientHint'))
+  }
+  if (amt > balanceMax) {
+    loading = false
+    return showToast(lang('withdraw.amountExceedsBalance'))
   }
 
   if (type === 'ISPAY') {
     loading = false
-    return showToast(lang('暂不支持ISPAY提现'))
+    return showToast(lang('withdraw.ispayNotSupported'))
   }
 
   const sign = await fetchSign()
 
   await request.post("app_server/withdraw", {
-    amount,
+    amount: String(amt),
     sign: sign,
-    coinType: type === 'NEWISPAY' ? 3 : undefined
+    coinType: type === 'NEWISPAY' ? 3 : undefined,
+    nosuccess: true,
   }).then((res) => {
     loading = false
 
@@ -78,13 +101,13 @@ const handleWithdrawal = async () => {
       amount = null
       props.onChange()
       showToast({
-        message: lang("提现成功"),
+        message: lang('withdraw.submittedProcessing'),
         position: 'center',
         duration: 2000,
       });
     } else {
       showToast({
-        message: res.status,
+        message: res.status || lang('withdraw.failed'),
         position: 'center',
         duration: 2000,
       });
@@ -92,7 +115,7 @@ const handleWithdrawal = async () => {
   }).catch((err) => {
     loading = false
     showToast({
-      message: '提现失败',
+      message: lang('withdraw.failed'),
       position: 'center',
       duration: 2000,
     });

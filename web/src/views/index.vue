@@ -4,22 +4,50 @@
 
     <div class="content">
       <div class="welcome-card">
-        <GoldWaveBackground />
+        <AixWaveBackground />
         <div class="welcome-content">
           <img src="/assets/logo.png" alt="Logo" class="logo active-logo" />
-          <div class="welcome-subtitle">Taurus Protocol</div>
-          <div class="welcome-description">{{ $t('index.welcomeDescription2') }}</div>
+          <div class="welcome-subtitle">Aix Protocol</div>
+          <!-- <div class="welcome-description">{{ $t('index.welcomeDescription2') }}</div> -->
         </div>
       </div>
 
+      <div class="features">
+        <div class="feature-item" @click="handleExternalLink">
+          <div class="feature-bg">
+            <img src="/static/output-icon-bg-DIHWgt3w.png" alt="internationalPayment" class="bg-image" />
+            <div class="feature-content">
+              <img src="/static/output-icon.png" alt="internationalPayment" class="feature-icon" />
+              <div class="feature-title">充值</div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-item" @click="handleDownload">
+          <div class="feature-bg">
+            <img src="/static/module-icon-bg-weJSvE3-.png" alt="chainGame" class="bg-image" />
+            <div class="feature-content">
+              <img src="/static/module-icon.png" alt="chainGame" class="feature-icon" />
+              <div class="feature-title">{{ $t('tab.walletDownload') }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-item" @click="showToast($t('common.comingSoon'))">
+          <div class="feature-bg">
+            <img src="/static/chart-icon-bg-yYEAC2yW.png" alt="aixChain" class="bg-image" />
+            <div class="feature-content">
+              <img src="/static/chart-icon.png" alt="aixChain" class="feature-icon" />
+              <div class="feature-title">{{ $t('tab.aixChain') }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
       <button class="start-button" @click="handleStart">{{ $t('index.startNow') }}</button>
 
       <div class="advantage-section">
-        <div class="ido-header">
+        <!-- <div class="ido-header">
           <img src="/static/node-project.png" alt="" class="ido-icon" />
           <h2 class="ido-title">{{ $t('index.idoRecruitPlan') }}</h2>
         </div>
-        <!-- <div class="ido-subtitle">成为Taurus IDO，享受提现手续费分红、升级级别等功能</div> -->
 
         <div class="ido-card">
           <div class="ido-card-left">
@@ -35,55 +63,60 @@
           <span class="price-number">500～3000</span>
           <span class="price-unit">{{ $t('index.usdtPerShare') }}</span>
         </div>
-        <p class="ido-limit-text">{{ $t('index.accountLimit', { count: 1 }) }}</p>
+        <p class="ido-limit-text">{{ $t('index.accountLimit', { count: 1 }) }}</p> -->
 
         <div class="project-info">
           <div class="info-section">
             <h4 class="section-title">{{ $t('index.projectInfoTitle1') }}</h4>
-            <div class="info-content">
-              <p class="info-item">{{ $t('index.totalSupply') }}</p>
-              <!-- <p class="info-item">2. {{ $t('index.nodeOutput') }}</p>
-              <p class="info-subitem">{{ $t('index.blockInterval') }}</p>
-              <p class="info-subitem">{{ $t('index.blocksPerDay') }}</p> -->
+
+            <h4 class="section-title">{{ $t('index.predictionExchangeTitle') }}</h4>
+            <div class="info-content exchange-info">
+              <p class="exchange-subtitle">{{ $t('index.aiAgentBot') }}</p>
+
+              <div class="token-grid">
+                <div class="token-item">
+                  <span class="token-label">{{ $t('index.tokenNameLabel') }}</span>
+                  <strong>AIX</strong>
+                </div>
+                <div class="token-item">
+                  <span class="token-label">{{ $t('index.tokenSupplyLabel') }}</span>
+                  <strong>{{ $t('index.tokenSupplyValue') }}</strong>
+                </div>
+                <div class="token-item token-pair">
+                  <span class="token-label">{{ $t('index.tradingPairLabel') }}</span>
+                  <strong>WIN / AIX</strong>
+                </div>
+              </div>
+
+              <div class="slippage-card">
+                <div class="slippage-title">{{ $t('index.slippageRules') }}</div>
+                <div class="rule-list">
+                  <p class="rule-item"><span></span>{{ $t('index.buyDisabled') }}</p>
+                  <p class="rule-item"><span></span>{{ $t('index.sellFee') }}</p>
+                  <p class="rule-item emphasis"><span></span>{{ $t('index.priceDrop2Rule') }}</p>
+                  <p class="rule-item emphasis"><span></span>{{ $t('index.priceDrop10Rule') }}</p>
+                </div>
+              </div>
             </div>
           </div>
 
           <div class="info-section">
-            <h4 class="section-title">{{ $t('index.scenariosTitle') }}</h4>
-            <div class="info-content">
-              <p class="info-item">1. {{ $t('index.chainLaunch') }}</p>
-              <p class="info-item">2. {{ $t('index.miningLaunch', { month: 7 }) }}</p>
-              <p class="info-item">3. {{ $t('index.paymentLaunch') }}</p>
-              <p class="info-item">4. {{ $t('index.gameBeta') }}</p>
-              <p class="info-item">5. {{ $t('index.mallLaunch') }}</p>
+            <h4 class="section-title">{{ $t('index.rulesSummaryTitle') }}</h4>
+            <div class="info-content exchange-info">
+              <div class="slippage-card rules-summary-card">
+                <div class="rule-list">
+                  <p class="rule-item"><span></span>{{ $t('index.staticIncomeRule') }}</p>
+                  <p class="rule-item"><span></span>{{ $t('index.directReferralRule') }}</p>
+                  <p class="rule-item"><span></span>{{ $t('index.managementRewardRule') }}</p>
+                  <p class="rule-item emphasis"><span></span>{{ $t('index.exitRule') }}</p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="info-section">
-            <h4 class="section-title">{{ $t('index.techTitle') }}</h4>
-            <div class="info-content">
-              <p class="info-item">{{ $t('index.techDesc') }}</p>
-            </div>
-          </div>
         </div>
 
-        <button class="ido-btn" @click="handleGoToNode">{{ $t('index.becomeIdo') }}</button>
-      </div>
-
-      <div class="nft-section">
-        <div class="nft-header">
-          <img src="/static/icon-nft-benefit.png" alt="" class="nft-icon" />
-          <h2 class="nft-title">{{ $t('index.idoRecruitPlan') }}</h2>
-        </div>
-        <img src="/static/pledge/hero-CvxrCMfG.png" :alt="$t('index.nftRights')" class="nft-image" />
-        <p class="nft-hint"></p>
-        <p class="nft-desc">{{ $t('index.idoSubtitle') }}</p>
-        <div class="nft-progress">
-          <div class="progress-bar">
-            <span class="progress-num"></span>
-          </div>
-          <span class="progress-text">{{ $t('index.idoRights') }}</span>
-        </div>
+        <!-- <button class="ido-btn" @click="handleGoToNode">{{ $t('index.becomeIdo') }}</button> -->
       </div>
 
       <StrengthSection />
@@ -96,13 +129,17 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { showToast } from 'vant'
 import Header from '@/components/Header.vue'
-import GoldWaveBackground from '@/components/GoldWaveBackground.vue'
+import AixWaveBackground from '@/components/AixWaveBackground.vue'
 import StrengthSection from '@/components/StrengthSection.vue'
 import PartnersWall from '@/components/PartnersWall.vue'
 
 const router = useRouter()
+const { t: $t } = useI18n()
 
 const handleStart = () => {
   router.push('/node')
@@ -110,6 +147,14 @@ const handleStart = () => {
 
 const handleGoToNode = () => {
   router.push('/node')
+}
+
+const handleDownload = () => {
+  window.open('https://testnet.wallet.eoeo.info/06bx', '_blank', 'noopener,noreferrer')
+}
+
+const handleExternalLink = () => {
+  router.push('/recharge')
 }
 
 </script>
@@ -122,7 +167,7 @@ const handleGoToNode = () => {
   position: relative;
   overflow-x: hidden;
   padding-top: 64px;
-  background-color: #000;
+  background: radial-gradient(circle at 50% 0%, #0D2A42 0%, $bg-main 36%, #020508 100%);
 
   &::before {
     content: '';
@@ -145,7 +190,7 @@ const handleGoToNode = () => {
 
 .welcome-card {
   width: 100%;
-  height: 400px;
+  height: 300px;
   margin-bottom: 32px;
   position: relative;
   display: flex;
@@ -177,15 +222,15 @@ const handleGoToNode = () => {
     mix-blend-mode: lighten;
 
     .logo {
-      margin-top: 50px;
-      width: 200px;
+      margin-top: 10px;
+      width: 220px;
       height: auto;
     }
 
     .welcome-subtitle {
       font-size: 32px;
       font-weight: 800;
-      background: linear-gradient(135deg, rgba(236, 208, 165, 0.8) 0%, #FFFFFF 50%, rgba(236, 208, 165, 0.8) 100%);
+      background: linear-gradient(135deg, rgba(143, 223, 255, 0.8) 0%, #FFFFFF 50%, rgba(143, 223, 255, 0.8) 100%);
       background-size: 200% 100%;
       animation: gradient-move 1s linear infinite;
       -webkit-background-clip: text;
@@ -198,8 +243,8 @@ const handleGoToNode = () => {
       padding: 8px 24px;
       font-size: 16px;
       font-weight: 500;
-      color: rgba(236, 208, 165, 1);
-      background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
+      color: rgba(143, 223, 255, 1);
+      background: linear-gradient(90deg, transparent, rgba(21, 151, 229, 0.3), transparent);
       display: inline-block;
       line-height: 1.5;
     }
@@ -262,29 +307,66 @@ const handleGoToNode = () => {
 }
 
 .start-button {
-    width: 100%;
-    padding: 12px 0;
-    background: transparent;
-    color: $brand-gold;
-    font-size: 17px;
-    font-weight: 500;
-    border: 1px solid $brand-gold;
-    border-radius: 24px;
-    cursor: pointer;
-    text-align: center;
-    margin-top: 8px;
-    margin-bottom: 20px;
-    transition: all 0.3s ease;
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - 40px);
+  min-height: 42px;
+  margin: 6px auto 4px;
+  padding: 10px 20px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(21, 151, 229, 0.12), rgba(143, 223, 255, 0.045));
+  border: 1px solid rgba(143, 223, 255, 0.28);
+  border-radius: 12px;
+  box-shadow:
+    0 6px 18px rgba(0, 76, 135, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: $brand-primary-light;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.6px;
+  text-align: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: all $transition-fast;
 
-    &:hover {
-      background: $gradient-gold;
-      color: $text-inverse;
-    }
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 18%;
+    right: 18%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(143, 223, 255, 0.62), transparent);
+    opacity: 0.65;
+  }
+
+  &:hover {
+    color: $text-primary;
+    background: linear-gradient(135deg, rgba(21, 151, 229, 0.2), rgba(143, 223, 255, 0.08));
+    border-color: rgba(143, 223, 255, 0.48);
+    transform: translateY(-1px);
+    box-shadow:
+      0 8px 22px rgba(0, 91, 156, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  &:active {
+    background: rgba(21, 151, 229, 0.16);
+    transform: translateY(0) scale(0.99);
+    box-shadow: inset 0 2px 5px rgba(2, 7, 12, 0.2);
+  }
+
+  &:focus-visible {
+    outline: 1px solid $brand-primary-light;
+    outline-offset: 2px;
+  }
 }
 
 .advantage-section {
   padding: 24px 20px;
-  background: rgba(20, 20, 20, 0.6);
+  background: rgba(8, 19, 30, 0.6);
   backdrop-filter: blur(10px);
   border-radius: 24px;
   margin-bottom: 32px;
@@ -323,9 +405,9 @@ const handleGoToNode = () => {
     justify-content: space-between;
     align-items: center;
     padding: 16px;
-    background: rgba(212, 175, 55, 0.08);
+    background: rgba(21, 151, 229, 0.08);
     border-radius: 12px;
-    border: 1px solid rgba(212, 175, 55, 0.25);
+    border: 1px solid rgba(21, 151, 229, 0.25);
     margin-bottom: 24px;
 
     .ido-label {
@@ -336,7 +418,7 @@ const handleGoToNode = () => {
 
     .ido-limit {
       font-size: 14px;
-      color: $brand-gold;
+      color: $brand-primary;
     }
   }
 
@@ -347,7 +429,7 @@ const handleGoToNode = () => {
     .price-number {
       font-size: 36px;
       font-weight: bold;
-      color: $brand-gold;
+      color: $brand-primary;
     }
 
     .price-unit {
@@ -381,7 +463,7 @@ const handleGoToNode = () => {
       .section-title {
         font-size: 14px;
         font-weight: 600;
-        color: $brand-gold;
+        color: $brand-primary;
         margin: 0 0 12px 0;
         padding-bottom: 8px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -408,6 +490,102 @@ const handleGoToNode = () => {
 
           &:last-child {
             margin-bottom: 0;
+          }
+        }
+
+        &.exchange-info {
+          .exchange-subtitle {
+            margin: 0 0 14px;
+            padding: 9px 12px;
+            color: $brand-primary-light;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1.5;
+            background: linear-gradient(90deg, rgba(21, 151, 229, 0.13), transparent);
+            border-left: 2px solid $brand-accent;
+            border-radius: 0 8px 8px 0;
+          }
+
+          .token-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+          }
+
+          .token-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 0;
+            padding: 11px 12px;
+            background: rgba(143, 223, 255, 0.035);
+            border: 1px solid rgba(143, 223, 255, 0.08);
+            border-radius: 10px;
+
+            &.token-pair {
+              grid-column: 1 / -1;
+              flex-direction: row;
+              align-items: center;
+              justify-content: space-between;
+            }
+
+            .token-label {
+              color: $text-muted;
+              font-size: 11px;
+            }
+
+            strong {
+              color: $text-primary;
+              font-size: 13px;
+              font-weight: 600;
+              letter-spacing: 0.3px;
+            }
+          }
+
+          .slippage-card {
+            padding: 13px 14px;
+            background: linear-gradient(145deg, rgba(21, 151, 229, 0.09), rgba(8, 19, 30, 0.6));
+            border: 1px solid rgba(21, 151, 229, 0.16);
+            border-radius: 12px;
+          }
+
+          .slippage-title {
+            margin-bottom: 10px;
+            color: $brand-primary;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+          }
+
+          .rule-list {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+          }
+
+          .rule-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin: 0;
+            color: rgba(244, 250, 255, 0.9);
+            font-size: 11px;
+            line-height: 1.55;
+
+            > span {
+              flex: 0 0 auto;
+              width: 4px;
+              height: 4px;
+              margin-top: 6px;
+              background: $brand-primary;
+              border-radius: 50%;
+              box-shadow: 0 0 6px rgba(33, 182, 234, 0.55);
+            }
+
+            &.emphasis {
+              color: $brand-primary-light;
+            }
           }
         }
       }
@@ -454,19 +632,19 @@ const handleGoToNode = () => {
     padding: 14px 0;
     font-size: 16px;
     font-weight: 500;
-    border: 1px solid $brand-gold;
+    border: 1px solid $brand-primary;
     border-radius: 24px;
     cursor: pointer;
     text-align: center;
     transition: all 0.3s ease;
-    background: $gradient-gold;
+    background: $gradient-primary;
     color: $text-inverse; 
   }
 }
 
 .nft-section {
   padding: 24px 20px;
-  background: rgba(20, 20, 20, 0.6);
+  background: rgba(8, 19, 30, 0.6);
   backdrop-filter: blur(10px);
   border-radius: 24px;
   margin-bottom: 32px;
@@ -503,7 +681,7 @@ const handleGoToNode = () => {
     text-align: center;
     font-size: 15px;
     font-weight: bold;
-    color: $brand-gold;
+    color: $brand-primary;
     margin: 0 0 12px 0;
   }
 

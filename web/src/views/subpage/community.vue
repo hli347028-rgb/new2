@@ -78,7 +78,11 @@ const expandedKeys = $ref([]);
 const selectedKeys = $ref([]);
 let treeData = $ref([]);
 
-const inviteUrl = $computed(() => `https://${window.location.host}/#/?inviteCode=-inviteTdh-${person.address}-inviteTdh-`)
+const inviteUrl = $computed(() => {
+  const addr = person.address || ''
+  if (!addr) return ''
+  return `${window.location.origin}/?code=${addr}`
+})
 
 const copyToClipboard = (text) => {
   copy(text);
@@ -178,7 +182,7 @@ const handleBack = () => {
         flex-direction: column;
         gap: 10px;
         .info-title {
-          color: rgb(255, 209, 39);
+          color: rgb(21, 151, 229);
           font-size: 16px;
         }
         .info-address {

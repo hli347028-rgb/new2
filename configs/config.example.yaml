@@ -30,9 +30,9 @@ wallet:
   deposit_address: "replace-with-your-deposit-address"
   deposit_addresses:
     - "replace-with-your-deposit-address"
-  usdt_contract: "0x55d398326f99059fF775485246999027B3197955"
+  usdt_contract: "0x926632975149221891f1b9B56Efd125Dfe90ba2f"
   usdt_decimals: 18
-  rpc_url: ""
+  rpc_url: "https://rpc1.eoeo.info"
   min_subscribe: "100"
   min_withdraw: "10"
   withdraw_fee_rate: 0.06

@@ -1,30 +1,47 @@
-# AIX 用户端 H5
+# 移动端h5空白项目
 
-精简黑金风格用户端（Vue 3 + Vite + Vant），对接本仓库后端 `/v1`。
+一、项目介绍
 
-## 运行
+# 使用 Vue 3 + TypeScript + Vite + framework7(7.0.7) + less
 
-```bash
-# 先启动后端（HTTP 9000）
-# 再启动本前端
-cd web
-npm install
-npm run dev
-```
+# 编译自动px转rem(编写时需按iphone6尺寸为设计尺寸)
 
-浏览器打开：http://localhost:9200/
+# 使用响应式编译宏($ref,$computed,$shallowRef,$customRef,$toRef)，已typescripe集成
 
-- 开发代理：`/v1` → `http://127.0.0.1:9000`
-- 需安装 MetaMask；BSC 链上充值依赖 `.env.prod` 中的 `VITE_USDT`
+# style/global.less文件已全局注入
 
-## 页面
+二、src目录
 
-| 路径 | 说明 |
-|------|------|
-| `/` | 首页 / 价格 / 规则 |
-| `/order` | 报单（充值/奖励账本） |
-| `/mine` | 资产与奖励流水 |
-| `/recharge` | USDT 充值 |
-| `/transfer` | 充值→奖励 / 上下级转账 |
-| `/withdraw` | 仅提现 AIX |
-| `/team` | 团队与邀请链接 |
+# assets 静态资源
+
+# components 全局组件
+
+# language 多语言
+
+# router 路由文件
+
+# style 样式文件
+⑴ global.less 全局less变量、函数文件
+⑵ index.less 项目全局样式文件
+
+# tools 工具(工具函数)
+
+# views 项目主体页面
+
+# app f7入口文件
+
+# main.js 项目入口文件
+
+# vite-env.d.ts 声明文件
+
+三、规范
+
+# 页面以及组件文件结构: 每个页面/组件为一个文件夹，包含(vue页面主体,less页面样式)两个文件，可以扩展增加js文件或者局部组件文件等等
+
+# 文件名称: 驼峰式命名。
+
+# ts 类(class名称): 驼峰式命名且首字母大写
+
+# 函数名称: 驼峰式命名。
+
+# 样式名称: 驼峰式命名。

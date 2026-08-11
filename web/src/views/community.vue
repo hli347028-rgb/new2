@@ -4,13 +4,13 @@
     <div class="container">
 
       <div class="my-level">
-        <span class="level-label">{{ $t('community.level') }}</span>
-        <span class="level-value">{{ displayLevelText }}</span>
+        <span class="level-label">{{ $t('community.communityLevel') }}</span>
+        <span class="level-value">{{ levelLabel }}</span>
       </div>
       <div class="info-card">
         <div class="info-box">
           <div class="info-title">{{ $t('community.superiorAddress') }}</div>
-          <div class="info-address">{{ formatAddress(userinfo.inviteUserAddress) }}</div>
+          <div class="info-address">{{ formatAddress(userinfo.inviteUserAddress) || '-' }}</div>
         </div>
         <div class="info-box">
           <div class="info-title">{{ $t('community.myInviteLink') }}</div>
@@ -19,56 +19,50 @@
             <i class="copy-button" @click="copyToClipboard(inviteUrl)"></i>
           </div>
         </div>
-
-        <!-- <div class="stats-grid">
-          <div class="stats-item">
-            <span class="stats-num">0</span>
-            <span class="stats-label">{{ $t('community.evangelists') }}</span>
-          </div>
-          <div class="stats-item">
-            <span class="stats-num">0</span>
-            <span class="stats-label">{{ $t('community.activeUsers') }}</span>
-          </div>
-          <div class="stats-item">
-            <span class="stats-num">0</span>
-            <span class="stats-label">{{ $t('community.communitySize') }}</span>
-          </div>
-          <div class="stats-item">
-            <span class="stats-num">0.00 U</span>
-            <span class="stats-label">{{ $t('community.totalIncome') }}</span>
-          </div>
-          <div class="stats-item">
-            <span class="stats-num">0 U</span>
-            <span class="stats-label">{{ $t('community.communityPerformance') }}</span>
-          </div>
-          <div class="stats-item">
-            <span class="stats-num">0</span>
-            <span class="stats-label">{{ $t('community.teamIdoTotal') }}</span>
-          </div>
-          <div class="stats-item">
-            <span class="stats-num">0</span>
-            <span class="stats-label">{{ $t('community.personalRedeemed') }}</span>
-          </div>
-          <div class="stats-item relative">
-            <span class="stats-num">0</span>
-            <span class="stats-label">{{ $t('community.teamRedeemed') }}</span>
-          </div>
-        </div> -->
       </div>
 
       <div class="performance-list">
         <div class="performance-info">
           <div class="performance-info-item">
-            <p>{{ areaTotal }}</p>
-            <p>{{ $t('community.totalPerformance') }}</p>
+            <p>{{ formatNum(userinfo.recommendNum) }}</p>
+            <p>{{ $t('community.directReferralCount') }}</p>
           </div>
           <div class="performance-info-item">
-            <p>{{ areaMax }}</p>
+            <p>{{ formatNum(userinfo.buy) }}</p>
+            <p>{{ $t('community.activeSubscription') }}</p>
+          </div>
+          <div class="performance-info-item">
+            <p>{{ formatNum(userinfo.total) }}</p>
+            <p>{{ $t('community.teamTotalPerformance') }}</p>
+          </div>
+          <div class="performance-info-item">
+            <p>{{ formatNum(userinfo.max) }}</p>
             <p>{{ $t('community.regionalPerformance') }}</p>
           </div>
           <div class="performance-info-item">
-            <p>{{ areaMin }}</p>
-            <p>{{ $t('community.smallPerformance') }}</p>
+            <p>{{ formatNum(userinfo.min) }}</p>
+            <p>{{ $t('community.smallAreaPerformance') }}</p>
+          </div>
+          <div class="performance-info-item">
+            <p>{{ formatNum(userinfo.recommend) }}</p>
+            <p>直推奖励</p>
+          </div>
+          <div class="performance-info-item">
+            <p>{{ formatNum(userinfo.location) }}</p>
+            <p>{{ $t('community.staticIncomeTotal') }}</p>
+          </div>
+          <div class="performance-info-item">
+            <p>{{ formatNum(userinfo.team) }}</p>
+            <p>管理奖</p>
+          </div>
+          <!-- 
+          <div class="performance-info-item">
+            <p>{{ formatNum(userinfo.teamTwo) }}</p>
+            <p>{{ $t('community.peerDividendTotal') }}</p>
+          </div> -->
+          <div class="performance-info-item">
+            <p>{{ formatNum(userinfo.all) }}</p>
+            <p>{{ $t('community.incomeTotal') }}</p>
           </div>
         </div>
         <div class="performance-share-title">{{ $t('community.directInviteData') }}</div>
@@ -80,24 +74,25 @@
             :load-data="onLoadData"
             :tree-data="treeData"
           />
+          <div v-else class="empty-state"><p>{{ $t('common.noData') }}</p></div>
         </div>
       </div>
 
-      <h3 class="list-title">{{ $t('community.rewardRecord') }}</h3>
+      <h3 class="list-title">{{ $t('community.generationRewardRecord') }}</h3>
 
       <div class="table-card">
-        <div class="table-row table-header">
+        <div class="table-header">
           <span>{{ $t('community.amount') }}</span>
-          <span>{{ $t('community.generation') }}</span>
-          <span>{{ $t('community.reward') }}</span>
+          <span>{{ $t('community.source') }}</span>
           <span>{{ $t('community.time') }}</span>
         </div>
         <div class="income-list" v-if="rewardList.length > 0">
-          <div class="table-row income-list-item" v-for="(item, index) in rewardList" :key="index">
-            <span>{{ item.amount }}</span>
-            <span>{{ item.num || '0' }}</span>
-            <span class="col-reward">{{ item.reward }}</span>
-            <span class="col-time">{{ item.createdAt }}</span>
+          <div class="income-list-item" v-for="(item, index) in rewardList" :key="index">
+            <div class="income-list-item-info">
+              <p>{{ item.reward }} U<span v-if="item.num"> · {{ $t('community.generationNum', { num: item.num }) }}</span></p>
+              <p>{{ item.createdAt }}</p>
+            </div>
+            <div class="income-list-item-money">{{ formatAddr(item.address) }}</div>
           </div>
           <Pagination
             v-model="page"
@@ -119,7 +114,7 @@
 <script setup lang="ts">
 import Header from '@/components/Header.vue'
 import userPerson from '@/pinia/person'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { showToast } from 'vant'
 import copy from 'copy-to-clipboard'
 import request from '@/tools/request'
@@ -131,52 +126,27 @@ const person = userPerson()
 const userinfo = computed(() => person.userinfo)
 const address = computed(() => person.address)
 
-const inviteUrl = computed(() => `https://${window.location.host}/#/?inviteCode=-inviteTdh-${person.address}-inviteTdh-`)
+// 使用 ?code= 便于本地登录弹窗预填（与 eth_authorize 邀请码一致）
+const inviteUrl = computed(() => {
+  const addr = person.address || ''
+  if (!addr) return ''
+  return `${window.location.origin}/?code=${addr}`
+})
+
+const levelLabel = computed(() => {
+  const lv = Number(userinfo.value?.level || 0)
+  return lv > 0 ? `V${lv}` : 'V0'
+})
 
 let rewardList = $ref<any[]>([])
 let page = $ref(1)
 let allPageCount = $ref(1)
+let active = $ref('3') // reqType=3 代数奖励
 
 // performance-list 相关变量
 const expandedKeys = $ref([])
 const selectedKeys = $ref([])
 let treeData = $ref([])
-// 总业绩=各直推线之和；大区=最高线；小区=其余之和；等级按小区
-const areaTotal = ref('0')
-const areaMax = ref('0')
-const areaMin = ref('0')
-
-const displayLevelText = computed(() => {
-  const raw = String(userinfo.value.communityLevel || userinfo.value.level || '').trim().toUpperCase()
-  if (!raw || raw === '0') return '暂无'
-  if (raw.startsWith('V')) return raw
-  if (/^[1-9]$/.test(raw)) return `V${raw}`
-  return raw
-})
-
-const fmtPerf = (n: number) => {
-  if (!Number.isFinite(n) || n <= 0) return '0'
-  return Number.isInteger(n) ? String(n) : n.toFixed(4).replace(/\.?0+$/, '')
-}
-
-const updateAreaStats = (recommends: any[]) => {
-  const profileTotal = Number(userinfo.value.total)
-  const profileMax = Number(userinfo.value.max)
-  const profileMin = Number(userinfo.value.min)
-  if (Number.isFinite(profileTotal) && profileTotal > 0) {
-    areaTotal.value = fmtPerf(profileTotal)
-    areaMax.value = fmtPerf(profileMax)
-    areaMin.value = fmtPerf(profileMin)
-    return
-  }
-  const amounts = (recommends || []).map((item) => Number(item.amount) || 0)
-  const total = amounts.reduce((sum, n) => sum + n, 0)
-  const max = amounts.length ? Math.max(...amounts) : 0
-  const min = Math.max(0, total - max)
-  areaTotal.value = fmtPerf(total)
-  areaMax.value = fmtPerf(max)
-  areaMin.value = fmtPerf(min)
-}
 
 const formatAddress = (value: string) => {
   if (!value) return ''
@@ -186,14 +156,13 @@ const formatAddress = (value: string) => {
   return frontSix + middle + backSix
 }
 
+const formatAddr = (value: string) => formatAddress(value) || '-'
+
+const formatNum = (value: any) => Number(value || 0).toFixed(2)
+
 const copyToClipboard = (text: string) => {
   copy(text)
   showToast(lang('common.copiedToClipboard'))
-}
-
-const treeTitle = (item: any) => {
-  const level = item.level ? ` | ${lang('community.level')}:${item.level}` : ''
-  return `${formatAddress(item.address)}---(${lang('common.quantity')}:${item.amount})${level}`
 }
 
 const onLoadData = (treeNode: any) => {
@@ -205,60 +174,51 @@ const onLoadData = (treeNode: any) => {
 
     const res: any = await request.get(`app_server/recommend_list?address=${treeNode.dataRef.address}`)
 
-    setTimeout(() => {
-      treeNode.dataRef.children = res.recommends.map((item: any, index: number) => {
-        return {
-          title: treeTitle(item),
-          key: `${treeNode.eventKey}-${index}`,
-          amount: item.amount,
-          level: item.level,
-          address: item.address,
-          isLeaf: false
-        }
-      })
-      treeData = [...treeData]
-      resolve()
-    }, 1000)
+    treeNode.dataRef.children = (res.recommends || []).map((item: any, index: number) => {
+      const hasChildren = item.hasChildren != null ? !!item.hasChildren : Number(item.countLow || 0) > 0
+      const tag = item.activated === false ? lang('community.inactive') : `${lang('community.subscribe')}:${item.amount}`
+      return {
+        title: `${formatAddress(item.address)}（${tag}）`,
+        key: `${treeNode.eventKey}-${index}`,
+        amount: item.amount,
+        address: item.address,
+        isLeaf: !hasChildren
+      }
+    })
+    treeData = [...treeData]
+    resolve()
   })
 }
 
 const getUserArea = async () => {
+  if (!address.value) return
   const res: any = await request.get(`app_server/recommend_list?address=${address.value}`)
-  const recommends = res.recommends || []
-  updateAreaStats(recommends)
-  treeData = recommends.map((item: any, index: number) => {
+  treeData = (res.recommends || []).map((item: any, index: number) => {
+    const hasChildren = item.hasChildren != null ? !!item.hasChildren : Number(item.countLow || 0) > 0
+    const tag = item.activated === false ? lang('community.inactive') : `${lang('community.subscribe')}:${item.amount}`
     return {
-      title: treeTitle(item),
+      title: `${formatAddress(item.address)}（${tag}）`,
       key: index,
-      amount: item.amount,
-      level: item.level,
       address: item.address,
-      isLeaf: item.countLow === 0
+      isLeaf: !hasChildren
     }
   })
 }
 
-/** 我的团队奖励：走 adapter 统一汇总（静态+代数+社区） */
 const getRewardList = async (pageNum: number = 1) => {
-  const pageNo = Number(pageNum) > 0 ? Number(pageNum) : 1
-  try {
-    const res: any = await request.get('app_server/reward_list', {
-      params: { page: pageNo, reqType: 'team' },
-    })
-    allPageCount = Math.max(1, Math.ceil((res.count || 0) / 10) || 1)
-    rewardList = res.list || []
-  } catch {
-    rewardList = []
-    allPageCount = 1
-  }
+  const res: any = await request.get("app_server/reward_list", {
+    params: {
+      page: pageNum,
+      reqType: active
+    }
+  })
+
+  allPageCount = Math.ceil((res.count || 0) / 10) || 1
+  rewardList = res.list || []
 }
 
-onMounted(async () => {
-  try {
-    await person.getUser()
-  } catch (e) {
-    console.error('[community] getUser failed', e)
-  }
+onMounted(() => {
+  person.getUser?.()
   getRewardList()
   getUserArea()
 })
@@ -278,7 +238,7 @@ onMounted(async () => {
 
 .my-level {
   margin-top: 10px;
-  color: $brand-gold;
+  color: $brand-primary;
   font-size: 18px;
   display: flex;
   align-items: center;
@@ -291,7 +251,7 @@ onMounted(async () => {
   }
 
   .level-value {
-    color: $brand-gold;
+    color: $brand-primary;
     font-size: 20px;
     font-weight: 600;
   }
@@ -316,7 +276,7 @@ onMounted(async () => {
   gap: 10px;
 
   .info-title {
-    color: $brand-gold;
+    color: $brand-primary;
     font-size: 16px;
   }
 
@@ -365,9 +325,9 @@ onMounted(async () => {
     align-items: center;
     justify-content: center;
     padding: 10px 0;
-    border: 1px solid rgba(212, 175, 55, 0.25);
+    border: 1px solid rgba(21, 151, 229, 0.25);
     border-radius: 6px;
-    background: rgba(20, 20, 20, 0.4);
+    background: rgba(8, 19, 30, 0.4);
     backdrop-filter: blur(6px);
 
     &.relative {
@@ -377,7 +337,7 @@ onMounted(async () => {
     .stats-num {
       font-size: 18px;
       font-weight: bold;
-      color: $brand-gold;
+      color: $brand-primary;
     }
 
     .stats-label {
@@ -403,60 +363,64 @@ onMounted(async () => {
   overflow: hidden;
   border: 1px solid $border-color;
   border-radius: 11px;
-  background: rgba(20, 20, 20, 0.6);
+  background: rgba(8, 19, 30, 0.6);
   backdrop-filter: blur(10px);
   padding: 11px 0;
 
-  .table-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1.1fr 1.6fr;
-    align-items: center;
-    column-gap: 4px;
-    padding: 10px 12px;
-    box-sizing: border-box;
-
-    > span {
-      text-align: center;
-      word-break: break-all;
-      line-height: 1.3;
-    }
-  }
-
   .table-header {
-    background: #0A0A0A;
+    display: flex;
+    align-items: center;
+    background: #030A11;
+    padding: 8px 0;
     margin: -11px 0 0;
-    padding: 8px 12px;
 
-    > span {
+    span {
+      flex: 1;
+      text-align: center;
       font-size: 10px;
       color: $text-muted;
     }
   }
 
   .income-list {
-    padding: 0;
+    padding: 10px;
 
     .income-list-item {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
       border-bottom: 1px solid $border-light;
+      display: flex;
+      align-items: center;
 
       &:last-child {
         border-bottom: none;
       }
 
-      > span {
-        font-size: 12px;
-        color: $text-muted;
+      .income-list-item-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        p {
+          color: $text-muted;
+          font-size: 12px;
+
+          &:last-child {
+            color: $text-muted;
+            font-size: 10px;
+          }
+        }
       }
 
-      .col-reward {
-        color: $brand-gold;
+      .income-list-item-money {
+        flex-shrink: 0;
+        width: 80px;
+        text-align: right;
+        color: $brand-primary;
         font-size: 14px;
         font-weight: 500;
-      }
-
-      .col-time {
-        font-size: 10px;
-        color: $text-muted;
       }
     }
   }
@@ -484,34 +448,37 @@ onMounted(async () => {
     padding: 16px;
     box-sizing: border-box;
     margin-bottom: 25px;
-    border: 1px solid rgba(212, 175, 55, 0.2);
+    border: 1px solid rgba(21, 151, 229, 0.2);
 
     .performance-info {
-      display: flex;
-      justify-content: space-between;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
       margin-bottom: 20px;
-      padding: 10px;
 
       .performance-info-item {
-        height: 66px;
-        flex: 1 0 0;
+        min-height: 66px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 10px;
+        gap: 8px;
+        padding: 12px 8px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        box-sizing: border-box;
 
         p {
           color: #fff;
           margin: 0;
+          text-align: center;
 
           &:first-child {
-            font-size: 24px;
+            font-size: 18px;
             font-weight: 600;
-            color: $brand-gold;
+            color: $brand-primary;
+            word-break: break-all;
           }
 
           &:last-child {
@@ -549,7 +516,7 @@ onMounted(async () => {
           .ant-tree-node-content-wrapper {
             color: #fff;
             &:hover {
-              background: rgba(212, 175, 55, 0.1);
+              background: rgba(21, 151, 229, 0.1);
             }
           }
 
@@ -564,7 +531,7 @@ onMounted(async () => {
 
         .ant-tree-switcher_open,
         .ant-tree-switcher_close {
-          color: $brand-gold;
+          color: $brand-primary;
         }
       }
     }

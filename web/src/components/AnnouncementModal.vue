@@ -70,13 +70,13 @@ const handleNoRemind = () => {
   width: 90%;
   max-width: 380px;
   max-height: 70vh;
-  background: linear-gradient(145deg, rgba(20, 20, 20, 0.98) 0%, rgba(30, 30, 30, 0.95) 100%);
+  background: linear-gradient(145deg, rgba(8, 19, 30, 0.98) 0%, rgba(13, 27, 42, 0.95) 100%);
   border-radius: 20px;
   padding: 28px 24px;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  box-shadow: 0 0 24px rgba(212, 175, 55, 0.2), 0 8px 32px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(21, 151, 229, 0.3);
+  box-shadow: 0 0 24px rgba(21, 151, 229, 0.2), 0 8px 32px rgba(0, 0, 0, 0.6);
   animation: modalSlideIn 0.3s ease;
 
   .modal-close {
@@ -107,7 +107,7 @@ const handleNoRemind = () => {
     text-align: center;
     margin: 0 0 20px;
     letter-spacing: 0.5px;
-    background: linear-gradient(135deg, #fff 0%, $brand-gold 100%);
+    background: linear-gradient(135deg, #fff 0%, $brand-primary 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -116,7 +116,7 @@ const handleNoRemind = () => {
   .modal-subtitle {
     font-size: 14px;
     font-weight: normal;
-    color: $brand-gold;
+    color: $brand-primary;
     text-align: center;
     margin: 0 0 16px;
   }
@@ -133,7 +133,7 @@ const handleNoRemind = () => {
     }
 
     &::-webkit-scrollbar-thumb {
-      background: rgba(212, 175, 55, 0.3);
+      background: rgba(21, 151, 229, 0.3);
       border-radius: 2px;
     }
 
@@ -147,7 +147,7 @@ const handleNoRemind = () => {
     }
 
     strong {
-      color: $brand-gold;
+      color: $brand-primary;
       font-weight: 600;
     }
   }
@@ -161,7 +161,7 @@ const handleNoRemind = () => {
     .confirm-btn {
       width: 100%;
       padding: 14px 0;
-      background: linear-gradient(135deg, $brand-gold 0%, #d4a837 100%);
+      background: linear-gradient(135deg, $brand-primary 0%, #087BC1 100%);
       color: #000;
       font-size: 16px;
       font-weight: 600;
@@ -170,11 +170,11 @@ const handleNoRemind = () => {
       border-radius: 12px;
       cursor: pointer;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 16px rgba(212, 175, 55, 0.3);
+      box-shadow: 0 4px 16px rgba(21, 151, 229, 0.3);
 
       &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 24px rgba(212, 175, 55, 0.5);
+        box-shadow: 0 6px 24px rgba(21, 151, 229, 0.5);
       }
 
       &:active {

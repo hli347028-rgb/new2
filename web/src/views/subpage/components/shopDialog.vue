@@ -1,9 +1,10 @@
 <template>
-  <a-modal forceRender :maskClosable="false" v-model:open="isOpen" :footer="null" centered destroyOnClose :title="null" @ok="handleOk">
+  <a-modal :maskClosable="false" v-model:open="isOpen" :footer="null" centered destroyOnClose :title="null" @ok="handleOk">
     <div class='withdraw-dialog'>
       <div class="dialog-main">
         <div class="dialog-title">{{ lang('购买范围') }}：{{ content && content.minAmount }}~{{ content && content.maxAmount }} USDT</div>
         <a-input-number
+          autofocus
           v-if="content"
           style="width: 100%"
           :precision="0"
@@ -115,8 +116,8 @@ defineExpose({
   }
   .withdraw-btn {
     width: 160px;
-    background-color: #cab255;
-    color: #121212;
+    background-color: #1597E5;
+    color: #08131E;
     font-weight: 500;
   }
 }

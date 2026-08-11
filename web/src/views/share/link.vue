@@ -6,7 +6,7 @@
       <div class="content-box">
         <div class="share-link">
           <p>{{lang('扫一扫')}}</p>
-          <p style="color: #25eeb1">{{lang('邀请好友一起赚币吧')}}!</p>
+          <p style="color: #21B6EA">{{lang('邀请好友一起赚币吧')}}!</p>
           <div class="qrcode">
             <img :src="qrCodeUrl" />
           </div>

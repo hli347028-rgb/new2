@@ -91,7 +91,7 @@ const handleRule = () => {
       justify-content: space-between;
       span {
         &:nth-child(2) {
-          color: rgb(255, 209, 39);
+          color: rgb(21, 151, 229);
           font-weight: 500;
         }
       }
@@ -138,11 +138,11 @@ const handleRule = () => {
         }
       }
       .column-left {
-        background: #ffd127;
-        color: #171c21;
+        background: #1597E5;
+        color: #03070B;
       }
       .column-right {
-        background: #3640f0;
+        background: #087BC1;
       }
     }
     .double-column-2 {
@@ -165,13 +165,13 @@ const handleRule = () => {
       }
       .column-left {
         width: 45%;
-        background: #3640f0;
+        background: #087BC1;
         color: #FFF;
       }
       .column-right {
         flex: 1;
-        background: #171c21;
-        border: 1px solid #3640f0;
+        background: #03070B;
+        border: 1px solid #087BC1;
       }
     }
     .double-column-3 {
@@ -194,13 +194,13 @@ const handleRule = () => {
       }
       .column-left {
         width: 50%;
-        background: #171c21;
-        border: 1px solid #ffd127;
+        background: #03070B;
+        border: 1px solid #1597E5;
         color: #FFF
       }
       .column-right {
         flex: 1;
-        background: #ffd127;
+        background: #1597E5;
         color: #222;
       }
     }

@@ -152,7 +152,6 @@ import { Pagination } from "vant";
 import { f7, f7ready } from 'framework7-vue'
 import { onMounted, onBeforeUnmount } from 'vue';
 import request from "@/tools/request";
-import { rewardMenuType } from '@/constants/rewardTabs'
 const person = userPerson();
 const userinfo = $computed(() => person.userinfo);
 const address = $computed(() => person.address);
@@ -163,7 +162,16 @@ let activeTab: string = $ref('1');
 let pickerDevice: any = $ref(null);
 let rewardList: any[] = $ref([]);
 
-const menuType: any[] = rewardMenuType(lang)
+const menuType: any[] = [
+  ['1', lang('认购')],
+  ['2', lang('静态收益')],
+  ['3', lang('直推收益')],
+  ['4', lang('直推加速收益')],
+  ['5', lang('团代收益')],
+  ['6', lang('平级收益')],
+  ['7', lang('全网收益')],
+  ['8', lang('赠送') + 'brc20']
+]
 
 const getRewardList = async (page: number = 1) => {
   const res: any = await request.get("app_server/reward_list", {
@@ -229,12 +237,14 @@ const onLoadData: TreeProps['loadData'] = (treeNode: any) => {
     // ]
     setTimeout(() => {
       treeNode.dataRef.children = res.recommends.map((item: any, index: number) => {
+        const hasChildren = item.hasChildren != null ? !!item.hasChildren : true
+        const tag = item.activated === false ? lang('未激活') : `${lang('数量')}:${item.amount}`
         return {
-          title: `${formatAddress(item.address)}---(${lang('数量')}:${item.amount})`,
+          title: `${formatAddress(item.address)}---(${tag})`,
           key: `${treeNode.eventKey}-${index}`,
           amount: item.amount,
           address: item.address,
-          isLeaf: false
+          isLeaf: !hasChildren
         }
       })
       treeData = [...treeData];
@@ -265,11 +275,13 @@ const getUserArea = async () => {
   //   }
   // ]
   treeData = res.recommends.map((item: any, index: number) => {
+    const hasChildren = item.hasChildren != null ? !!item.hasChildren : Number(item.countLow || 0) > 0
+    const tag = item.activated === false ? lang('未激活') : `${lang('数量')}:${item.amount}`
     return {
-      title: `${formatAddress(item.address)}---(${lang('数量')}:${item.amount})`,
+      title: `${formatAddress(item.address)}---(${tag})`,
       key: index,
       address: item.address,
-      isLeaf: item.countLow === 0
+      isLeaf: !hasChildren,
     }
   })
 }

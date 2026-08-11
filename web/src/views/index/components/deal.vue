@@ -47,7 +47,7 @@
           </div>
           <div class="order-column">
             <p>{{lang('倍率')}}</p>
-            <p>{{ item.exit_multiplier || item.rate || item.status }}</p>
+            <p>{{ item.status }}</p>
           </div>
         </div>
         <div class="order-box-2">
@@ -217,7 +217,7 @@ const transferUsdt = async (count: number, id: number) => {
         title: lang('提示'),
         message: lang(`USDT 转账成功！`),
         theme: 'round-button',
-        confirmButtonColor: "#242738",
+        confirmButtonColor: "#0A1724",
         confirmButtonText: lang('我知道了！'),
       })
   }).catch(() => loading.value = false);
@@ -236,7 +236,7 @@ const changePopup = (value: boolean) => {
 /* 按钮样式 */
 .shop-btn {
   padding: 5px 15px;
-  background-color: #F9D02A;
+  background-color: #21B6EA;
   color: #000;
   border: none;
   border-radius: 4px;

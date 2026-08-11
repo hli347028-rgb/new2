@@ -176,15 +176,15 @@ async function fetchUserInfo() {
   }
   try {
     // 核心接口：失败才整体失败；releases 仅用于静态收益，失败不阻断
-    const [profileRes, balanceRes, productsRes, ordersRes] = await Promise.all([
+    const [profileRes, balanceRes, ordersRes] = await Promise.all([
       authGet('/v1/auth/profile'),
       authGet('/v1/wallet/balance'),
-      authGet('/v1/wallet/products'),
       authGet('/v1/wallet/orders'),
     ])
     let releaseList: any[] = []
     let referralList: any[] = []
-    let ecoList: any[] = []
+    // 后端暂未提供生态奖励流水；累计值使用 profile.eco_reward_total。
+    const ecoList: any[] = []
     let referralLoaded = false
     try {
       const releasesRes = await authGet('/v1/wallet/releases')
@@ -199,16 +199,10 @@ async function fetchUserInfo() {
     } catch {
       referralList = []
     }
-    try {
-      const ecosRes = await authGet('/v1/wallet/eco-rewards')
-      ecoList = apiBody(ecosRes).rewards || []
-    } catch {
-      ecoList = []
-    }
-
     const p = apiBody(profileRes)
     const b = apiBody(balanceRes)
-    const goods = mapGoods(apiBody(productsRes).products || [])
+    // AIX 模式不提供传统商城商品；保留空数组兼容上游页面字段。
+    const goods: any[] = []
     const orderList = apiBody(ordersRes).orders || []
     const orderStats = sumOrderReleaseStats(orderList)
 
@@ -319,6 +313,7 @@ async function fetchUserInfo() {
       dailyRewardTotal: String(dayReward.total),
       all: String(ecoTotal),
       usdt: b.balance || '0',
+      amountUsdt: b.balance || '0',
       balanceUsdt: b.balance || '0',
       balanceBiw: '0',
       biwPrice: '0',
@@ -349,23 +344,34 @@ async function fetchUserInfo() {
 }
 
 function mapWithdrawals(list: any[]) {
-  return list.map((item) => ({
-    amount: item.amount,
-    fee: item.fee,
-    net_amount: item.net_amount,
-    status: item.status,
-    created_at: item.created_at,
-    to_address: item.to_address,
-  }))
+  return list.map((item) => {
+    const createdAt = formatUnixTime(item.created_at)
+    return {
+      amount: item.amount,
+      fee: item.fee,
+      net_amount: item.net_amount,
+      relAmount: item.net_amount,
+      asset: item.asset || 'AIX',
+      status: item.status,
+      tx_hash: item.tx_hash,
+      createdAt,
+      created_at: createdAt,
+      to_address: item.to_address,
+    }
+  })
 }
 
 function mapRecharges(list: any[]) {
-  return list.map((item) => ({
-    amount: item.amount,
-    status: item.status,
-    tx_hash: item.tx_hash,
-    created_at: item.created_at,
-  }))
+  return list.map((item) => {
+    const createdAt = formatUnixTime(item.created_at)
+    return {
+      amount: item.amount,
+      status: item.status,
+      tx_hash: item.tx_hash,
+      createdAt,
+      created_at: createdAt,
+    }
+  })
 }
 
 function mapOrders(list: any[]) {
@@ -688,12 +694,18 @@ export async function adaptRequest(
         return { status: 'ok', token: loginRes.token }
       } catch (err: any) {
         const msg = err?.response?.data?.message || err?.message || 'login failed'
+        if (/首次登录需要邀请码|请输入推荐码/.test(msg)) return { status: '请输入推荐码' }
         if (/邀请码/.test(msg)) return { status: '无效的推荐码' }
         return { status: 'fail', message: msg }
       }
     }
     case 'app_server/user_info':
       return fetchUserInfo()
+    case 'app_server/subscribe_tiers':
+      return {
+        min_subscribe_amount: 100,
+        tiers: [100, 500, 1000, 3000],
+      }
     case 'app_server/recommend_update':
       return { status: 'ok', inviteUserAddress: mergedParams.code || '' }
     case 'app_server/withdraw_list': {
@@ -704,11 +716,9 @@ export async function adaptRequest(
     case 'app_server/withdraw': {
       const profile = await authGet('/v1/auth/profile')
       const toAddress = data?.to_address || data?.address || profile.data?.address || ''
-      const res = await authPost('/v1/wallet/withdraw', {
+      const res = await authPost('/v1/wallet/withdraw-aix', {
         amount: String(data?.amount || ''),
         to_address: toAddress,
-        signature: data?.sign || '',
-        withdraw_at: data?.withdraw_at || Math.floor(Date.now() / 1000),
       })
       return { status: 'ok', ...res.data }
     }
@@ -779,46 +789,33 @@ export async function adaptRequest(
         const all = apiBody(res).rewards || []
         records = mapReferralRecords(all.filter((r: any) => Number(r.generation) > 1))
       } else if (reqType === '11') {
-        const res = await authGet('/v1/wallet/claims')
-        records = mapClaimRecords(apiBody(res).claims || [])
+        records = []
       } else if (reqType === '6') {
-        const res = await authGet('/v1/wallet/eco-rewards')
-        records = mapEcoRecords(
-          (apiBody(res).rewards || []).filter((r: any) => numOrZero(r.equal_reward) > 0),
-          { rewardField: 'equal_reward', name: '平级分红', type: 'eco_equal' }
-        )
+        records = []
       } else if (reqType === 'eco_base') {
-        const res = await authGet('/v1/wallet/eco-rewards')
-        records = mapEcoRecords(
-          (apiBody(res).rewards || []).filter((r: any) => numOrZero(r.base_reward) > 0),
-          { rewardField: 'base_reward', name: '社区基础奖', type: 'eco_base' }
-        )
+        records = []
       } else if (reqType === '7') {
-        const res = await authGet('/v1/wallet/eco-rewards')
-        records = mapEcoRecords(apiBody(res).rewards || [])
+        records = []
       } else if (reqType === 'team') {
-        const [releases, referrals, ecos, orders] = await Promise.all([
+        const [releases, referrals, orders] = await Promise.all([
           authGet('/v1/wallet/releases'),
           authGet('/v1/wallet/referral-rewards'),
-          authGet('/v1/wallet/eco-rewards'),
           authGet('/v1/wallet/orders'),
         ])
         records = mapTeamRewardRecords(
           apiBody(releases).records || [],
           apiBody(referrals).rewards || [],
-          apiBody(ecos).rewards || [],
+          [],
           apiBody(orders).orders || []
         )
       } else if (reqType === 'all' || reqType === '0') {
-        const [releases, referrals, ecos] = await Promise.all([
+        const [releases, referrals] = await Promise.all([
           authGet('/v1/wallet/releases'),
           authGet('/v1/wallet/referral-rewards'),
-          authGet('/v1/wallet/eco-rewards'),
         ])
         records = [
           ...mapReleaseRecords(apiBody(releases).records || []),
           ...mapReferralRecords(apiBody(referrals).rewards || []),
-          ...mapEcoRecords(apiBody(ecos).rewards || []),
         ].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
       } else {
         records = []
@@ -843,19 +840,15 @@ export async function adaptRequest(
     case 'app_server/buy_two':
     case 'app_server/buy_three':
     case 'app_server/buy_four': {
-      const body: Record<string, unknown> = {}
       const amount = data?.amount != null && data?.amount !== '' ? String(data.amount) : ''
-      if (amount) {
-        body.amount = amount
-      } else {
-        const products = await authGet('/v1/wallet/products')
-        const list = products.data?.products || []
-        const productId = Number(data?.id || data?.product_id || list[0]?.id || 0)
-        if (!productId) return { status: 'fail', message: 'no product' }
-        body.product_id = productId
-        body.quantity = Number(data?.num || data?.quantity || 1)
-      }
-      const res = await authPost('/v1/wallet/subscribe', body)
+      if (!amount) return { status: 'fail', message: '请输入认购金额' }
+      const payFrom = data?.pay_from === 'reward' || data?.payFrom === 'reward'
+        ? 'reward'
+        : 'recharge'
+      const res = await authPost('/v1/wallet/subscribe-aix', {
+        amount,
+        pay_from: payFrom,
+      })
       return { status: 'ok', ...res.data }
     }
     case 'app_server/exchange':
