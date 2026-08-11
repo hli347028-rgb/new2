@@ -25,7 +25,8 @@ export default {
     loading: 'Đang tải',
     operationFailed: 'Thao tác thất bại',
     close: 'Đóng',
-    protocol: 'Giao thức'
+    protocol: 'Giao thức', gotIt: 'Đã hiểu', languageSwitch: 'Chuyển ngôn ngữ', switchWallet: 'Đổi ví', back: 'Quay lại',
+    days: '{count} ngày'
   },
   index: {
     welcomeSubtitle: 'Chuỗi ứng dụng truy xuất AI đầu tiên trên thế giới',
@@ -125,7 +126,16 @@ export default {
     amount: 'Số lượng',
     generation: 'Thế hệ',
     reward: 'Thưởng',
-    time: 'Thời gian'
+    time: 'Thời gian', directReferralReward: 'Thưởng giới thiệu trực tiếp', managementReward: 'Thưởng quản lý',
+    usdtAmount: 'Số lượng USDT', brc20Amount: 'Số lượng BRC20'
+  },
+  count: {
+    myNodes: 'Node của tôi', myIncome: 'Thu nhập của tôi', matrix: 'Ma trận', level: 'Cấp độ', sharedNodes: 'Node chia sẻ',
+    totalPerformance: 'Tổng hiệu suất', regionalPerformance: 'Hiệu suất khu lớn', smallAreaPerformance: 'Hiệu suất khu nhỏ', referrer: 'Người giới thiệu',
+    pendingIncome: 'Thu nhập chờ nhận', node: 'Node', pendingOutput: 'Chờ tạo', produced: 'Đã tạo', exitCount: 'Số lần thoát',
+    staticIncome: 'Thu nhập tĩnh', directIncome: 'Thu nhập giới thiệu', directAcceleration: 'Tăng tốc giới thiệu', teamIncome: 'Thu nhập đội nhóm',
+    peerIncome: 'Thu nhập đồng cấp', networkIncome: 'Thu nhập toàn mạng', subscribe: 'Đăng ký', directAccelerationIncome: 'Thu nhập tăng tốc giới thiệu',
+    generationTeamIncome: 'Thu nhập nhóm thế hệ', gift: 'Tặng', inactive: 'Chưa kích hoạt'
   },
   mine: {
     tokenAirdrop: 'Airdrop token',
@@ -228,7 +238,8 @@ export default {
     enterAmount: 'Vui lòng nhập số lượng',
     minRechargeAmount: 'Số tiền nạp tối thiểu',
     date: 'Ngày',
-    amount: 'Số tiền'
+    amount: 'Số tiền', balance: 'Số dư nạp', currentRechargeBalance: 'Số dư nạp hiện tại',
+    success: 'Nạp tiền thành công', processing: 'Đang nạp...', minimumError: 'Số tiền nạp tối thiểu là {amount} USDT'
   },
   tab: {
     home: 'Trang chủ',
@@ -247,7 +258,7 @@ export default {
     aixChain: 'Aix Chain',
     globalLaunch: 'Khởi động toàn cầu',
     networkHashrate: 'Sức mạnh tính toán toàn mạng',
-    walletDownload: 'Tải xuống ví'
+    walletDownload: 'Tải xuống ví', orderZone: 'Khu đăng ký', hashrateMall: 'Cửa hàng sức mạnh tính toán'
   },
   route: {
     community: 'Cộng đồng',
@@ -283,7 +294,27 @@ export default {
     noIncomeOfType: 'Chưa có thu nhập loại này',
     noDirectReferral: 'Chưa có giới thiệu trực tiếp',
     income: 'Thu nhập',
-    exitProgress: 'Tiến độ thoát'
+    exitProgress: 'Tiến độ thoát', rechargeBalance: 'Số dư nạp', rewardBalance: 'Số dư thưởng',
+    withdrawableAix: 'AIX có thể rút', directReferralReward: 'Thưởng giới thiệu trực tiếp', managementReward: 'Thưởng quản lý', totalIncome: 'Tổng thu nhập'
+  },
+  payment: {
+    walletNumber: 'Ví {number}', walletTransfer: 'Chuyển ví', copy: 'Sao chép', from: 'Từ', to: 'Đến',
+    amount: 'Số tiền', balance: 'Số dư', send: 'Gửi', reset: 'Đặt lại'
+  },
+  transfer: {
+    title: 'Chuyển khoản', type: 'Loại chuyển khoản', toRewardWallet: 'Đến ví thưởng', toUser: 'Đến người dùng',
+    direction: 'Hướng chuyển', rewardBalance: 'Số dư thưởng', recipientAddress: 'Địa chỉ nhận',
+    recipientPlaceholder: 'Nhập địa chỉ người dùng liên kết', amount: 'Số tiền chuyển', all: 'Tất cả',
+    processing: 'Đang chuyển...', confirm: 'Xác nhận chuyển', records: 'Lịch sử chuyển', recordDirection: 'Hướng giao dịch',
+    walletDirection: 'Hướng ví', directionAndUser: 'Hướng / Người dùng', amountColumn: 'Số tiền', time: 'Thời gian',
+    rechargeToReward: 'Nạp → Thưởng', in: 'Nhận vào', out: 'Chuyển ra',
+    recordsUnavailable: 'Lịch sử chuyển chưa khả dụng', noRecords: 'Chưa có lịch sử chuyển',
+    rechargeWallet: 'Ví nạp', rewardWallet: 'Ví thưởng', myRewardWallet: 'Ví thưởng của tôi',
+    userRewardWallet: 'Ví thưởng người dùng', selfHint: 'Chuyển số dư nạp sang ví thưởng, không tạo thưởng giới thiệu.',
+    userHint: 'Chỉ hỗ trợ tuyến trên và tuyến dưới. Tiền được chuyển vào ví thưởng của người nhận.', upline: 'Tuyến trên', downline: 'Tuyến dưới',
+    fetchRecordsFailed: 'Không thể tải lịch sử chuyển', insufficientBalance: 'Số dư {wallet} không đủ',
+    amountMustBePositive: 'Số tiền chuyển phải lớn hơn 0', invalidRecipient: 'Địa chỉ nhận không hợp lệ',
+    cannotTransferToSelf: 'Không thể chuyển cho chính mình', success: 'Chuyển khoản thành công', failed: 'Chuyển khoản thất bại'
   },
   announcement: {
     title: 'Thông báo',

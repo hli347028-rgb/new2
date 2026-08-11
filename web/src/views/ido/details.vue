@@ -64,7 +64,7 @@
                 </li>
                 <li>
                   <span>{{lang('挖矿周期')}}</span>
-                  <span>180天</span>
+                  <span>{{ $t('common.days', { count: 180 }) }}</span>
                 </li>
                 <li>
                   <span>{{lang('挖矿开始时间')}}</span>
@@ -81,6 +81,9 @@
 <script setup lang="ts">
 import lang from '@/i18n/index'
 import ChildrenHeader from '../../components/header/childrenHeader.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t: $t } = useI18n()
 </script>
 <style scoped lang="less">
 @import "./styles/deal.less";

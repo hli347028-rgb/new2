@@ -5,6 +5,10 @@ import en from '../i18n/lang/en'
 import ja from '../i18n/lang/ja'
 import ko from '../i18n/lang/ko'
 import vi from '../i18n/lang/vi'
+import legacyZh from './zh'
+import legacyEn from './en'
+import legacyJa from './rb'
+import legacyKo from './hg'
 // lang('中文文案') 以中文为 key；与嵌套英文 key 并存
 import zhFlat from '../i18n/language/zh.json'
 import enFlat from '../i18n/language/en.json'
@@ -14,14 +18,29 @@ import enFlat from '../i18n/language/en.json'
 export default createI18n({
     legacy: false,
     locale: localStorage.getItem("lan") || "zh",
+    fallbackLocale: "en",
     missingWarn: false,
     fallbackWarn: false,
     messages: {
-        zh: { ...zhFlat, ...zhNested },
-        'zh-tw': { ...zhFlat, ...zhTw },
-        en: { ...enFlat, ...en },
-        ja: { ...enFlat, ...ja },
-        ko: { ...enFlat, ...ko },
-        vi: { ...enFlat, ...vi },
+        zh: { ...legacyZh, ...zhFlat, ...zhNested },
+        'zh-tw': { ...legacyZh, ...zhFlat, ...zhTw },
+        en: { ...legacyEn, ...enFlat, ...en },
+        ja: {
+            ...legacyEn,
+            ...legacyJa,
+            join: { ...legacyEn.join, ...legacyJa.join },
+            peopleInfo: { ...legacyEn.peopleInfo, ...legacyJa.peopleInfo },
+            ...enFlat,
+            ...ja,
+        },
+        ko: {
+            ...legacyEn,
+            ...legacyKo,
+            join: { ...legacyEn.join, ...legacyKo.join },
+            peopleInfo: { ...legacyEn.peopleInfo, ...legacyKo.peopleInfo },
+            ...enFlat,
+            ...ko,
+        },
+        vi: { ...legacyEn, ...enFlat, ...vi },
     },
 })

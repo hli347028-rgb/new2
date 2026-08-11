@@ -6,7 +6,7 @@
     <li @click="go('/community')"><i class="nav-icon-7" />{{ lang('社群建设') }}</li>
     <li @click="go('/wallet')"><i class="nav-icon-5" />{{ lang('我的资产') }}</li>
     <li @click="go('/withdrawal')"><i class="nav-icon-11" />{{ lang('提现') }}</li>
-    <li @click="go('/count')"><i class="nav-icon-4" />{{ lang('奖励记录') }}</li>
+    <li @click="go('/count')"><i class="nav-icon-4" />{{ lang('community.rewardRecord') }}</li>
   </ul>
 </template>
 <script setup lang="ts">

@@ -3,11 +3,11 @@
   <Header />
   <div class="page-main">
     <div class="withdraw-info">
-      <p class="withdraw-balance">充值余额: {{ userinfo.usdt || 0.0000 }}</p>
+      <p class="withdraw-balance">{{ $t('recharge.balance') }}: {{ userinfo.usdt || 0.0000 }}</p>
       <!-- <p class="withdraw-balance">BRC20: {{ userinfo.rawNew || 0.0000 }}</p> -->
       <div class="withdraw-actions">
         <button class="withdraw-btn" @click="showWithdraw"><van-icon name="balance-pay" />{{ $t('recharge.recharge') }}</button>
-        <button class="withdraw-btn" @click="router.push('/transfer')"><van-icon name="exchange" />划转</button>
+        <button class="withdraw-btn" @click="router.push('/transfer')"><van-icon name="exchange" />{{ $t('transfer.title') }}</button>
       </div>
     </div>
     <div class="withdraw-tab">
@@ -58,14 +58,15 @@ import { showLoadingToast, closeToast, showFailToast, showDialog, closeDialog, s
 import RechargeDialog from "./subpage/components/rechargeDialog.vue";
 import emptyImage from '../assets/images/custom-empty-image.png'
 import { Pagination } from "vant"
-import lang from '@/i18n/index'
 import Header from '@/components/Header.vue'
+import { useI18n } from 'vue-i18n'
 
 const USDT = new Contract(import.meta.env.VITE_USDT, "ERC20");
 const BUY = new Contract(import.meta.env.VITE_BUY, "BUY");
 const route = useRoute()
 
 const router = useRouter()
+const { t: $t } = useI18n()
 const person = userPerson();
 const userinfo = $computed(() => person.userinfo);
 const rechargeDialogRef = ref(null)
@@ -87,7 +88,7 @@ const getUsdtApproved = async () => {
 
 const usdtApprove = async () => {
     showLoadingToast({
-        message: lang('授权中'), duration: 0, overlay: true, overlayStyle: {
+        message: $t('common.authorizing'), duration: 0, overlay: true, overlayStyle: {
             background: "transparent"
         }
     });
@@ -106,7 +107,7 @@ const getBalance = async () => {
 
 const getData = async () => {
     // showLoadingToast({
-    //     message: lang('授权中'), duration: 0, overlay: true, overlayStyle: {
+    //     message: $t('common.authorizing'), duration: 0, overlay: true, overlayStyle: {
     //         background: "transparent"
     //     }
     // });

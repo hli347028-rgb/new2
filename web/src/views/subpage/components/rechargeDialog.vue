@@ -2,14 +2,14 @@
   <a-modal :maskClosable="false" v-model:open="isOpen" :footer="null" centered destroyOnClose :title="null" @ok="handleOk">
     <div class='withdraw-dialog'>
       <div class="dialog-main">
-        <div class="dialog-title">当前充值余额:{{ usdtBalance }}</div>
-        <a-input-number autofocus style="width: 100%" v-model:value="amount" :min="MIN_RECHARGE_AMOUNT" size="large" :placeholder="lang('请输入数量')" />
+        <div class="dialog-title">{{ $t('recharge.currentRechargeBalance') }}: {{ usdtBalance }}</div>
+        <a-input-number autofocus style="width: 100%" v-model:value="amount" :min="MIN_RECHARGE_AMOUNT" size="large" :placeholder="$t('recharge.enterAmount')" />
         <div class="dialog-info">
-        <p><QuestionCircleOutlined style="margin-right: 5px" />{{ lang('最低充值金额') }}: {{ MIN_RECHARGE_AMOUNT }}</p>
+        <p><QuestionCircleOutlined style="margin-right: 5px" />{{ $t('recharge.minRechargeAmount') }}: {{ MIN_RECHARGE_AMOUNT }}</p>
         <p></p>
         </div>
       </div>
-      <a-button class="withdraw-btn" :disabled="loading" size="large" @click="handleWithdrawal" type="primary">{{lang('充值')}}</a-button>
+      <a-button class="withdraw-btn" :disabled="loading" size="large" @click="handleWithdrawal" type="primary">{{ $t('recharge.recharge') }}</a-button>
     </div>
   </a-modal>
 </template>
@@ -19,11 +19,12 @@ import { QuestionCircleOutlined } from '@ant-design/icons-vue';
 import userPerson from "@/pinia/person";
 import { Contract, ETH } from "@/tools/contract";
 import { showToast, showLoadingToast, closeToast, showDialog } from 'vant'
-import lang from '@/i18n/index'
+import { useI18n } from 'vue-i18n'
 const BUY = new Contract(import.meta.env.VITE_BUY, "BUY");
 const USDT = new Contract(import.meta.env.VITE_USDT, "ERC20");
 
 const person = userPerson();
+const { t: $t } = useI18n()
 const isOpen = ref(false)
 const amount = ref(null)
 const loading = ref(false)
@@ -55,11 +56,11 @@ const transferUsdt = async (count) => {
   closeToast()
 
   await showDialog({
-    title: lang('提示'),
-    message: lang('充值成功'),
+    title: $t('common.prompt'),
+    message: $t('recharge.success'),
     theme: 'round-button',
     confirmButtonColor: "#0A1724",
-    confirmButtonText: lang('我知道了！'),
+    confirmButtonText: $t('common.gotIt'),
   })
 
   await person.getUser()
@@ -72,13 +73,13 @@ const handleWithdrawal = async () => {
   if (loading.value) return
 
   if (!(Number(amount.value) >= MIN_RECHARGE_AMOUNT)) {
-    showToast(lang('充值金额不能小于5'))
+    showToast($t('recharge.minimumError', { amount: MIN_RECHARGE_AMOUNT }))
     return
   }
 
   loading.value = true
   showLoadingToast({
-    message: lang('充值中'),
+    message: $t('recharge.processing'),
     duration: 0,
     overlay: true,
     overlayStyle: { background: "transparent" }
@@ -97,7 +98,7 @@ const handleWithdrawal = async () => {
     await transferUsdt(amount.value)
   } catch (error) {
     console.error('充值失败:', error)
-    showToast(lang('操作失败'))
+    showToast($t('common.operationFailed'))
   } finally {
     loading.value = false
     closeToast()

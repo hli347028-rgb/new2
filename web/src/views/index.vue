@@ -18,7 +18,7 @@
             <img src="/static/output-icon-bg-DIHWgt3w.png" alt="internationalPayment" class="bg-image" />
             <div class="feature-content">
               <img src="/static/output-icon.png" alt="internationalPayment" class="feature-icon" />
-              <div class="feature-title">充值</div>
+              <div class="feature-title">{{ $t('recharge.recharge') }}</div>
             </div>
           </div>
         </div>

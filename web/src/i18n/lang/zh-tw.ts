@@ -25,7 +25,8 @@ export default {
     loading: '載入中',
     operationFailed: '操作失敗',
     close: '關閉',
-    protocol: '協議'
+    protocol: '協議', gotIt: '我知道了', languageSwitch: '語言切換', switchWallet: '切換錢包', back: '返回',
+    days: '{count} 天'
   },
   index: {
     welcomeSubtitle: '全球首個 AI 溯源應用鏈',
@@ -125,7 +126,16 @@ export default {
     amount: '數量',
     generation: '代數',
     reward: '獎勵',
-    time: '時間'
+    time: '時間', directReferralReward: '直推獎勵', managementReward: '管理獎',
+    usdtAmount: 'USDT 數量', brc20Amount: 'BRC20 數量'
+  },
+  count: {
+    myNodes: '我的節點', myIncome: '我的收益', matrix: '矩陣圖', level: '級別', sharedNodes: '分享節點',
+    totalPerformance: '總業績', regionalPerformance: '大區業績', smallAreaPerformance: '小區業績', referrer: '推薦人',
+    pendingIncome: '待領取收益', node: '節點', pendingOutput: '待產出', produced: '已產量', exitCount: '出局次數',
+    staticIncome: '靜態收益', directIncome: '直推收益', directAcceleration: '直推加速', teamIncome: '團隊收益',
+    peerIncome: '平級收益', networkIncome: '全網收益', subscribe: '認購', directAccelerationIncome: '直推加速收益',
+    generationTeamIncome: '團代收益', gift: '贈送', inactive: '未激活'
   },
   mine: {
     tokenAirdrop: '代幣空投',
@@ -228,7 +238,8 @@ export default {
     enterAmount: '請輸入數量',
     minRechargeAmount: '最低充值金額',
     date: '日期',
-    amount: '金額'
+    amount: '金額', balance: '充值餘額', currentRechargeBalance: '當前充值餘額',
+    success: '充值成功', processing: '充值中...', minimumError: '充值金額不能小於 {amount} USDT'
   },
   tab: {
     home: '首頁',
@@ -247,7 +258,7 @@ export default {
     aixChain: 'Aix鏈',
     globalLaunch: '全球啟動',
     networkHashrate: '全網算力',
-    walletDownload: '錢包下載'
+    walletDownload: '錢包下載', orderZone: '報單專區', hashrateMall: '算力商城'
   },
   route: {
     community: '社區',
@@ -283,7 +294,28 @@ export default {
     noIncomeOfType: '暫無該類收益',
     noDirectReferral: '暫無直推',
     income: '收益',
-    exitProgress: '出局進度'
+    exitProgress: '出局進度', rechargeBalance: '充值餘額', rewardBalance: '獎勵餘額',
+    withdrawableAix: '可提 AIX', directReferralReward: '直推獎勵',
+    managementReward: '管理獎', totalIncome: '累計收益'
+  },
+  payment: {
+    walletNumber: '錢包 {number}', walletTransfer: '錢包轉賬', copy: '複製', from: '從', to: '到',
+    amount: '金額', balance: '餘額', send: '發送', reset: '重置'
+  },
+  transfer: {
+    title: '劃轉', type: '劃轉類型', toRewardWallet: '轉到獎勵錢包', toUser: '轉給用戶',
+    direction: '劃轉方向', rewardBalance: '獎勵餘額', recipientAddress: '收款地址',
+    recipientPlaceholder: '請輸入關聯用戶地址', amount: '劃轉金額', all: '全部',
+    processing: '劃轉中...', confirm: '確認劃轉', records: '劃轉記錄', recordDirection: '記錄方向',
+    walletDirection: '錢包方向', directionAndUser: '方向 / 用戶', amountColumn: '金額', time: '時間',
+    rechargeToReward: '充值 → 獎勵', in: '轉入', out: '轉出',
+    recordsUnavailable: '劃轉記錄暫未開放', noRecords: '暫無劃轉記錄',
+    rechargeWallet: '充值錢包', rewardWallet: '獎勵錢包', myRewardWallet: '我的獎勵錢包',
+    userRewardWallet: '用戶獎勵錢包', selfHint: '充值餘額轉入獎勵錢包，不產生直推獎勵',
+    userHint: '僅支持上下級用戶，資金轉入對方獎勵錢包', upline: '上級', downline: '下級',
+    fetchRecordsFailed: '獲取劃轉記錄失敗', insufficientBalance: '{wallet}餘額不足',
+    amountMustBePositive: '劃轉金額必須大於 0', invalidRecipient: '收款地址無效',
+    cannotTransferToSelf: '不能轉給自己', success: '劃轉成功', failed: '劃轉失敗'
   },
   announcement: {
     title: '公告',

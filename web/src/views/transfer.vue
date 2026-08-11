@@ -1,7 +1,7 @@
 <template>
   <div class="transfer-page">
     <van-nav-bar
-      title="划转"
+      :title="$t('transfer.title')"
       left-arrow
       :border="false"
       fixed
@@ -9,7 +9,7 @@
     />
 
     <main class="page-main">
-      <div class="transfer-mode" role="tablist" aria-label="划转类型">
+      <div class="transfer-mode" role="tablist" :aria-label="$t('transfer.type')">
         <button
           type="button"
           role="tab"
@@ -17,7 +17,7 @@
           :class="{ active: mode === 'self' }"
           @click="changeMode('self')"
         >
-          转到奖励钱包
+          {{ $t('transfer.toRewardWallet') }}
         </button>
         <button
           type="button"
@@ -26,11 +26,11 @@
           :class="{ active: mode === 'user' }"
           @click="changeMode('user')"
         >
-          转给关联用户
+          {{ $t('transfer.toUser') }}
         </button>
       </div>
 
-      <section v-if="mode === 'self'" class="wallet-flow" aria-label="划转方向">
+      <section v-if="mode === 'self'" class="wallet-flow" :aria-label="$t('transfer.direction')">
         <div class="wallet-summary">
           <strong>{{ sourceWalletName }}</strong>
           <span class="wallet-balance">{{ sourceBalance }} USDT</span>
@@ -42,13 +42,13 @@
         </div>
       </section>
       <div v-else class="reward-balance-row">
-        <span>奖励钱包余额</span>
+        <span>{{ $t('transfer.rewardBalance') }}</span>
         <strong>{{ rewardBalance }} USDT</strong>
       </div>
 
       <section class="transfer-form">
         <template v-if="mode === 'user'">
-          <label class="field-label" for="transfer-recipient">接收地址</label>
+          <label class="field-label" for="transfer-recipient">{{ $t('transfer.recipientAddress') }}</label>
           <div class="input-shell">
             <van-icon name="contact-o" aria-hidden="true" />
             <input
@@ -57,14 +57,14 @@
               type="text"
               autocomplete="off"
               spellcheck="false"
-              placeholder="请输入系统内用户的钱包地址"
+              :placeholder="$t('transfer.recipientPlaceholder')"
             />
           </div>
         </template>
 
         <div class="amount-heading">
-          <label class="field-label" for="transfer-amount">划转金额</label>
-          <button type="button" class="all-btn" @click="fillAll">全部</button>
+          <label class="field-label" for="transfer-amount">{{ $t('transfer.amount') }}</label>
+          <button type="button" class="all-btn" @click="fillAll">{{ $t('transfer.all') }}</button>
         </div>
         <div class="input-shell amount-shell">
           <input
@@ -84,7 +84,7 @@
           :disabled="!canSubmit || loading"
           @click="submitTransfer"
         >
-          {{ loading ? '划转中...' : '确认划转' }}
+          {{ loading ? $t('transfer.processing') : $t('transfer.confirm') }}
         </button>
       </section>
 
@@ -96,8 +96,8 @@
       <section class="record-section">
         <div class="section-title-wrap">
           <div class="title-bar"></div>
-          <h3 class="section-title">划转记录</h3>
-          <div v-if="mode === 'user'" class="direction-filter" aria-label="记录方向">
+          <h3 class="section-title">{{ $t('transfer.records') }}</h3>
+          <div v-if="mode === 'user'" class="direction-filter" :aria-label="$t('transfer.recordDirection')">
             <button
               v-for="item in directionOptions"
               :key="item.value"
@@ -112,9 +112,9 @@
 
         <div class="table-card" :aria-busy="recordLoading">
           <div class="table-header">
-            <span>{{ mode === 'self' ? '钱包方向' : '类型 / 对方' }}</span>
-            <span>金额</span>
-            <span>时间</span>
+            <span>{{ mode === 'self' ? $t('transfer.walletDirection') : $t('transfer.directionAndUser') }}</span>
+            <span>{{ $t('transfer.amountColumn') }}</span>
+            <span>{{ $t('transfer.time') }}</span>
           </div>
 
           <div v-if="recordLoading" class="record-loading">
@@ -123,9 +123,9 @@
           <template v-else-if="records.length > 0">
             <div class="order-list" v-for="item in records" :key="item.id">
               <div class="table-row">
-                <span v-if="mode === 'self'" class="wallet-direction">充值 → 奖励</span>
+                <span v-if="mode === 'self'" class="wallet-direction">{{ $t('transfer.rechargeToReward') }}</span>
                 <span v-else class="counterparty-cell">
-                  <strong>{{ item.direction === 'in' ? '转入' : '转出' }} · {{ relationshipText(item.relationship) }}</strong>
+                  <strong>{{ item.direction === 'in' ? $t('transfer.in') : $t('transfer.out') }} · {{ relationshipText(item.relationship) }}</strong>
                   <small>{{ formatAddress(item.counterparty_address) }}</small>
                 </span>
                 <span class="amount-cell" :class="item.direction === 'in' ? 'income' : mode === 'user' ? 'outcome' : ''">
@@ -136,7 +136,7 @@
             </div>
           </template>
           <div v-else class="empty-state">
-            <p>{{ recordsUnavailable ? '划转记录接口暂未开放' : '暂无划转记录' }}</p>
+            <p>{{ recordsUnavailable ? $t('transfer.recordsUnavailable') : $t('transfer.noRecords') }}</p>
           </div>
 
           <div class="pagination-wrapper" v-if="!recordLoading && recordPageCount > 1">
@@ -156,6 +156,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { Pagination, showFailToast, showSuccessToast, showToast } from 'vant'
 import userPerson from '@/pinia/person'
 import request from '@/tools/request'
@@ -176,6 +177,7 @@ interface TransferRecord {
 }
 
 const router = useRouter()
+const { t: $t, locale } = useI18n()
 const person = userPerson()
 
 const mode = ref<TransferMode>('self')
@@ -190,20 +192,20 @@ const recordsUnavailable = ref(false)
 const direction = ref<TransferDirection>('all')
 let recordRequestId = 0
 
-const directionOptions: Array<{ label: string; value: TransferDirection }> = [
-  { label: '全部', value: 'all' },
-  { label: '转入', value: 'in' },
-  { label: '转出', value: 'out' },
-]
+const directionOptions = computed<Array<{ label: string; value: TransferDirection }>>(() => [
+  { label: $t('transfer.all'), value: 'all' },
+  { label: $t('transfer.in'), value: 'in' },
+  { label: $t('transfer.out'), value: 'out' },
+])
 
 const rechargeBalance = computed(() => String(person.userinfo?.usdt || person.profile?.usdt_recharge || '0'))
 const rewardBalance = computed(() => String((person.userinfo as any)?.reward || person.profile?.usdt_reward || '0'))
 const sourceBalance = computed(() => mode.value === 'self' ? rechargeBalance.value : rewardBalance.value)
-const sourceWalletName = computed(() => mode.value === 'self' ? '充值钱包' : '奖励钱包')
-const targetWalletName = computed(() => mode.value === 'self' ? '我的奖励钱包' : '对方奖励钱包')
+const sourceWalletName = computed(() => mode.value === 'self' ? $t('transfer.rechargeWallet') : $t('transfer.rewardWallet'))
+const targetWalletName = computed(() => mode.value === 'self' ? $t('transfer.myRewardWallet') : $t('transfer.userRewardWallet'))
 const transferHint = computed(() => mode.value === 'self'
-  ? '充值余额将等额转入本人的奖励钱包，划转后不产生直推奖励'
-  : '仅邀请关系中的上下级可互转，收款将进入对方奖励钱包'
+  ? $t('transfer.selfHint')
+  : $t('transfer.userHint')
 )
 
 const isPositiveAmount = (value: string) => /^\d+(?:\.\d+)?$/.test(value) && /[1-9]/.test(value)
@@ -253,12 +255,20 @@ const formatAddress = (value?: string) => {
 
 const formatUnixTime = (timestamp: number) => {
   if (!timestamp) return '-'
-  return new Date(timestamp * 1000).toLocaleString('zh-CN', { hour12: false })
+  const dateLocales: Record<string, string> = {
+    zh: 'zh-CN',
+    'zh-tw': 'zh-TW',
+    en: 'en-US',
+    ja: 'ja-JP',
+    ko: 'ko-KR',
+    vi: 'vi-VN',
+  }
+  return new Date(timestamp * 1000).toLocaleString(dateLocales[locale.value] || locale.value, { hour12: false })
 }
 
 const relationshipText = (relationship?: TransferRecord['relationship']) => {
-  if (relationship === 'upline') return '上级'
-  if (relationship === 'downline') return '下级'
+  if (relationship === 'upline') return $t('transfer.upline')
+  if (relationship === 'downline') return $t('transfer.downline')
   return '-'
 }
 
@@ -301,7 +311,7 @@ const loadTransferRecords = async (page = 1) => {
     recordPageCount.value = 1
     recordsUnavailable.value = error?.response?.status === 404
     if (!recordsUnavailable.value && error?.response?.status !== 401) {
-      showFailToast(error?.response?.data?.message || error?.message || '获取划转记录失败')
+      showFailToast(error?.response?.data?.message || error?.message || $t('transfer.fetchRecordsFailed'))
     }
   } finally {
     if (requestId === recordRequestId) recordLoading.value = false
@@ -318,7 +328,7 @@ const normalizeAmount = () => {
 
 const fillAll = () => {
   if (!isPositiveAmount(sourceBalance.value)) {
-    showToast({ message: `${sourceWalletName.value}余额不足`, position: 'middle' })
+    showToast({ message: $t('transfer.insufficientBalance', { wallet: sourceWalletName.value }), position: 'middle' })
     return
   }
   amount.value = sourceBalance.value
@@ -327,20 +337,20 @@ const fillAll = () => {
 const submitTransfer = async () => {
   if (loading.value) return
   if (!isPositiveAmount(amount.value)) {
-    showFailToast('划转金额必须大于 0')
+    showFailToast($t('transfer.amountMustBePositive'))
     return
   }
   if (compareDecimalStrings(amount.value, sourceBalance.value) > 0) {
-    showFailToast(`${sourceWalletName.value}余额不足`)
+    showFailToast($t('transfer.insufficientBalance', { wallet: sourceWalletName.value }))
     return
   }
   if (mode.value === 'user') {
     if (!/^0x[a-fA-F0-9]{40}$/.test(recipient.value)) {
-      showFailToast('收款地址无效')
+      showFailToast($t('transfer.invalidRecipient'))
       return
     }
     if (recipient.value.toLowerCase() === String(person.address || '').toLowerCase()) {
-      showFailToast('不能转给自己')
+      showFailToast($t('transfer.cannotTransferToSelf'))
       return
     }
   }
@@ -366,10 +376,10 @@ const submitTransfer = async () => {
       person.refreshProfile?.(),
     ])
     await loadTransferRecords(1)
-    showSuccessToast('划转成功')
+    showSuccessToast($t('transfer.success'))
   } catch (error: any) {
     // request 已优先展示后端 message，此处仅兜底非 Axios 错误。
-    if (!error?.response) showFailToast(error?.message || '划转失败')
+    if (!error?.response) showFailToast(error?.message || $t('transfer.failed'))
   } finally {
     loading.value = false
   }

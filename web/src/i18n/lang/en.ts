@@ -25,7 +25,8 @@ export default {
     loading: 'Loading',
     operationFailed: 'Operation failed',
     close: 'Close',
-    protocol: 'Protocol'
+    protocol: 'Protocol', gotIt: 'Got it', languageSwitch: 'Language', switchWallet: 'Switch Wallet', back: 'Back',
+    days: '{count} days'
   },
   index: {
     welcomeSubtitle: "World's First AI Traceability App Chain",
@@ -125,7 +126,16 @@ export default {
     amount: 'Amount',
     generation: 'Generation',
     reward: 'Reward',
-    time: 'Time'
+    time: 'Time', directReferralReward: 'Direct Referral Reward', managementReward: 'Management Reward',
+    usdtAmount: 'USDT Amount', brc20Amount: 'BRC20 Amount'
+  },
+  count: {
+    myNodes: 'My Nodes', myIncome: 'My Income', matrix: 'Matrix', level: 'Level', sharedNodes: 'Shared Nodes',
+    totalPerformance: 'Total Performance', regionalPerformance: 'Regional Performance', smallAreaPerformance: 'Small Area Performance', referrer: 'Referrer',
+    pendingIncome: 'Pending Income', node: 'Node', pendingOutput: 'Pending Output', produced: 'Produced', exitCount: 'Exit Count',
+    staticIncome: 'Static Income', directIncome: 'Direct Income', directAcceleration: 'Direct Acceleration', teamIncome: 'Team Income',
+    peerIncome: 'Peer Income', networkIncome: 'Network Income', subscribe: 'Subscribe', directAccelerationIncome: 'Direct Acceleration Income',
+    generationTeamIncome: 'Generation Team Income', gift: 'Gift', inactive: 'Inactive'
   },
   mine: {
     tokenAirdrop: 'Token Airdrop',
@@ -228,7 +238,9 @@ export default {
     enterAmount: 'Enter Amount',
     minRechargeAmount: 'Minimum Recharge Amount',
     date: 'Date',
-    amount: 'Amount'
+    amount: 'Amount', balance: 'Recharge Balance', currentRechargeBalance: 'Current Recharge Balance',
+    success: 'Recharge successful', processing: 'Recharging...',
+    minimumError: 'Recharge amount must be at least {amount} USDT'
   },
   tab: {
     home: 'Home',
@@ -247,7 +259,7 @@ export default {
     aixChain: 'Aix Chain',
     globalLaunch: 'Global Launch',
     networkHashrate: 'Network Hashrate',
-    walletDownload: 'Wallet Download'
+    walletDownload: 'Wallet Download', orderZone: 'Subscription Zone', hashrateMall: 'Hashrate Mall'
   },
   route: {
     community: 'Community',
@@ -283,7 +295,28 @@ export default {
     noIncomeOfType: 'No income of this type',
     noDirectReferral: 'No direct referrals',
     income: 'Income',
-    exitProgress: 'Exit Progress'
+    exitProgress: 'Exit Progress', rechargeBalance: 'Recharge Balance', rewardBalance: 'Reward Balance',
+    withdrawableAix: 'Withdrawable AIX', directReferralReward: 'Direct Referral Reward',
+    managementReward: 'Management Reward', totalIncome: 'Total Income'
+  },
+  payment: {
+    walletNumber: 'Wallet {number}', walletTransfer: 'Wallet Transfer', copy: 'Copy', from: 'From', to: 'To',
+    amount: 'Amount', balance: 'Balance', send: 'Send', reset: 'Reset'
+  },
+  transfer: {
+    title: 'Transfer', type: 'Transfer Type', toRewardWallet: 'To Reward Wallet', toUser: 'To User',
+    direction: 'Transfer Direction', rewardBalance: 'Reward Balance', recipientAddress: 'Recipient Address',
+    recipientPlaceholder: "Enter the related user's address", amount: 'Transfer Amount', all: 'All',
+    processing: 'Transferring...', confirm: 'Confirm Transfer', records: 'Transfer Records', recordDirection: 'Record Direction',
+    walletDirection: 'Wallet Direction', directionAndUser: 'Direction / User', amountColumn: 'Amount', time: 'Time',
+    rechargeToReward: 'Recharge → Reward', in: 'Incoming', out: 'Outgoing',
+    recordsUnavailable: 'Transfer records are not available yet', noRecords: 'No transfer records',
+    rechargeWallet: 'Recharge Wallet', rewardWallet: 'Reward Wallet', myRewardWallet: 'My Reward Wallet',
+    userRewardWallet: "User's Reward Wallet", selfHint: 'Move recharge balance to the reward wallet without referral rewards.',
+    userHint: "Upline and downline users only. Funds go to the recipient's reward wallet.", upline: 'Upline', downline: 'Downline',
+    fetchRecordsFailed: 'Failed to fetch transfer records', insufficientBalance: 'Insufficient balance in {wallet}',
+    amountMustBePositive: 'Transfer amount must be greater than 0', invalidRecipient: 'Invalid recipient address',
+    cannotTransferToSelf: 'You cannot transfer to yourself', success: 'Transfer successful', failed: 'Transfer failed'
   },
   announcement: {
     title: 'Announcement',

@@ -11,15 +11,15 @@
     <div class="usdt-price" @click="router.push('/withdrawal')">
       <div class="price-list">
         <div class="price-item">
-          <p>充值余额</p>
+          <p>{{ $t('wallet.rechargeBalance') }}</p>
           <p>{{ userinfo.usdt || 0 }}</p>
         </div>
         <div class="price-item">
-          <p>奖励余额</p>
+          <p>{{ $t('wallet.rewardBalance') }}</p>
           <p>{{ userinfo.reward || 0 }}</p>
         </div>
         <div class="price-item">
-          <p>可提 AIX </p>
+          <p>{{ $t('wallet.withdrawableAix') }}</p>
           <p>{{ userinfo.amountGet || 0 }}<van-icon style="margin-left: 5px;" name="arrow" /></p>
         </div>
       </div>
@@ -47,15 +47,15 @@
           <p>{{ userinfo.location || 0 }}</p>
         </div>
         <div class="pledge-frame-item">
-          <p>直推奖励</p>
+          <p>{{ $t('wallet.directReferralReward') }}</p>
           <p>{{ userinfo.recommend || 0 }}</p>
         </div>
         <div class="pledge-frame-item">
-          <p>管理奖</p>
+          <p>{{ $t('wallet.managementReward') }}</p>
           <p>{{ userinfo.team || 0 }}</p>
         </div>
         <div class="pledge-frame-item">
-          <p>累计收益</p>
+          <p>{{ $t('wallet.totalIncome') }}</p>
           <p>{{ userinfo.all || 0 }}</p>
         </div>
       </div>
@@ -145,8 +145,8 @@ const tab = $ref(1)
 const menuType = computed(() => [
   ['1', $t('wallet.subscribeRecords')],
   ['2', $t('wallet.staticIncome')],
-  ['3', '直推奖励'],
-  ['5', '管理奖'],
+  ['3', $t('wallet.directReferralReward')],
+  ['5', $t('wallet.managementReward')],
 ])
 const expandedKeys = $ref([]);
 const selectedKeys = $ref([]);

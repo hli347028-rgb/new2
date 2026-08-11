@@ -25,7 +25,8 @@ export default {
     loading: '読み込み中',
     operationFailed: '操作に失敗しました',
     close: '閉じる',
-    protocol: 'プロトコル'
+    protocol: 'プロトコル', gotIt: 'わかりました', languageSwitch: '言語切替', switchWallet: 'ウォレット切替', back: '戻る',
+    days: '{count} 日'
   },
   index: {
     welcomeSubtitle: '世界初のAIトレースアプリチェーン',
@@ -125,7 +126,16 @@ export default {
     amount: '数量',
     generation: '世代',
     reward: '報酬',
-    time: '時間'
+    time: '時間', directReferralReward: '直接紹介報酬', managementReward: '管理報酬',
+    usdtAmount: 'USDT 数量', brc20Amount: 'BRC20 数量'
+  },
+  count: {
+    myNodes: 'マイノード', myIncome: 'マイ収益', matrix: 'マトリックス', level: 'レベル', sharedNodes: '共有ノード',
+    totalPerformance: '総実績', regionalPerformance: '大エリア実績', smallAreaPerformance: '小エリア実績', referrer: '紹介者',
+    pendingIncome: '受取待ち収益', node: 'ノード', pendingOutput: '産出待ち', produced: '産出済み', exitCount: '退出回数',
+    staticIncome: '静的収益', directIncome: '直接紹介収益', directAcceleration: '直接紹介加速', teamIncome: 'チーム収益',
+    peerIncome: '同級収益', networkIncome: '全体収益', subscribe: '申込', directAccelerationIncome: '直接紹介加速収益',
+    generationTeamIncome: '世代チーム収益', gift: '付与', inactive: '未アクティブ'
   },
   mine: {
     tokenAirdrop: 'トークンエアドロップ',
@@ -228,7 +238,8 @@ export default {
     enterAmount: '金額を入力してください',
     minRechargeAmount: '最低チャージ金額',
     date: '日付',
-    amount: '金額'
+    amount: '金額', balance: 'チャージ残高', currentRechargeBalance: '現在のチャージ残高',
+    success: 'チャージが完了しました', processing: 'チャージ中...', minimumError: 'チャージ金額は {amount} USDT 以上必要です'
   },
   tab: {
     home: 'ホーム',
@@ -247,7 +258,7 @@ export default {
     aixChain: 'Aixチェーン',
     globalLaunch: 'グローバルローンチ',
     networkHashrate: 'ネットワークハッシュレート',
-    walletDownload: 'ウォレットダウンロード'
+    walletDownload: 'ウォレットダウンロード', orderZone: '申込エリア', hashrateMall: 'ハッシュレートモール'
   },
   route: {
     community: 'コミュニティ',
@@ -283,7 +294,27 @@ export default {
     noIncomeOfType: '該当収益なし',
     noDirectReferral: '直紹介なし',
     income: '収益',
-    exitProgress: '出局進捗'
+    exitProgress: '出局進捗', rechargeBalance: 'チャージ残高', rewardBalance: '報酬残高',
+    withdrawableAix: '出金可能 AIX', directReferralReward: '直接紹介報酬', managementReward: '管理報酬', totalIncome: '累計収益'
+  },
+  payment: {
+    walletNumber: 'ウォレット {number}', walletTransfer: 'ウォレット送金', copy: 'コピー', from: '送信元', to: '送信先',
+    amount: '金額', balance: '残高', send: '送信', reset: 'リセット'
+  },
+  transfer: {
+    title: '振替', type: '振替タイプ', toRewardWallet: '報酬ウォレットへ', toUser: 'ユーザーへ送る',
+    direction: '振替方向', rewardBalance: '報酬残高', recipientAddress: '受取アドレス',
+    recipientPlaceholder: '関連ユーザーのアドレスを入力', amount: '振替金額', all: 'すべて',
+    processing: '振替中...', confirm: '振替を確認', records: '振替履歴', recordDirection: '履歴の方向',
+    walletDirection: 'ウォレット方向', directionAndUser: '方向 / ユーザー', amountColumn: '金額', time: '時間',
+    rechargeToReward: 'チャージ → 報酬', in: '入金', out: '出金',
+    recordsUnavailable: '振替履歴はまだ利用できません', noRecords: '振替履歴はありません',
+    rechargeWallet: 'チャージウォレット', rewardWallet: '報酬ウォレット', myRewardWallet: '自分の報酬ウォレット',
+    userRewardWallet: 'ユーザーの報酬ウォレット', selfHint: 'チャージ残高を報酬ウォレットへ移します。紹介報酬は発生しません。',
+    userHint: '上下関係のあるユーザーのみ。資金は相手の報酬ウォレットに入ります。', upline: '上位', downline: '下位',
+    fetchRecordsFailed: '振替履歴の取得に失敗しました', insufficientBalance: '{wallet}の残高が不足しています',
+    amountMustBePositive: '振替金額は0より大きい必要があります', invalidRecipient: '受取アドレスが無効です',
+    cannotTransferToSelf: '自分には送れません', success: '振替が完了しました', failed: '振替に失敗しました'
   },
   announcement: {
     title: 'お知らせ',

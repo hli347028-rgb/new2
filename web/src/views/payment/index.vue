@@ -4,14 +4,14 @@
     <div class="payment">
       <div class="payment-card">
         <div class="payment-card-head">
-          <div class="payment-card-title">钱包1</div>
-          <button class="transfer-button" @click="router.push('/transfer')">钱包转账</button>
+          <div class="payment-card-title">{{ $t('payment.walletNumber', { number: 1 }) }}</div>
+          <button class="transfer-button" @click="router.push('/transfer')">{{ $t('payment.walletTransfer') }}</button>
         </div>
         <div class="payment-user">
           <div class="payment-user-avatar"></div>
           <div class="payment-user-sn">
-            <p>0xc84b24...ec0b19dc<span>复制</span></p>
-            <p>f410fzbf...4njdiywi<span>复制</span></p>
+            <p>0xc84b24...ec0b19dc<span>{{ $t('payment.copy') }}</span></p>
+            <p>f410fzbf...4njdiywi<span>{{ $t('payment.copy') }}</span></p>
           </div>
         </div>
         <div class="payment-user">
@@ -29,8 +29,10 @@
 import ChildrenHeader from '../../components/header/childrenHeader.vue'
 import { useRouter } from 'vue-router'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t: $t } = useI18n()
 
 </script>
 <style scoped lang="less">

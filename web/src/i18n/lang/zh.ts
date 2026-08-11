@@ -25,7 +25,8 @@ export default {
     loading: '加载中',
     operationFailed: '操作失败',
     close: '关闭',
-    protocol: '协议'
+    protocol: '协议', gotIt: '我知道了', languageSwitch: '语言切换', switchWallet: '切换钱包', back: '返回',
+    days: '{count} 天'
   },
   index: {
     welcomeSubtitle: '全球首个 AI 溯源应用链',
@@ -125,7 +126,16 @@ export default {
     amount: '数量',
     generation: '代数',
     reward: '奖励',
-    time: '时间'
+    time: '时间', directReferralReward: '直推奖励', managementReward: '管理奖',
+    usdtAmount: 'USDT 数量', brc20Amount: 'BRC20 数量'
+  },
+  count: {
+    myNodes: '我的节点', myIncome: '我的收益', matrix: '矩阵图', level: '级别', sharedNodes: '分享节点',
+    totalPerformance: '总业绩', regionalPerformance: '大区业绩', smallAreaPerformance: '小区业绩', referrer: '推荐人',
+    pendingIncome: '待领取收益', node: '节点', pendingOutput: '待产出', produced: '已产量', exitCount: '出局次数',
+    staticIncome: '静态收益', directIncome: '直推收益', directAcceleration: '直推加速', teamIncome: '团队收益',
+    peerIncome: '平级收益', networkIncome: '全网收益', subscribe: '认购', directAccelerationIncome: '直推加速收益',
+    generationTeamIncome: '团代收益', gift: '赠送', inactive: '未激活'
   },
   mine: {
     tokenAirdrop: '代币空投',
@@ -228,7 +238,8 @@ export default {
     enterAmount: '请输入数量',
     minRechargeAmount: '最低充值金额',
     date: '日期',
-    amount: '金额'
+    amount: '金额', balance: '充值余额', currentRechargeBalance: '当前充值余额',
+    success: '充值成功', processing: '充值中...', minimumError: '充值金额不能小于 {amount} USDT'
   },
   tab: {
     home: '首页',
@@ -247,7 +258,7 @@ export default {
     aixChain: 'Aix链',
     globalLaunch: '全球启动',
     networkHashrate: '全网算力',
-    walletDownload: '钱包下载'
+    walletDownload: '钱包下载', orderZone: '报单专区', hashrateMall: '算力商城'
   },
   route: {
     community: '社区',
@@ -283,7 +294,28 @@ export default {
     noIncomeOfType: '暂无该类收益',
     noDirectReferral: '暂无直推',
     income: '收益',
-    exitProgress: '出局进度'
+    exitProgress: '出局进度', rechargeBalance: '充值余额', rewardBalance: '奖励余额',
+    withdrawableAix: '可提 AIX', directReferralReward: '直推奖励',
+    managementReward: '管理奖', totalIncome: '累计收益'
+  },
+  payment: {
+    walletNumber: '钱包 {number}', walletTransfer: '钱包转账', copy: '复制', from: '从', to: '到',
+    amount: '金额', balance: '余额', send: '发送', reset: '重置'
+  },
+  transfer: {
+    title: '划转', type: '划转类型', toRewardWallet: '转到奖励钱包', toUser: '转给用户',
+    direction: '划转方向', rewardBalance: '奖励余额', recipientAddress: '收款地址',
+    recipientPlaceholder: '请输入关联用户地址', amount: '划转金额', all: '全部',
+    processing: '划转中...', confirm: '确认划转', records: '划转记录', recordDirection: '记录方向',
+    walletDirection: '钱包方向', directionAndUser: '方向 / 用户', amountColumn: '金额', time: '时间',
+    rechargeToReward: '充值 → 奖励', in: '转入', out: '转出',
+    recordsUnavailable: '划转记录暂未开放', noRecords: '暂无划转记录',
+    rechargeWallet: '充值钱包', rewardWallet: '奖励钱包', myRewardWallet: '我的奖励钱包',
+    userRewardWallet: '用户奖励钱包', selfHint: '充值余额转入奖励钱包，不产生直推奖励',
+    userHint: '仅支持上下级用户，资金转入对方奖励钱包', upline: '上级', downline: '下级',
+    fetchRecordsFailed: '获取划转记录失败', insufficientBalance: '{wallet}余额不足',
+    amountMustBePositive: '划转金额必须大于 0', invalidRecipient: '收款地址无效',
+    cannotTransferToSelf: '不能转给自己', success: '划转成功', failed: '划转失败'
   },
   announcement: {
     title: '公告',

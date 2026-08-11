@@ -3,25 +3,31 @@
     <ChildrenHeader />
     <ul class="profile">
       <li>
-        <span>{{lang('语言切换')}}</span>
-        <span>中文|English<Toggle v-model="checked" @change="onChangeLanguage" style="margin-left: 10px;"></Toggle></span>
+        <label for="profile-language">{{ $t('common.languageSwitch') }}</label>
+        <select id="profile-language" v-model="selectedLanguage" class="language-select" @change="onChangeLanguage">
+          <option v-for="item in languageOptions" :key="item.code" :value="item.code">{{ item.name }}</option>
+        </select>
       </li>
     </ul>
-    <button class="switch-user-button" @click="switchUser">{{ lang("切换钱包") }}</button>
+    <button class="switch-user-button" @click="switchUser">{{ $t('common.switchWallet') }}</button>
   </div>
 </template>
 <script setup lang="ts">
 import ChildrenHeader from '../../components/header/childrenHeader.vue'
-import lang from '@/i18n/index'
 import { restartCurrentApp } from '@/tools/plaocRuntime'
 import { useI18n } from 'vue-i18n'
-import Toggle from '../../components/Toggle/Toggle.vue'
 import { ref } from 'vue'
-const { locale } = useI18n()
+const { t: $t, locale } = useI18n()
 
-let toast: any = ref(null)
-
-let checked = ref(localStorage.getItem('lan') === 'en' ? true : false)
+const selectedLanguage = ref(String(locale.value))
+const languageOptions = [
+  { code: 'zh', name: '简体中文' },
+  { code: 'zh-tw', name: '繁體中文' },
+  { code: 'en', name: 'English' },
+  { code: 'ja', name: '日本語' },
+  { code: 'ko', name: '한국어' },
+  { code: 'vi', name: 'Tiếng Việt' },
+]
 
 const switchUser = async () => {
   localStorage.removeItem("token");
@@ -29,16 +35,9 @@ const switchUser = async () => {
   await restartCurrentApp()
 }
 
-const onChangeLanguage = (value: boolean) => {
-  if (value) {
-    localStorage.setItem('lan', 'en')
-    locale.value = 'en'
-    location.href = '/'
-  } else {
-    localStorage.setItem('lan', 'zh')
-    locale.value = 'zh'
-    location.href = '/'
-  }
+const onChangeLanguage = () => {
+  locale.value = selectedLanguage.value
+  localStorage.setItem('lan', selectedLanguage.value)
 }
 
 </script>
@@ -48,5 +47,15 @@ const onChangeLanguage = (value: boolean) => {
 .profile-page {
   width: 100%;
   min-height: 100vh;
+}
+
+.language-select {
+  min-width: 132px;
+  height: 34px;
+  padding: 0 30px 0 10px;
+  border: 1px solid rgba(143, 223, 255, 0.24);
+  border-radius: 6px;
+  background: #0d1c29;
+  color: #fff;
 }
 </style>

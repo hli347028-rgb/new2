@@ -25,7 +25,8 @@ export default {
     loading: '로딩 중',
     operationFailed: '작업 실패',
     close: '닫기',
-    protocol: '프로토콜'
+    protocol: '프로토콜', gotIt: '알겠습니다', languageSwitch: '언어 변경', switchWallet: '지갑 전환', back: '뒤로',
+    days: '{count}일'
   },
   index: {
     welcomeSubtitle: '세계 최초 AI 추적 앱 체인',
@@ -125,7 +126,16 @@ export default {
     amount: '수량',
     generation: '세대',
     reward: '보상',
-    time: '시간'
+    time: '시간', directReferralReward: '직접 추천 보상', managementReward: '관리 보상',
+    usdtAmount: 'USDT 수량', brc20Amount: 'BRC20 수량'
+  },
+  count: {
+    myNodes: '내 노드', myIncome: '내 수익', matrix: '매트릭스', level: '등급', sharedNodes: '공유 노드',
+    totalPerformance: '총 실적', regionalPerformance: '대지역 실적', smallAreaPerformance: '소지역 실적', referrer: '추천인',
+    pendingIncome: '수령 대기 수익', node: '노드', pendingOutput: '산출 대기', produced: '산출 완료', exitCount: '종료 횟수',
+    staticIncome: '정적 수익', directIncome: '직접 추천 수익', directAcceleration: '직접 추천 가속', teamIncome: '팀 수익',
+    peerIncome: '동급 수익', networkIncome: '전체 네트워크 수익', subscribe: '청약', directAccelerationIncome: '직접 추천 가속 수익',
+    generationTeamIncome: '세대 팀 수익', gift: '지급', inactive: '미활성화'
   },
   mine: {
     tokenAirdrop: '토큰 에어드롭',
@@ -228,7 +238,8 @@ export default {
     enterAmount: '금액을 입력하세요',
     minRechargeAmount: '최소 충전 금액',
     date: '날짜',
-    amount: '금액'
+    amount: '금액', balance: '충전 잔액', currentRechargeBalance: '현재 충전 잔액',
+    success: '충전 성공', processing: '충전 중...', minimumError: '충전 금액은 {amount} USDT 이상이어야 합니다'
   },
   tab: {
     home: '홈',
@@ -247,7 +258,7 @@ export default {
     aixChain: 'Aix 체인',
     globalLaunch: '글로벌 출시',
     networkHashrate: '네트워크 해시레이트',
-    walletDownload: '지갑 다운로드'
+    walletDownload: '지갑 다운로드', orderZone: '청약 전용', hashrateMall: '해시레이트 몰'
   },
   route: {
     community: '커뮤니티',
@@ -283,7 +294,27 @@ export default {
     noIncomeOfType: '해당 유형 수익이 없습니다',
     noDirectReferral: '직추가 없습니다',
     income: '수익',
-    exitProgress: '아웃 진행'
+    exitProgress: '아웃 진행', rechargeBalance: '충전 잔액', rewardBalance: '보상 잔액',
+    withdrawableAix: '출금 가능 AIX', directReferralReward: '직접 추천 보상', managementReward: '관리 보상', totalIncome: '누적 수익'
+  },
+  payment: {
+    walletNumber: '지갑 {number}', walletTransfer: '지갑 이체', copy: '복사', from: '보내는 곳', to: '받는 곳',
+    amount: '금액', balance: '잔액', send: '전송', reset: '초기화'
+  },
+  transfer: {
+    title: '이체', type: '이체 유형', toRewardWallet: '보상 지갑으로', toUser: '사용자에게 보내기',
+    direction: '이체 방향', rewardBalance: '보상 잔액', recipientAddress: '받는 주소',
+    recipientPlaceholder: '연결된 사용자 주소 입력', amount: '이체 금액', all: '전체',
+    processing: '이체 중...', confirm: '이체 확인', records: '이체 내역', recordDirection: '내역 방향',
+    walletDirection: '지갑 방향', directionAndUser: '방향 / 사용자', amountColumn: '금액', time: '시간',
+    rechargeToReward: '충전 → 보상', in: '입금', out: '출금',
+    recordsUnavailable: '이체 내역은 아직 제공되지 않습니다', noRecords: '이체 내역이 없습니다',
+    rechargeWallet: '충전 지갑', rewardWallet: '보상 지갑', myRewardWallet: '내 보상 지갑',
+    userRewardWallet: '사용자 보상 지갑', selfHint: '충전 잔액을 보상 지갑으로 옮기며 추천 보상은 발생하지 않습니다.',
+    userHint: '상하위 사용자만 가능하며 자금은 상대방 보상 지갑으로 들어갑니다.', upline: '상위', downline: '하위',
+    fetchRecordsFailed: '이체 내역을 불러오지 못했습니다', insufficientBalance: '{wallet} 잔액이 부족합니다',
+    amountMustBePositive: '이체 금액은 0보다 커야 합니다', invalidRecipient: '받는 주소가 올바르지 않습니다',
+    cannotTransferToSelf: '본인에게 이체할 수 없습니다', success: '이체 성공', failed: '이체 실패'
   },
   announcement: {
     title: '공지사항',

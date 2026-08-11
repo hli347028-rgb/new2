@@ -31,7 +31,7 @@
             {{ $t('tab.withdraw') }}
           </div> -->
           <div class="nav-item" :class="{ active: isActive('/node') }" @click="go('/node')">
-            报单专区
+            {{ $t('tab.orderZone') }}
           </div>
           <div class="nav-item" :class="{ active: isActive('/community') }" @click="go('/community')">
             {{ $t('tab.myTeam') }}

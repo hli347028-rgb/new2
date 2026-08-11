@@ -1,7 +1,7 @@
 <template>
 <div class='page'>
   <van-nav-bar
-    title="算力商城"
+    :title="$t('tab.hashrateMall')"
     left-arrow
     :border="false"
     fixed
@@ -15,9 +15,11 @@
 import userPerson from "@/pinia/person";
 import { useRouter } from 'vue-router'
 import lang from '@/i18n/index'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
 const person = userPerson();
+const { t: $t } = useI18n()
 
 const handleBack = () => {
   router.back()

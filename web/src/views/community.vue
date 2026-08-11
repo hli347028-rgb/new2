@@ -45,7 +45,7 @@
           </div>
           <div class="performance-info-item">
             <p>{{ formatNum(userinfo.recommend) }}</p>
-            <p>直推奖励</p>
+            <p>{{ $t('community.directReferralReward') }}</p>
           </div>
           <div class="performance-info-item">
             <p>{{ formatNum(userinfo.location) }}</p>
@@ -53,7 +53,7 @@
           </div>
           <div class="performance-info-item">
             <p>{{ formatNum(userinfo.team) }}</p>
-            <p>管理奖</p>
+            <p>{{ $t('community.managementReward') }}</p>
           </div>
           <!-- 
           <div class="performance-info-item">
@@ -120,9 +120,10 @@ import copy from 'copy-to-clipboard'
 import request from '@/tools/request'
 import { Pagination } from 'vant'
 import { Tree } from 'ant-design-vue'
-import lang from '@/i18n/index'
+import { useI18n } from 'vue-i18n'
 
 const person = userPerson()
+const { t: $t } = useI18n()
 const userinfo = computed(() => person.userinfo)
 const address = computed(() => person.address)
 
@@ -162,7 +163,7 @@ const formatNum = (value: any) => Number(value || 0).toFixed(2)
 
 const copyToClipboard = (text: string) => {
   copy(text)
-  showToast(lang('common.copiedToClipboard'))
+  showToast($t('common.copiedToClipboard'))
 }
 
 const onLoadData = (treeNode: any) => {
@@ -176,7 +177,7 @@ const onLoadData = (treeNode: any) => {
 
     treeNode.dataRef.children = (res.recommends || []).map((item: any, index: number) => {
       const hasChildren = item.hasChildren != null ? !!item.hasChildren : Number(item.countLow || 0) > 0
-      const tag = item.activated === false ? lang('community.inactive') : `${lang('community.subscribe')}:${item.amount}`
+      const tag = item.activated === false ? $t('community.inactive') : `${$t('community.subscribe')}: ${item.amount}`
       return {
         title: `${formatAddress(item.address)}（${tag}）`,
         key: `${treeNode.eventKey}-${index}`,
@@ -195,7 +196,7 @@ const getUserArea = async () => {
   const res: any = await request.get(`app_server/recommend_list?address=${address.value}`)
   treeData = (res.recommends || []).map((item: any, index: number) => {
     const hasChildren = item.hasChildren != null ? !!item.hasChildren : Number(item.countLow || 0) > 0
-    const tag = item.activated === false ? lang('community.inactive') : `${lang('community.subscribe')}:${item.amount}`
+    const tag = item.activated === false ? $t('community.inactive') : `${$t('community.subscribe')}: ${item.amount}`
     return {
       title: `${formatAddress(item.address)}（${tag}）`,
       key: index,
