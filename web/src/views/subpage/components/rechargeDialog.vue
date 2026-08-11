@@ -27,7 +27,7 @@ const person = userPerson();
 const isOpen = ref(false)
 const amount = ref(null)
 const loading = ref(false)
-const MIN_RECHARGE_AMOUNT = 5
+const MIN_RECHARGE_AMOUNT = 100
 
 
 const props = defineProps({

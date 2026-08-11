@@ -29,6 +29,7 @@ export default defineStore('person', {
       outNum: '0',
       location: '0.00',
       recommend: '0.00',
+      recommendNum: 0,
       recommendTwo: '0.00',
       team: '0.00',
       teamTwo: '0.00',
@@ -97,8 +98,11 @@ export default defineStore('person', {
         return res.token
       }
 
-      const sign = await fetchSign()
-      this.sign = sign
+      const getFreshSign = async () => {
+        const sign = await fetchSign()
+        this.sign = sign
+        return sign
+      }
 
       const mapAuthError = (message?: string) => {
         if (message === '用户已锁定') return lang('common.userLocked')
@@ -117,7 +121,7 @@ export default defineStore('person', {
             return
           }
           if (canRetryChallenge && /签名挑战|challenge/i.test(err.message || '')) {
-            const renewedSign = await fetchSign()
+            const renewedSign = await getFreshSign()
             await checkLogin(renewedSign, false)
             return
           }
@@ -153,16 +157,23 @@ export default defineStore('person', {
       if (isSameAccount && storedToken) {
         try {
           await this.loginSuccess()
-        } catch {
-          // Token 已过期或无效时清理旧状态，并用刚获取的签名重新登录。
+        } catch (error: any) {
+          const message = error?.response?.data?.message || error?.message || ''
+          const tokenInvalid = /登录过期|未登录|unauthorized|token/i.test(message)
+          if (!tokenInvalid) {
+            showFailToast(message || lang('common.operationFailed'))
+            this.loadAccount = true
+            return
+          }
+          // 仅在后端明确判定登录失效时，才重新请求钱包签名。
           localStorage.removeItem('token')
           localStorage.removeItem('account')
-          await checkLogin(sign)
+          await checkLogin(await getFreshSign())
         }
       } else {
         localStorage.removeItem('token')
         localStorage.removeItem('account')
-        await checkLogin(sign)
+        await checkLogin(await getFreshSign())
       }
       this.loadAccount = true
     },

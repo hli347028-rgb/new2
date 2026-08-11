@@ -77,7 +77,7 @@ const copyToClipboard = (text: string) => {
   copy(text);
   showToast({
     message: lang("地址已复制到剪贴板"),
-    position: 'center',
+    position: 'middle',
     duration: 2000,
   });
 }

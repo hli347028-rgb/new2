@@ -125,7 +125,7 @@ const getAmountList = async (page: number = 1) => {
 const handleAllAmount = () => {
   const max = Number(aixBalance.value)
   if (!Number.isFinite(max) || max <= 0) {
-    showToast({ message: $t('withdraw.insufficientBalance'), position: 'center' })
+    showToast({ message: $t('withdraw.insufficientBalance'), position: 'middle' })
     return
   }
   amountAix.value = String(max)
@@ -150,18 +150,18 @@ const handleWithdrawal = async () => {
   const amount = Number(amountAix.value)
   const maxBal = Number(aixBalance.value)
   if (!Number.isFinite(amount) || amount <= 0) {
-    showToast({ message: $t('withdraw.enterAmount'), position: 'center' })
+    showToast({ message: $t('withdraw.enterAmount'), position: 'middle' })
     return
   }
   if (!Number.isFinite(maxBal) || maxBal <= 0) {
     showToast({
       message: $t('withdraw.insufficientHint'),
-      position: 'center',
+      position: 'middle',
     })
     return
   }
   if (amount > maxBal) {
-    showToast({ message: $t('withdraw.insufficientBalance'), position: 'center' })
+    showToast({ message: $t('withdraw.insufficientBalance'), position: 'middle' })
     return
   }
   loading.value = true
@@ -173,7 +173,7 @@ const handleWithdrawal = async () => {
     if (res.status === 'ok') {
       showToast({
         message: $t('withdraw.submittedProcessing'),
-        position: 'center',
+        position: 'middle',
         duration: 2000,
       })
       amountAix.value = ''
@@ -182,13 +182,13 @@ const handleWithdrawal = async () => {
     } else {
       showToast({
         message: res.message || $t('common.operationFailed'),
-        position: 'center',
+        position: 'middle',
         duration: 2000,
       })
     }
   } catch (e: any) {
     const msg = e?.response?.data?.message || (typeof e === 'string' ? e : '') || $t('common.operationFailed')
-    showToast({ message: msg, position: 'center', duration: 2000 })
+    showToast({ message: msg, position: 'middle', duration: 2000 })
   } finally {
     loading.value = false
   }

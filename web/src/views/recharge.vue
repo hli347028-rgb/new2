@@ -5,7 +5,10 @@
     <div class="withdraw-info">
       <p class="withdraw-balance">充值余额: {{ userinfo.usdt || 0.0000 }}</p>
       <!-- <p class="withdraw-balance">BRC20: {{ userinfo.rawNew || 0.0000 }}</p> -->
-      <button class="withdraw-btn" @click="showWithdraw"><van-icon name="balance-pay" />{{ $t('recharge.recharge') }}</button>
+      <div class="withdraw-actions">
+        <button class="withdraw-btn" @click="showWithdraw"><van-icon name="balance-pay" />{{ $t('recharge.recharge') }}</button>
+        <button class="withdraw-btn" @click="router.push('/transfer')"><van-icon name="exchange" />划转</button>
+      </div>
     </div>
     <div class="withdraw-tab">
       <ul class="withdraw-tab-title">
@@ -66,11 +69,11 @@ const router = useRouter()
 const person = userPerson();
 const userinfo = $computed(() => person.userinfo);
 const rechargeDialogRef = ref(null)
-const amountList = $ref([])
+let amountList = $ref([])
 const page = $ref(1)
-const allPageCount = $ref(1)
-const usdtBalance = $ref("0");
-const usdtApproved = $ref(false);
+let allPageCount = $ref(1)
+let usdtBalance = $ref("0");
+let usdtApproved = $ref(false);
 
 /* 获取授权 */
 const getUsdtApproved = async () => {
@@ -136,20 +139,34 @@ getAmountList()
 <style lang='scss' scoped>
 @use '@/style/variables.scss' as *;
 
+  .withdraw-page {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
   .page-main {
+    height: 100%;
+    min-height: 0;
     padding: 100px 15px 0 15px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+
     .withdraw-info {
+      flex: 0 0 auto;
       width: 100%;
       aspect-ratio: 694 / 310;
       background: url('@/assets/images/boxbg3.png') no-repeat center;
       background-size: cover;
       box-sizing: border-box;
-      padding: 20px;
+      padding:30px 20px;
       display: flex;
       margin-bottom: 20px;
       flex-direction: column;
       gap: 10px;
       align-items: flex-start;
+      justify-content: space-around;
       .withdraw-balance {
         font-size: 16px;
         color: $text-primary;
@@ -158,11 +175,16 @@ getAmountList()
         font-size: 16px;
         color: $text-primary;
       }
+      .withdraw-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        // margin-top: 10px;
+      }
       .withdraw-btn {
         padding: 0 20px;
         display: inline-flex;
         height: 36px;
-        margin-top: 10px;
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid $border-color;
         border-radius: 22px;
@@ -186,7 +208,13 @@ getAmountList()
       }
     }
     .withdraw-tab {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+
       .withdraw-tab-title {
+        flex: 0 0 44px;
         height: 44px;
         display: flex;
         gap: 20px;
@@ -238,7 +266,14 @@ getAmountList()
       padding: 50px 0;
     }
     .withdrawal-list {
+      flex: 1 1 auto;
+      min-height: 0;
       padding: 20px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+
       .withdrawal-list-title {
         font-size: 16px;
       }

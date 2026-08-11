@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const raw = axios.create({
-  baseURL: '',
+  baseURL: String(import.meta.env.VITE_API || '').replace(/\/+$/, ''),
   timeout: 30000,
 })
 

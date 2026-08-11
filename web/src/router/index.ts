@@ -15,6 +15,7 @@ import Mine from "@/views/mine.vue";
 const mainRoutes = [
   { path: "/", component: Index },
   { path: "/recharge", component: Recharge },
+  { path: "/transfer", component: () => import("@/views/transfer.vue") },
   { path: "/node", component: Node },
   { path: "/community", component: Community },
   { path: "/wallet", component: Wallet },
@@ -32,7 +33,6 @@ const redirects: Array<{ path: string; redirect: string }> = [
   { path: "/idoDetails", redirect: "/" },
   { path: "/payment", redirect: "/" },
   { path: "/trade", redirect: "/" },
-  { path: "/transfer", redirect: "/" },
   { path: "/contact", redirect: "/" },
   { path: "/address", redirect: "/" },
   { path: "/shop", redirect: "/" },

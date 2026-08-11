@@ -121,7 +121,7 @@ const handleExchange = async () => {
       emits('close')
       const toastCenter = f7.toast.create({
         text: lang('兑换成功'),
-        position: 'center',
+        position: 'middle',
         closeTimeout: 2000,
       });
 
@@ -131,7 +131,7 @@ const handleExchange = async () => {
     if (error.action === 'signMessage') {
       const toastCenter = f7.toast.create({
         text: lang('签名失败'),
-        position: 'center',
+        position: 'middle',
         closeTimeout: 2000,
       });
 

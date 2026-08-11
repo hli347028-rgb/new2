@@ -59,48 +59,52 @@
           <p>{{ userinfo.all || 0 }}</p>
         </div>
       </div>
-      <van-tabs v-model:active="active" scrollable :ellipsis="false" @click-tab="onClickTab">
-        <van-tab v-for="value in menuType" :title="value[1]" :name="value[0]" :key="value[0]">
-          <van-empty v-if="!rewardLoading && rewardList.length === 0" :description="active === '1' ? $t('wallet.noSubscribeRecords') : $t('wallet.noIncomeOfType')" :image="emptyImage" />
-          <div class="income-list" v-else-if="rewardList.length > 0">
-            <div class="income-list-main">
-              <div class="income-list-item" v-for="(item, index) in rewardList" :key="index">
-                <div class="income-list-item-info">
-                  <p>
-                    <template v-if="active === '1'">
-                      {{ item.name || $t('community.subscribe') }}
-                      <span v-if="item.exited != null" style="margin-left:6px;opacity:.7">
-                        {{ item.exited ? $t('node.statusExited') : $t('node.statusActive') }}
-                      </span>
-                    </template>
-                    <template v-else>
-                      {{ item.name || $t('wallet.income') }}
-                      <span v-if="active === '3' && item.num" style="margin-left:6px;opacity:.7">
-                        {{ $t('community.generationNum', { num: item.num }) }}
-                      </span>
-                    </template>
-                  </p>
-                  <p class="income-list-item-time">
-                    <span>{{ item.createdAt }}</span>
-                    <span class="income-list-item-money">{{ item.reward }}</span>
-                  </p>
-                  <p v-if="active === '1' && item.progressAcc != null && item.progressTarget" style="font-size: 12px; opacity: .7;">
-                    {{ $t('wallet.exitProgress') }} {{ item.progressAcc }} / {{ item.progressTarget }}
-                  </p>
-                  <p v-if="item.address" style="font-size: 12px; opacity: .7;">{{ formatShortAddr(item.address) }}</p>
-                </div>
-              </div>
-              <Pagination
-                v-if="allPageCount > 1"
-                v-model="page"
-                :page-count="allPageCount"
-                mode="simple"
-                @change="getRewardList"
-              />
-            </div>
-          </div>
-        </van-tab>
+      <van-tabs v-model:active="active" scrollable :ellipsis="false" @change="onChangeTab">
+        <van-tab v-for="value in menuType" :title="value[1]" :name="value[0]" :key="value[0]" />
       </van-tabs>
+      <div class="records-panel" :aria-busy="rewardLoading">
+        <div v-if="rewardLoading" class="records-loading">
+          <van-loading type="spinner" color="#1597E5" />
+        </div>
+        <van-empty v-else-if="rewardList.length === 0" :description="active === '1' ? $t('wallet.noSubscribeRecords') : $t('wallet.noIncomeOfType')" :image="emptyImage" />
+        <div class="income-list" v-else>
+          <div class="income-list-main">
+            <div class="income-list-item" v-for="(item, index) in rewardList" :key="item.id || `${active}-${page}-${index}`">
+              <div class="income-list-item-info">
+                <p>
+                  <template v-if="active === '1'">
+                    {{ item.name || $t('community.subscribe') }}
+                    <span v-if="item.exited != null" style="margin-left:6px;opacity:.7">
+                      {{ item.exited ? $t('node.statusExited') : $t('node.statusActive') }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    {{ item.name || $t('wallet.income') }}
+                    <span v-if="active === '3' && item.num" style="margin-left:6px;opacity:.7">
+                      {{ $t('community.generationNum', { num: item.num }) }}
+                    </span>
+                  </template>
+                </p>
+                <p class="income-list-item-time">
+                  <span>{{ item.createdAt }}</span>
+                  <span class="income-list-item-money">{{ item.reward }}</span>
+                </p>
+                <p v-if="active === '1' && item.progressAcc != null && item.progressTarget" style="font-size: 12px; opacity: .7;">
+                  {{ $t('wallet.exitProgress') }} {{ item.progressAcc }} / {{ item.progressTarget }}
+                </p>
+                <p v-if="item.address" style="font-size: 12px; opacity: .7;">{{ formatShortAddr(item.address) }}</p>
+              </div>
+            </div>
+            <Pagination
+              v-if="allPageCount > 1"
+              v-model="page"
+              :page-count="allPageCount"
+              mode="simple"
+              @change="getRewardList"
+            />
+          </div>
+        </div>
+      </div>
     </div>
     <div class="tab-content" v-if="tab === 2">
       <van-empty v-if="treeData.length === 0" :description="$t('wallet.noDirectReferral')" :image="emptyImage" />
@@ -130,11 +134,12 @@ const person = userPerson();
 const userinfo = $computed(() => person.userinfo);
 const address = $computed(() => person.address);
 
-const active = $ref('1')
+let active = $ref('1')
 let page = $ref(1);
 let allPageCount = $ref(1);
 let rewardList = $ref([]);
 let rewardLoading = $ref(false)
+let rewardRequestId = 0
 const tab = $ref(1)
 
 const menuType = computed(() => [
@@ -152,13 +157,16 @@ const formatShortAddr = (value) => {
   return `${value.slice(0, 6)}...${value.slice(-4)}`
 }
 
-const getRewardList = async (pageNum = 1) => {
+const getRewardList = async (pageNum = 1, reqType = active) => {
+  const requestId = ++rewardRequestId
+  const requestedType = String(reqType)
   rewardLoading = true
   try {
-    if (active === '1') {
+    if (requestedType === '1') {
       const res = await request.get("app_server/order_list", {
         params: { page: pageNum }
       });
+      if (requestId !== rewardRequestId || requestedType !== active) return
       const count = Number(res?.count || 0)
       allPageCount = Math.max(1, Math.ceil(count / 10));
       rewardList = (res?.list || []).map((item) => {
@@ -181,18 +189,20 @@ const getRewardList = async (pageNum = 1) => {
     const res = await request.get("app_server/reward_list", {
       params: {
         page: pageNum,
-        reqType: active
+        reqType: requestedType
       }
     });
+    if (requestId !== rewardRequestId || requestedType !== active) return
     const count = Number(res?.count || 0)
     allPageCount = Math.max(1, Math.ceil(count / 10));
     rewardList = res?.list || []
     page = pageNum
   } catch {
+    if (requestId !== rewardRequestId || requestedType !== active) return
     rewardList = []
     allPageCount = 1
   } finally {
-    rewardLoading = false
+    if (requestId === rewardRequestId) rewardLoading = false
   }
 }
 
@@ -262,7 +272,7 @@ const getUserArea = async () => {
 }
 
 watch(locale, () => {
-  getRewardList(page)
+  getRewardList(page, active)
   getUserArea()
 })
 
@@ -272,11 +282,12 @@ onMounted(async () => {
   getUserArea()
 })
 
-const onClickTab = (tabItem) => {
-  rewardList = []
-  active = tabItem.name;
+const onChangeTab = (name) => {
+  active = String(name)
   page = 1
-  getRewardList(1)
+  allPageCount = 1
+  rewardList = []
+  getRewardList(1, active)
 }
 
 const handleBack = () => {
@@ -403,6 +414,26 @@ const handleBack = () => {
         overflow: visible;
         white-space: nowrap;
       }
+      :deep(.van-tabs__content) {
+        display: none;
+      }
+      .records-panel {
+        height: clamp(260px, 45vh, 420px);
+        position: relative;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+      }
+      .records-loading {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .records-panel > :deep(.van-empty) {
+        min-height: 100%;
+        box-sizing: border-box;
+      }
       .pledge {
         background: #0B1824;
         border-radius: 18px;
@@ -516,9 +547,6 @@ const handleBack = () => {
           }
         }
       }
-      /deep/ .van-tab__panel {
-        padding: 20px 0;
-      }
     }
     .income-box {
       display: flex;
@@ -584,6 +612,7 @@ const handleBack = () => {
       }
     }
     .income-list {
+      min-height: 100%;
       overflow: hidden;
       .list-menu-select {
         width: 100%;

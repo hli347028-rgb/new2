@@ -54,7 +54,7 @@ const copyToClipboard = (text: string) => {
 
   const toastCenter = f7.toast.create({
     text: lang("内容已复制到剪贴板"),
-    position: 'center',
+    position: 'middle',
     closeTimeout: 2000,
   });
     // Open it

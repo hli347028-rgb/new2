@@ -189,7 +189,7 @@ const copyToClipboard = (text: string) => {
   copy(`${window.location.origin}?code=${text}`);
   showToast({
     message: lang("内容已复制到剪贴板"),
-    position: 'center',
+    position: 'middle',
     duration: 2000,
   });
 }

@@ -253,32 +253,33 @@ onMounted(async () => {
   margin-bottom: 20px;
 
   .mode-tabs {
-    display: flex;
-    width: 220px;
+    width: 100%;
+    height: 40px;
     box-sizing: border-box;
-    margin: 0 auto;
-    padding: 0;
+    margin: 0 auto 18px;
+    padding: 3px;
+    border: 1px solid $border-color;
+    border-radius: $radius-md;
+    background: rgba(3, 10, 17, 0.72);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .mode-option {
     position: relative;
     display: flex;
-    flex: 1;
+    min-width: 0;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    min-height: 34px;
+    height: 100%;
     box-sizing: border-box;
-    padding: 4px 10px;
+    padding: 0 10px;
     background: transparent;
     border: 0;
-    color: rgba(244, 250, 255, 0.78);
+    border-radius: $radius-sm;
+    color: $text-muted;
     cursor: pointer;
-    transition: color $transition-fast;
-
-    & + .mode-option {
-      border-left: 1px solid rgba(143, 223, 255, 0.38);
-    }
+    transition: background $transition-fast, color $transition-fast;
 
     input {
       position: absolute;
@@ -289,44 +290,24 @@ onMounted(async () => {
     }
 
     strong {
-      font-size: 12px;
-      font-weight: 600;
+      min-width: 0;
+      font-size: 13px;
+      font-weight: 400;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .radio-dot {
-      position: relative;
-      flex: 0 0 auto;
-      width: 13px;
-      height: 13px;
-      box-sizing: border-box;
-      border: 1px solid rgba(200, 220, 236, 0.72);
-      border-radius: 50%;
-      transition: all $transition-fast;
-
-      &::after {
-        content: '';
-        position: absolute;
-        inset: 3px;
-        background: $brand-primary;
-        border-radius: 50%;
-        opacity: 0;
-        transform: scale(0.35);
-        transition: all $transition-fast;
-      }
+      display: none;
     }
 
     &.active {
-      color: #fff;
+      background: $gradient-primary;
+      color: $text-inverse;
 
-      .radio-dot {
-        border-color: $brand-primary;
-        background: transparent;
-        box-shadow: 0 0 5px rgba(33, 182, 234, 0.3);
-
-        &::after {
-          opacity: 1;
-          transform: scale(1);
-        }
+      strong {
+        font-weight: 600;
       }
     }
 

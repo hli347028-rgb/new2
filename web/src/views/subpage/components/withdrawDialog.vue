@@ -102,13 +102,13 @@ const handleWithdrawal = async () => {
       props.onChange()
       showToast({
         message: lang('withdraw.submittedProcessing'),
-        position: 'center',
+        position: 'middle',
         duration: 2000,
       });
     } else {
       showToast({
         message: res.status || lang('withdraw.failed'),
-        position: 'center',
+        position: 'middle',
         duration: 2000,
       });
 		}
@@ -116,7 +116,7 @@ const handleWithdrawal = async () => {
     loading = false
     showToast({
       message: lang('withdraw.failed'),
-      position: 'center',
+      position: 'middle',
       duration: 2000,
     });
   })

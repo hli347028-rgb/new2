@@ -483,7 +483,7 @@ onMounted(() => {
 
           &:last-child {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.8);
           }
         }
       }
