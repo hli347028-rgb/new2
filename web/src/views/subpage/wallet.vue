@@ -22,10 +22,6 @@
           <p>{{ $t('wallet.aixBalance') }}</p>
           <div class="price-value-action">
             <p>{{ profile.aix_balance || userinfo.amountGet || 0 }}</p>
-            <button type="button" class="exchange-entry" @click="router.push('/exchange')">
-              {{ $t('wallet.exchange') }}
-              <van-icon name="arrow" />
-            </button>
           </div>
         </div>
         <div class="price-item">
@@ -33,6 +29,16 @@
           <p>{{ profile.win_balance || 0 }}</p>
         </div>
       </div>
+    </div>
+    <div class="wallet-actions">
+      <button type="button" class="wallet-action" @click="router.push('/exchange')">
+        <van-icon name="exchange" />
+        <span>{{ $t('wallet.exchange') }}</span>
+      </button>
+      <button type="button" class="wallet-action" @click="router.push('/withdrawal')">
+        <van-icon name="balance-pay" />
+        <span>{{ $t('withdraw.title') }}</span>
+      </button>
     </div>
     <ul class="wallet-tab">
       <li :class="tab === 1 ? 'active' : ''" @click="tab = 1">{{ $t('wallet.myIncome') }}</li>
@@ -418,6 +424,41 @@ const handleBack = () => {
           &.price-item-action {
             grid-template-columns: 72px minmax(0, 1fr);
           }
+        }
+      }
+    }
+    .wallet-actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+
+      .wallet-action {
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        box-sizing: border-box;
+        border: 1px solid rgba(52, 174, 247, .42);
+        border-radius: 20px;
+        color: #b9e5ff;
+        background: rgba(8, 123, 193, .18);
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1;
+        cursor: pointer;
+        transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+
+        .van-icon {
+          color: #39b7ff;
+          font-size: 16px;
+        }
+
+        &:active {
+          border-color: rgba(52, 174, 247, .7);
+          background: rgba(8, 123, 193, .4);
+          transform: scale(.98);
         }
       }
     }

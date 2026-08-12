@@ -4,37 +4,44 @@
 
     <div class="content">
       <div class="page-header">
-        <h1 class="page-title">{{ $t('withdraw.title') }}</h1>
-        <p class="page-subtitle">AIX {{ $t('withdraw.title') }}</p>
-        <p class="page-balance">{{ $t('withdraw.availableBalance') }}: {{ aixBalance }} AIX</p>
+        <h1 class="page-title">{{ $t('withdraw.winSubtitle') }}</h1>
+        <p class="page-balance">{{ $t('withdraw.availableBalance') }}: {{ displayAmount(winBalance) }} WIN</p>
+        <p class="page-hint">
+          {{ $t('withdraw.aixExchangeHint') }}
+          <button type="button" class="link-btn" @click="router.push('/exchange')">{{ $t('wallet.exchange') }}</button>
+        </p>
       </div>
 
       <div class="withdraw-form">
         <div class="form-hint-row">
           <p class="form-hint">{{ $t('withdraw.amount') }}</p>
-          <button type="button" class="all-btn" @click="handleAllAmount()">
+          <button type="button" class="all-btn" @click="handleAllAmount">
             {{ $t('withdraw.all') }}
           </button>
         </div>
         <div class="form-row">
           <input
             class="form-input"
-            v-model="amountAix"
-            @input="checkAixAmount"
+            v-model="amountWin"
+            @input="checkWinAmount"
             type="text"
             inputmode="decimal"
             :placeholder="$t('withdraw.enterAmount')"
           />
-          <button
-            class="subscribe-btn custom-btn"
-            :disabled="!amountAix || loading"
-            @click="handleWithdrawal()"
-          >
-            {{ loading ? $t('withdraw.processing') : $t('withdraw.confirm') }}
-          </button>
+          <span class="asset-tag">WIN</span>
         </div>
+        <p v-if="amountError" class="error-text">{{ amountError }}</p>
+
+        <button
+          class="subscribe-btn custom-btn"
+          :disabled="!canSubmit || loading"
+          @click="handleWithdrawal"
+        >
+          {{ loading ? $t('withdraw.processing') : $t('withdraw.confirm') }}
+        </button>
+
         <div class="form-info">
-          <p>{{ $t('withdraw.fee') }}: 0 AIX</p>
+          <p>{{ $t('withdraw.fee') }}: 0 WIN</p>
         </div>
       </div>
 
@@ -45,32 +52,29 @@
         </div>
 
         <div class="table-card">
-          <div class="table-header table-header-3">
+          <div class="table-header table-header-4">
             <span>{{ $t('node.amount') }}</span>
             <span>{{ $t('withdraw.received') }}</span>
+            <span>{{ $t('withdraw.toAddressShort') }}</span>
             <span>{{ $t('withdraw.status') }}</span>
           </div>
-          <div class="order-list" v-for="(item, index) in amountList" :key="index">
-            <div class="table-row table-row-3">
-              <span>{{ item.amount }}</span>
-              <span>{{ item.relAmount || '-' }}</span>
+          <div class="order-list" v-for="item in amountList" :key="item.id">
+            <div class="table-row table-row-4">
+              <span>{{ displayAmount(item.amount) }} WIN</span>
+              <span>{{ displayAmount(item.net_amount) }} WIN</span>
+              <span class="address-cell">{{ formatAddress(item.to_address) }}</span>
               <span class="status-cell">
                 {{ withdrawStatusText(item.status) }}
                 <small v-if="item.tx_hash" class="tx-hint">{{ String(item.tx_hash).slice(0, 10) }}…</small>
-                <small class="muted">{{ item.createdAt }}</small>
+                <small class="muted">{{ formatTime(item.created_at) }}</small>
               </span>
             </div>
           </div>
-          <div class="empty-state" v-if="amountList.length === 0">
+          <div class="empty-state" v-if="!recordLoading && amountList.length === 0">
             <p>{{ $t('withdraw.noRecords') }}</p>
           </div>
-          <div class="pagination-wrapper" v-if="amountList.length > 0 && allPageCount > 1">
-            <Pagination
-              v-model="allPage"
-              :page-count="allPageCount"
-              mode="simple"
-              @change="getAmountList"
-            />
+          <div class="state-box" v-if="recordLoading">
+            <van-loading color="#1597e5" />
           </div>
         </div>
       </div>
@@ -81,125 +85,165 @@
 <script setup lang="ts">
 import Header from '@/components/Header.vue'
 import userPerson from '@/pinia/person'
-import request from '@/tools/request'
-import { Pagination, showToast } from 'vant'
-import { ref, computed, onMounted } from 'vue'
+import { getWinWithdrawRecords, withdrawWin } from '@/api/aix'
+import type { WinWithdrawRecord } from '@/api/aix'
+import { compareDecimals, displayDecimal, isPositiveDecimal } from '@/tools/decimal'
+import { showToast } from 'vant'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const { t: $t } = useI18n()
 const person = userPerson()
-const aixBalance = computed(() => String(person.profile?.aix_balance || '0'))
 
-const allPage = ref(1)
-const allPageCount = ref(1)
-const amountAix = ref('')
+const amountWin = ref('')
 const loading = ref(false)
-const amountList = ref<any[]>([])
+const recordLoading = ref(false)
+const amountList = ref<WinWithdrawRecord[]>([])
+const pollTimer = ref<ReturnType<typeof setInterval> | null>(null)
+
+const hasPendingRecords = computed(() => amountList.value.some((item) => item.status === 'pending'))
+
+const winBalance = computed(() => String(person.profile?.win_balance || '0'))
+
+const amountError = computed(() => {
+  if (!amountWin.value) return ''
+  if (!isPositiveDecimal(amountWin.value)) return $t('withdraw.enterAmount')
+  if (compareDecimals(amountWin.value, winBalance.value) > 0) return $t('withdraw.insufficientWin')
+  return ''
+})
+
+const canSubmit = computed(() => Boolean(amountWin.value) && !amountError.value)
 
 const withdrawStatusText = (status: string) => {
   switch (status) {
-    case 'pending': return $t('withdraw.statusPendingReview')
-    case 'rewarded':
-    case 'approved': return $t('withdraw.statusPaying')
-    case 'doing': return $t('withdraw.statusPaying')
-    case 'pass': return $t('withdraw.statusReceived')
-    case 'rejected': return $t('withdraw.statusRejected')
-    case 'cancelled': return $t('withdraw.statusCancelled')
+    case 'pending': return $t('withdraw.statusPending')
+    case 'completed': return $t('withdraw.statusCompleted')
+    case 'failed': return $t('withdraw.statusFailed')
     default: return status || '-'
   }
 }
 
-const getAmountList = async (page: number = 1) => {
+const displayAmount = (value: unknown) => displayDecimal(value)
+
+const formatAddress = (value?: string) => {
+  if (!value) return '-'
+  return value.length > 14 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value
+}
+
+const formatTime = (value: number) => {
+  const date = new Date(Number(value) * 1000)
+  if (Number.isNaN(date.getTime())) return ''
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+const getAmountList = async () => {
+  recordLoading.value = true
   try {
-    const res: any = await request.get('app_server/withdraw_list', {
-      params: { page }
-    })
-    allPageCount.value = Math.max(1, Math.ceil(Number(res.count || 0) / 10))
-    amountList.value = res.list || []
-    allPage.value = page
+    const result = await getWinWithdrawRecords()
+    amountList.value = result?.records || []
+    syncWithdrawPolling()
   } catch {
     amountList.value = []
+    stopWithdrawPolling()
+  } finally {
+    recordLoading.value = false
   }
+}
+
+const stopWithdrawPolling = () => {
+  if (!pollTimer.value) return
+  clearInterval(pollTimer.value)
+  pollTimer.value = null
+}
+
+const syncWithdrawPolling = () => {
+  if (!hasPendingRecords.value) {
+    stopWithdrawPolling()
+    return
+  }
+  if (pollTimer.value) return
+  pollTimer.value = setInterval(async () => {
+    try {
+      const result = await getWinWithdrawRecords()
+      amountList.value = result?.records || []
+      await person.refreshProfile?.()
+      if (!amountList.value.some((item) => item.status === 'pending')) {
+        stopWithdrawPolling()
+      }
+    } catch {
+      stopWithdrawPolling()
+    }
+  }, 10000)
 }
 
 const handleAllAmount = () => {
-  const max = Number(aixBalance.value)
-  if (!Number.isFinite(max) || max <= 0) {
-    showToast({ message: $t('withdraw.insufficientBalance'), position: 'middle' })
+  if (!isPositiveDecimal(winBalance.value)) {
+    showToast({ message: $t('withdraw.insufficientWin'), position: 'middle' })
     return
   }
-  amountAix.value = String(max)
+  amountWin.value = winBalance.value
 }
 
-const checkAixAmount = (e: any) => {
-  // 仅规范化数字格式，不按可提余额钳制输入（超额在提交时由前端/后端校验）
-  let raw = String(e?.target?.value ?? amountAix.value ?? '')
+const checkWinAmount = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  let raw = String(target?.value ?? amountWin.value ?? '')
   raw = raw.replace(/[^\d.]/g, '')
   const parts = raw.split('.')
-  if (parts.length > 2) {
-    raw = parts[0] + '.' + parts.slice(1).join('')
-  }
-  if (parts[1] != null && parts[1].length > 8) {
-    raw = parts[0] + '.' + parts[1].slice(0, 8)
-  }
-  amountAix.value = raw
+  if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('')
+  if (parts[1] != null && parts[1].length > 18) raw = parts[0] + '.' + parts[1].slice(0, 18)
+  amountWin.value = raw
 }
 
 const handleWithdrawal = async () => {
-  if (loading.value) return
-  const amount = Number(amountAix.value)
-  const maxBal = Number(aixBalance.value)
-  if (!Number.isFinite(amount) || amount <= 0) {
-    showToast({ message: $t('withdraw.enterAmount'), position: 'middle' })
-    return
-  }
-  if (!Number.isFinite(maxBal) || maxBal <= 0) {
-    showToast({
-      message: $t('withdraw.insufficientHint'),
-      position: 'middle',
-    })
-    return
-  }
-  if (amount > maxBal) {
-    showToast({ message: $t('withdraw.insufficientBalance'), position: 'middle' })
-    return
-  }
+  if (loading.value || !canSubmit.value) return
   loading.value = true
   try {
-    const res: any = await request.post('app_server/withdraw', {
-      amount: String(amount),
-      nosuccess: true,
-    })
-    if (res.status === 'ok') {
-      showToast({
-        message: $t('withdraw.submittedProcessing'),
-        position: 'middle',
-        duration: 2000,
-      })
-      amountAix.value = ''
-      await person.refreshProfile?.()
-      await getAmountList(1)
-    } else {
-      showToast({
-        message: res.message || $t('common.operationFailed'),
-        position: 'middle',
-        duration: 2000,
-      })
+    const result = await withdrawWin(amountWin.value)
+    person.profile = {
+      ...person.profile,
+      win_balance: result.win_balance,
     }
-  } catch (e: any) {
-    const msg = e?.response?.data?.message || (typeof e === 'string' ? e : '') || $t('common.operationFailed')
-    showToast({ message: msg, position: 'middle', duration: 2000 })
+    showToast({
+      message: $t('withdraw.submittedProcessing'),
+      position: 'middle',
+      duration: 2000,
+    })
+    amountWin.value = ''
+    await Promise.allSettled([person.refreshProfile?.(), getAmountList()])
+    syncWithdrawPolling()
+  } catch (error: any) {
+    const code = error?.response?.data?.reason || error?.response?.data?.code
+    const messageKey: Record<string, string> = {
+      INVALID_AMOUNT: 'withdraw.enterAmount',
+      INSUFFICIENT_WIN: 'withdraw.insufficientWin',
+      INVALID_ADDRESS: 'withdraw.invalidAddress',
+      AIX_WITHDRAW_FORBIDDEN: 'withdraw.aixExchangeHint',
+    }
+    showToast({
+      message: messageKey[code]
+        ? $t(messageKey[code])
+        : (error?.response?.data?.message || $t('withdraw.failed')),
+      position: 'middle',
+      duration: 2000,
+    })
   } finally {
     loading.value = false
   }
 }
 
 onMounted(async () => {
-  await Promise.all([
+  await Promise.allSettled([
     person.getUser?.(),
     person.refreshProfile?.(),
     getAmountList(),
   ])
+})
+
+onUnmounted(() => {
+  stopWithdrawPolling()
 })
 </script>
 
@@ -237,6 +281,22 @@ onMounted(async () => {
     font-size: 14px;
     color: $brand-primary;
     margin-top: 8px;
+  }
+
+  .page-hint {
+    margin: 10px 0 0;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.6;
+  }
+
+  .link-btn {
+    margin-left: 4px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: $brand-primary;
+    cursor: pointer;
   }
 }
 
@@ -294,6 +354,18 @@ onMounted(async () => {
     }
   }
 
+  .asset-tag {
+    flex-shrink: 0;
+    color: #8ed5ff;
+    font-weight: 600;
+  }
+
+  .error-text {
+    margin: 8px 0 0;
+    color: #f17b7b;
+    font-size: 12px;
+  }
+
   .form-info {
     margin-top: 12px;
     display: flex;
@@ -309,6 +381,8 @@ onMounted(async () => {
 }
 
 .subscribe-btn {
+  width: 100%;
+  margin-top: 18px;
   padding: 8px 20px;
   background: $gradient-primary;
   color: $text-inverse;
@@ -318,7 +392,6 @@ onMounted(async () => {
   font-weight: 400;
   cursor: pointer;
   transition: all 0.3s ease;
-  width: 100%;
 
   &:hover:not(:disabled) {
     background: linear-gradient(135deg, $brand-primary-light 0%, $brand-primary 100%);
@@ -331,14 +404,6 @@ onMounted(async () => {
     cursor: not-allowed;
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.5);
-  }
-
-  &.custom-btn {
-    flex-shrink: 0;
-    min-width: 120px;
-    width: auto;
-    height: 44px;
-    padding: 0 20px;
   }
 }
 
@@ -411,10 +476,15 @@ onMounted(async () => {
       span {
         flex: 1;
         text-align: center;
-        font-size: 14px;
+        font-size: 13px;
         color: $text-primary;
       }
     }
+  }
+
+  .address-cell {
+    font-size: 11px !important;
+    color: $text-muted !important;
   }
 
   .status-cell {
@@ -426,21 +496,6 @@ onMounted(async () => {
     .tx-hint {
       font-size: 10px;
       color: $text-muted;
-    }
-  }
-
-  .cancel-btn {
-    padding: 4px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 6px;
-    background: transparent;
-    color: #fff;
-    font-size: 12px;
-    cursor: pointer;
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
     }
   }
 
@@ -463,9 +518,10 @@ onMounted(async () => {
     }
   }
 
-  .pagination-wrapper {
-    padding: 16px 0;
+  .state-box {
+    height: 120px;
     display: flex;
+    align-items: center;
     justify-content: center;
   }
 }
