@@ -295,7 +295,13 @@ export default {
     noDirectReferral: '직추가 없습니다',
     income: '수익',
     exitProgress: '아웃 진행', rechargeBalance: '충전 잔액', rewardBalance: '보상 잔액',
-    withdrawableAix: '출금 가능 AIX', directReferralReward: '직접 추천 보상', managementReward: '관리 보상', releasedManagementReward: '지급된 관리 보상', pendingManagementReward: '대기 중인 관리 보상', totalIncome: '누적 수익'
+    withdrawableAix: '출금 가능 AIX', aixBalance: 'AIX 잔액', winBalance: 'WIN 잔액', exchange: '교환', directReferralReward: '직접 추천 보상', managementReward: '관리 보상', releasedManagementReward: '지급된 관리 보상', pendingManagementReward: '대기 중인 관리 보상', totalIncome: '누적 수익'
+  },
+  exchange: {
+    title: 'AIX를 WIN으로 교환', availableAix: '사용 가능 AIX', currentWin: 'WIN 잔액', exchangeAmount: '교환 수량', all: '전체',
+    currentPrice: '현재 교환 가격', priceUnavailable: '교환 가격이 설정되지 않았습니다', rateHint: '최종 수령 수량은 교환 완료 시점의 가격을 기준으로 합니다.',
+    positiveAmount: '수량은 0보다 커야 합니다', insufficientAix: 'AIX 잔액이 부족합니다', processing: '교환 중...', confirm: '교환 확인',
+    records: '교환 내역', noRecords: '교환 내역이 없습니다', priceShort: '가격', success: '교환 완료: {amount} WIN 수령', failed: '교환에 실패했습니다. 다시 시도하세요'
   },
   payment: {
     walletNumber: '지갑 {number}', walletTransfer: '지갑 이체', copy: '복사', from: '보내는 곳', to: '받는 곳',

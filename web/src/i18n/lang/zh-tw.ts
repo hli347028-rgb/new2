@@ -295,8 +295,14 @@ export default {
     noDirectReferral: '暫無直推',
     income: '收益',
     exitProgress: '出局進度', rechargeBalance: '充值餘額', rewardBalance: '獎勵餘額',
-    withdrawableAix: '可提 AIX', directReferralReward: '直推獎勵',
+    withdrawableAix: '可提 AIX', aixBalance: 'AIX 餘額', winBalance: 'WIN 餘額', exchange: '兌換', directReferralReward: '直推獎勵',
     managementReward: '管理獎', releasedManagementReward: '已釋放管理獎', pendingManagementReward: '待釋放管理獎', totalIncome: '累計收益'
+  },
+  exchange: {
+    title: 'AIX 兌換 WIN', availableAix: '可用 AIX', currentWin: 'WIN 餘額', exchangeAmount: '兌換數量', all: '全部',
+    currentPrice: '當前兌換價', priceUnavailable: '兌換價格暫未配置', rateHint: '實際到賬數量以兌換完成時的價格為準。',
+    positiveAmount: '兌換數量必須大於 0', insufficientAix: 'AIX 餘額不足', processing: '兌換中...', confirm: '確認兌換',
+    records: '兌換記錄', noRecords: '暫無兌換記錄', priceShort: '價格', success: '兌換成功，獲得 {amount} WIN', failed: '兌換失敗，請稍後重試'
   },
   payment: {
     walletNumber: '錢包 {number}', walletTransfer: '錢包轉賬', copy: '複製', from: '從', to: '到',

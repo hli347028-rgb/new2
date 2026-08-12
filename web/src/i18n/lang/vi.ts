@@ -295,7 +295,13 @@ export default {
     noDirectReferral: 'Chưa có giới thiệu trực tiếp',
     income: 'Thu nhập',
     exitProgress: 'Tiến độ thoát', rechargeBalance: 'Số dư nạp', rewardBalance: 'Số dư thưởng',
-    withdrawableAix: 'AIX có thể rút', directReferralReward: 'Thưởng giới thiệu trực tiếp', managementReward: 'Thưởng quản lý', releasedManagementReward: 'Thưởng quản lý đã phát hành', pendingManagementReward: 'Thưởng quản lý đang chờ', totalIncome: 'Tổng thu nhập'
+    withdrawableAix: 'AIX có thể rút', aixBalance: 'Số dư AIX', winBalance: 'Số dư WIN', exchange: 'Đổi', directReferralReward: 'Thưởng giới thiệu trực tiếp', managementReward: 'Thưởng quản lý', releasedManagementReward: 'Thưởng quản lý đã phát hành', pendingManagementReward: 'Thưởng quản lý đang chờ', totalIncome: 'Tổng thu nhập'
+  },
+  exchange: {
+    title: 'Đổi AIX sang WIN', availableAix: 'AIX khả dụng', currentWin: 'Số dư WIN', exchangeAmount: 'Số lượng đổi', all: 'Tất cả',
+    currentPrice: 'Giá hiện tại', priceUnavailable: 'Giá đổi chưa được cấu hình', rateHint: 'Số lượng thực nhận dựa trên giá tại thời điểm hoàn tất.',
+    positiveAmount: 'Số lượng phải lớn hơn 0', insufficientAix: 'Số dư AIX không đủ', processing: 'Đang đổi...', confirm: 'Xác nhận đổi',
+    records: 'Lịch sử đổi', noRecords: 'Chưa có lịch sử đổi', priceShort: 'Giá', success: 'Đổi thành công, nhận {amount} WIN', failed: 'Đổi thất bại. Vui lòng thử lại'
   },
   payment: {
     walletNumber: 'Ví {number}', walletTransfer: 'Chuyển ví', copy: 'Sao chép', from: 'Từ', to: 'Đến',

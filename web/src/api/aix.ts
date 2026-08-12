@@ -48,6 +48,39 @@ export function getAixBalance() {
   return get('/v1/wallet/balance')
 }
 
+export interface AixWinExchangeResult {
+  record_id: number
+  from_asset: 'AIX'
+  from_amount: string
+  to_asset: 'WIN'
+  to_amount: string
+  exchange_price: string
+  status: 'completed'
+  aix_balance: string
+  win_balance: string
+  created_at: number
+}
+
+export interface AixWinExchangeRecord {
+  id: number
+  from_asset: 'AIX'
+  from_amount: string
+  to_asset: 'WIN'
+  to_amount: string
+  exchange_price: string
+  status: string
+  remark: string
+  created_at: number
+}
+
+export function exchangeAixToWin(aixAmount: string) {
+  return post<AixWinExchangeResult>('/v1/wallet/exchange-aix-to-win', { aix_amount: aixAmount })
+}
+
+export function getAixWinExchangeRecords() {
+  return get<{ records: AixWinExchangeRecord[] }>('/v1/wallet/exchange-records')
+}
+
 export function subscribeAix(amount: string, payFrom: 'recharge' | 'reward') {
   return post('/v1/wallet/subscribe-aix', { amount, pay_from: payFrom })
 }

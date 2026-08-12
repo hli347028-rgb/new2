@@ -296,8 +296,14 @@ export default {
     noDirectReferral: 'No direct referrals',
     income: 'Income',
     exitProgress: 'Exit Progress', rechargeBalance: 'Recharge Balance', rewardBalance: 'Reward Balance',
-    withdrawableAix: 'Withdrawable AIX', directReferralReward: 'Direct Referral Reward',
+    withdrawableAix: 'Withdrawable AIX', aixBalance: 'AIX Balance', winBalance: 'WIN Balance', exchange: 'Exchange', directReferralReward: 'Direct Referral Reward',
     managementReward: 'Management Reward', releasedManagementReward: 'Released Management Reward', pendingManagementReward: 'Pending Management Reward', totalIncome: 'Total Income'
+  },
+  exchange: {
+    title: 'Exchange AIX to WIN', availableAix: 'Available AIX', currentWin: 'WIN Balance', exchangeAmount: 'Exchange Amount', all: 'All',
+    currentPrice: 'Current Rate', priceUnavailable: 'Exchange price is unavailable', rateHint: 'The final amount is based on the price when the exchange completes.',
+    positiveAmount: 'Amount must be greater than 0', insufficientAix: 'Insufficient AIX balance', processing: 'Exchanging...', confirm: 'Confirm Exchange',
+    records: 'Exchange Records', noRecords: 'No exchange records', priceShort: 'Price', success: 'Exchange successful. Received {amount} WIN', failed: 'Exchange failed. Please try again'
   },
   payment: {
     walletNumber: 'Wallet {number}', walletTransfer: 'Wallet Transfer', copy: 'Copy', from: 'From', to: 'To',

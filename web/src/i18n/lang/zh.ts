@@ -295,8 +295,14 @@ export default {
     noDirectReferral: '暂无直推',
     income: '收益',
     exitProgress: '出局进度', rechargeBalance: '充值余额', rewardBalance: '奖励余额',
-    withdrawableAix: '可提 AIX', directReferralReward: '直推奖励',
+    withdrawableAix: '可提 AIX', aixBalance: 'AIX 余额', winBalance: 'WIN 余额', exchange: '兑换', directReferralReward: '直推奖励',
     managementReward: '管理奖', releasedManagementReward: '已释放管理奖', pendingManagementReward: '待释放管理奖', totalIncome: '累计收益'
+  },
+  exchange: {
+    title: 'AIX 兑换 WIN', availableAix: '可用 AIX', currentWin: 'WIN 余额', exchangeAmount: '兑换数量', all: '全部',
+    currentPrice: '当前兑换价', priceUnavailable: '兑换价格暂未配置', rateHint: '实际到账数量以兑换完成时的价格为准。',
+    positiveAmount: '兑换数量必须大于 0', insufficientAix: 'AIX 余额不足', processing: '兑换中...', confirm: '确认兑换',
+    records: '兑换记录', noRecords: '暂无兑换记录', priceShort: '价格', success: '兑换成功，获得 {amount} WIN', failed: '兑换失败，请稍后重试'
   },
   payment: {
     walletNumber: '钱包 {number}', walletTransfer: '钱包转账', copy: '复制', from: '从', to: '到',

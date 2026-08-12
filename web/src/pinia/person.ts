@@ -54,6 +54,8 @@ export default defineStore('person', {
       usdt_recharge: '0',
       usdt_reward: '0',
       aix_balance: '0',
+      win_balance: '0',
+      win_price: 0,
       static_usdt_total: '0',
       pending_amount: '0',
       unexited_amount: '0',
