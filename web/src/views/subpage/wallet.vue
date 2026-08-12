@@ -44,19 +44,19 @@
       <div class="pledge-frame">
         <div class="pledge-frame-item">
           <p>{{ $t('wallet.staticIncome') }}</p>
-          <p>{{ userinfo.location || 0 }}</p>
+          <p>{{ formatFour(userinfo.location) }}</p>
         </div>
         <div class="pledge-frame-item">
           <p>{{ $t('wallet.directReferralReward') }}</p>
-          <p>{{ userinfo.recommend || 0 }}</p>
+          <p>{{ formatFour(userinfo.recommend) }}</p>
         </div>
         <div class="pledge-frame-item">
           <p>{{ $t('wallet.managementReward') }}</p>
-          <p>{{ userinfo.team || 0 }}</p>
+          <p>{{ formatFour(userinfo.team) }}</p>
         </div>
         <div class="pledge-frame-item">
           <p>{{ $t('wallet.totalIncome') }}</p>
-          <p>{{ userinfo.all || 0 }}</p>
+          <p>{{ formatFour(userinfo.all) }}</p>
         </div>
       </div>
       <van-tabs v-model:active="active" scrollable :ellipsis="false" @change="onChangeTab">
@@ -93,6 +93,9 @@
                   {{ $t('wallet.exitProgress') }} {{ item.progressAcc }} / {{ item.progressTarget }}
                 </p>
                 <p v-if="item.address" style="font-size: 12px; opacity: .7;">{{ formatShortAddr(item.address) }}</p>
+				<p v-if="active === '5'" style="font-size: 12px; opacity: .7;">
+				  {{ $t('wallet.releasedManagementReward') }}: {{ item.released || 0 }} / {{ $t('wallet.pendingManagementReward') }}: {{ item.pending || 0 }}
+				</p>
               </div>
             </div>
             <Pagination
@@ -155,6 +158,16 @@ let treeData = $ref([]);
 const formatShortAddr = (value) => {
   if (!value) return ''
   return `${value.slice(0, 6)}...${value.slice(-4)}`
+}
+
+const formatFour = (value) => {
+  if (value === null || value === undefined || value === '') return '0.0000'
+  const str = String(value).trim()
+  if (!str || Number.isNaN(Number(str))) return '0.0000'
+  const neg = str.startsWith('-')
+  const absStr = neg ? str.slice(1) : str
+  const [intPart = '0', decPart = ''] = absStr.split('.')
+  return `${neg ? '-' : ''}${intPart}.${(decPart + '0000').slice(0, 4)}`
 }
 
 const getRewardList = async (pageNum = 1, reqType = active) => {

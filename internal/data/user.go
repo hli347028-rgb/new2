@@ -234,6 +234,20 @@ func (r *userRepo) AdminUpdateUser(ctx context.Context, update *biz.AdminUserUpd
 		}
 		updates["aix_balance"] = v
 	}
+	if update.WinBalance != "" {
+		v, err := decimal.NewFromString(update.WinBalance)
+		if err != nil {
+			return err
+		}
+		updates["win_balance"] = v
+	}
+	if update.PendingMgmtReward != "" {
+		v, err := decimal.NewFromString(update.PendingMgmtReward)
+		if err != nil {
+			return err
+		}
+		updates["pending_mgmt_reward"] = v
+	}
 	if update.StaticUsdtTotal != "" {
 		v, err := decimal.NewFromString(update.StaticUsdtTotal)
 		if err != nil {
@@ -425,6 +439,8 @@ func (r *userRepo) toBiz(ctx context.Context, po *UserPO) *biz.User {
 		UsdtRecharge:         po.UsdtRecharge.String(),
 		UsdtReward:           po.UsdtReward.String(),
 		AixBalance:           po.AixBalance.String(),
+		WinBalance:           po.WinBalance.String(),
+		PendingMgmtReward:    po.PendingMgmtReward.String(),
 		StaticUsdtTotal:      po.StaticUsdtTotal.String(),
 		MgmtLevel:            po.MgmtLevel,
 		CommunityLevelLocked: po.MgmtLevelLocked,

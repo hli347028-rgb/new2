@@ -328,7 +328,9 @@ func (r *stakingRepo) GetLatestSettlementBatch(ctx context.Context, date string)
 	}
 	b := &biz.SettlementBatch{
 		ID: po.ID, SettlementDate: po.SettlementDate, AixPrice: po.AixPrice.String(),
-		Status: po.Status, StaticAmount: po.StaticAmount.String(),
+		Status: po.Status, StaticCount: po.StaticCount, StaticAmount: po.StaticAmount.String(),
+		MgmtCount: po.MgmtCount, MgmtAmount: po.MgmtAmount.String(), ErrorMsg: po.ErrorMsg,
+		CreatedTime: po.CreatedTime,
 	}
 	if po.StartedTime != nil {
 		b.StartedAt = *po.StartedTime
@@ -369,6 +371,24 @@ func (r *stakingRepo) ListUserIDsWithReleaseOnDate(ctx context.Context, date str
 
 func (r *stakingRepo) ListUserIDsWithReleaseOnDateSince(ctx context.Context, date string, since time.Time) ([]int64, error) {
 	return r.ListUserIDsWithReleaseOnDate(ctx, date)
+}
+
+func (r *stakingRepo) ListUserIDsWithStaticByBatch(ctx context.Context, batchID int64) ([]int64, error) {
+	var ids []int64
+	err := r.data.db.WithContext(ctx).Model(&RewardLogPO{}).
+		Where("type = ? AND batch_id = ?", biz.RewardTypeStaticAix, batchID).
+		Distinct().Pluck("user_id", &ids).Error
+	return ids, err
+}
+
+func (r *stakingRepo) SumStaticByUserBatch(ctx context.Context, userID, batchID int64) (string, error) {
+	type row struct{ Total decimal.Decimal }
+	var result row
+	err := r.data.db.WithContext(ctx).Model(&RewardLogPO{}).
+		Select("COALESCE(SUM(exit_applied),0) AS total").
+		Where("user_id = ? AND type = ? AND batch_id = ?", userID, biz.RewardTypeStaticAix, batchID).
+		Scan(&result).Error
+	return result.Total.String(), err
 }
 
 func (r *stakingRepo) SumSettledByUser(ctx context.Context, userID int64) (string, error) {

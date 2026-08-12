@@ -86,10 +86,6 @@
                     <p>{{userinfo.team}}</p>
                   </div>
                   <div class="income-footer-item">
-                    <p>{{ $t('count.peerIncome') }}</p>
-                    <p>{{userinfo.teamTwo}}</p>
-                  </div>
-                  <div class="income-footer-item">
                     <p>{{ $t('count.networkIncome') }}</p>
                     <p>{{userinfo.all}}</p>
                   </div>
@@ -169,7 +165,6 @@ const menuType = computed(() => [
   ['3', $t('count.directIncome')],
   ['4', $t('count.directAccelerationIncome')],
   ['5', $t('count.generationTeamIncome')],
-  ['6', $t('count.peerIncome')],
   ['7', $t('count.networkIncome')],
   ['8', `${$t('count.gift')} BRC20`]
 ])

@@ -27,12 +27,23 @@ auth:
   admin_password: "replace-with-a-strong-admin-password"
   challenge_ttl: 5m
 wallet:
+  deposit_contract: "0xe11c2F7902CB03cAA38F80B27DC20702af14D5c7"
   deposit_address: "replace-with-your-deposit-address"
   deposit_addresses:
     - "replace-with-your-deposit-address"
   usdt_contract: "0x926632975149221891f1b9B56Efd125Dfe90ba2f"
   usdt_decimals: 18
   rpc_url: "https://rpc1.eoeo.info"
+  recharge_monitor_enabled: true
+  # 每60秒启动一轮；每轮查询10次，相邻查询间隔5秒。
+  recharge_scan_interval_seconds: 60
+  recharge_scan_queries_per_cycle: 10
+  recharge_scan_query_interval_seconds: 5
+  recharge_confirmations: 3
+  # 仅首次启动且尚无持久化游标时使用；0 表示从最新安全区块向前回看。
+  recharge_scan_start_block: 0
+  recharge_scan_lookback_blocks: 5000
+  recharge_scan_batch_blocks: 1000
   min_subscribe: "100"
   min_withdraw: "10"
   withdraw_fee_rate: 0.06

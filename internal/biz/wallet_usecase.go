@@ -120,9 +120,9 @@ func (uc *WalletUsecase) CreateRecharge(ctx context.Context, tokenString, amount
 		return nil, err
 	}
 	amountDec, err := ParseAmount(amount)
-	minRecharge := decimal.NewFromInt(5)
+	minRecharge := decimal.NewFromInt(10)
 	if err != nil || amountDec.LessThan(minRecharge) {
-		return nil, errors.BadRequest("INVALID_AMOUNT", "USDT 充值金额不能小于5")
+		return nil, errors.BadRequest("INVALID_AMOUNT", "USDT 充值金额不能小于10")
 	}
 	depositAddress := uc.walletCfg.GetDepositAddress()
 	if !uc.IsDevMode() {
@@ -182,7 +182,11 @@ func (uc *WalletUsecase) ConfirmRecharge(ctx context.Context, tokenString string
 			return "", "", err
 		}
 		if exists != nil && exists.ID != rechargeID {
-			return "", "", errors.BadRequest("TX_HASH_USED", "交易哈希已被使用")
+			// The background scanner may have credited this user's transaction
+			// before the browser submits its confirmation request.
+			if exists.UserID != user.ID || exists.Status != RechargeStatusConfirmed {
+				return "", "", errors.BadRequest("TX_HASH_USED", "交易哈希已被使用")
+			}
 		}
 	}
 	if err := eth.VerifyPersonalSign(recharge.Message, signature, user.Address); err != nil {
@@ -191,8 +195,6 @@ func (uc *WalletUsecase) ConfirmRecharge(ctx context.Context, tokenString string
 	amountDec, _ := ParseAmount(recharge.Amount)
 	depositAddrs := uc.walletCfg.GetDepositAddresses()
 	splits := SplitEqualAmounts(amountDec, len(depositAddrs), uc.walletCfg.GetUsdtDecimals())
-	joinedHash := strings.Join(hashes, ",")
-
 	if uc.walletCfg.GetRPCURL() != "" {
 		if len(depositAddrs) == 0 {
 			return "", "", errors.BadRequest("DEPOSIT_NOT_CONFIGURED", "平台 USDT 收款地址未配置，请联系管理员")
@@ -235,7 +237,13 @@ func (uc *WalletUsecase) ConfirmRecharge(ctx context.Context, tokenString string
 		}
 	}
 
-	balance, err := uc.walletRepo.ConfirmRechargeCredit(ctx, rechargeID, joinedHash)
+	// Balance changes are exclusively performed by ChainRechargeJob after the
+	// configured confirmation depth. The browser confirmation only validates
+	// the submitted transaction and removes the temporary order.
+	if err := uc.walletRepo.DeletePendingRecharge(ctx, rechargeID); err != nil {
+		return "", "", err
+	}
+	balance, _, _, err := uc.userRepo.GetBalances(ctx, user.ID)
 	if err != nil {
 		return "", "", err
 	}
@@ -311,11 +319,36 @@ func (uc *WalletUsecase) ListClaimRecords(ctx context.Context, tokenString strin
 }
 
 func (uc *WalletUsecase) CreateWithdraw(ctx context.Context, tokenString, amount, toAddress, signature string, withdrawAt int64) (*Withdrawal, string, error) {
-	return nil, "", errors.BadRequest("USDT_WITHDRAW_FORBIDDEN", "仅支持提现 AIX 代币，不支持提现 USDT")
+	return nil, "", errors.BadRequest("USDT_WITHDRAW_FORBIDDEN", "仅支持提现 WIN 代币，不支持提现 USDT")
 }
 
-// CreateAixWithdraw 提现 AIX 代币（合约未配置时仅扣账并记 pending，链上打款后续补齐）
+// CreateAixWithdraw AIX 代币当前禁止提现，需先兑换为 WIN 后再提现
 func (uc *WalletUsecase) CreateAixWithdraw(ctx context.Context, tokenString, amount, toAddress string) (*Withdrawal, string, error) {
+	return nil, "", errors.BadRequest("AIX_WITHDRAW_FORBIDDEN", "AIX 不可直接提现，请先兑换为 WIN")
+}
+
+// ExchangeAixToWin AIX → WIN 兑换：按当前 WIN 价格折算
+func (uc *WalletUsecase) ExchangeAixToWin(ctx context.Context, tokenString, aixAmount string) (*ExchangeRecord, string, string, error) {
+	user, err := uc.resolveUser(ctx, tokenString)
+	if err != nil {
+		return nil, "", "", err
+	}
+	amt, err := ParseAmount(aixAmount)
+	if err != nil || !amt.GreaterThan(decimal.Zero) {
+		return nil, "", "", errors.BadRequest("INVALID_AMOUNT", "兑换金额必须大于0")
+	}
+	rec, aixLeft, winBal, err := uc.walletRepo.ExchangeAixToWin(ctx, user.ID, amt.String())
+	if err != nil {
+		if strings.Contains(err.Error(), "insufficient") {
+			return nil, "", "", errors.BadRequest("INSUFFICIENT_AIX", "AIX 代币余额不足")
+		}
+		return nil, "", "", err
+	}
+	return rec, aixLeft, winBal, nil
+}
+
+// CreateWinWithdraw 提现 WIN 代币
+func (uc *WalletUsecase) CreateWinWithdraw(ctx context.Context, tokenString, amount, toAddress string) (*Withdrawal, string, error) {
 	user, err := uc.resolveUser(ctx, tokenString)
 	if err != nil {
 		return nil, "", err
@@ -333,15 +366,22 @@ func (uc *WalletUsecase) CreateAixWithdraw(ctx context.Context, tokenString, amo
 			return nil, "", errors.BadRequest("INVALID_ADDRESS", "提现地址无效")
 		}
 	}
-	// AIX 合约地址后续配置；此处不校验链上合约
-	w, left, err := uc.walletRepo.CreateAixWithdrawal(ctx, user.ID, amt.String(), toNorm)
+	w, left, err := uc.walletRepo.CreateWinWithdrawal(ctx, user.ID, amt.String(), toNorm)
 	if err != nil {
 		if strings.Contains(err.Error(), "insufficient") {
-			return nil, "", errors.BadRequest("INSUFFICIENT_AIX", "AIX 代币余额不足")
+			return nil, "", errors.BadRequest("INSUFFICIENT_WIN", "WIN 代币余额不足")
 		}
 		return nil, "", err
 	}
 	return w, left, nil
+}
+
+func (uc *WalletUsecase) ListExchangeRecords(ctx context.Context, tokenString string) ([]*ExchangeRecord, error) {
+	user, err := uc.resolveUser(ctx, tokenString)
+	if err != nil {
+		return nil, err
+	}
+	return uc.walletRepo.ListExchangeRecordsByUser(ctx, user.ID)
 }
 
 func (uc *WalletUsecase) ListWithdrawals(ctx context.Context, tokenString string) ([]*Withdrawal, error) {
@@ -514,12 +554,129 @@ func (uc *WalletUsecase) Transfer(ctx context.Context, tokenString, toAddress, a
 	return created, nil
 }
 
+func (uc *WalletUsecase) ListSelfTransferRecords(ctx context.Context, tokenString string) ([]*SelfTransferRecord, error) {
+	user, err := uc.resolveUser(ctx, tokenString)
+	if err != nil {
+		return nil, err
+	}
+	transfers, err := uc.walletRepo.ListTransfersByUser(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*SelfTransferRecord, 0)
+	for _, transfer := range transfers {
+		if transfer.FromUserID != user.ID || transfer.ToUserID != user.ID ||
+			transfer.PayFrom != PayFromRecharge || transfer.Remark != "recharge_to_reward" {
+			continue
+		}
+		result = append(result, &SelfTransferRecord{
+			ID:          transfer.ID,
+			Asset:       transfer.Asset,
+			Amount:      transfer.Amount,
+			FromWallet:  PayFromRecharge,
+			ToWallet:    PayFromReward,
+			CreatedTime: transfer.CreatedTime,
+		})
+	}
+	return result, nil
+}
+
+func (uc *WalletUsecase) ListLinealTransferRecords(ctx context.Context, tokenString, direction string) ([]*LinealTransferRecord, error) {
+	user, err := uc.resolveUser(ctx, tokenString)
+	if err != nil {
+		return nil, err
+	}
+	direction = strings.ToLower(strings.TrimSpace(direction))
+	if direction == "" {
+		direction = "all"
+	}
+	if direction != "all" && direction != "in" && direction != "out" {
+		return nil, errors.BadRequest("INVALID_DIRECTION", "direction 必须为 all、in 或 out")
+	}
+	transfers, err := uc.walletRepo.ListTransfersByUser(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	users, err := uc.userRepo.ListAllUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	userByID := make(map[int64]*User, len(users))
+	parents := make(map[int64]int64, len(users))
+	for _, item := range users {
+		userByID[item.ID] = item
+		if item.InviterID != nil {
+			parents[item.ID] = *item.InviterID
+		}
+	}
+
+	result := make([]*LinealTransferRecord, 0)
+	for _, transfer := range transfers {
+		if transfer.FromUserID == transfer.ToUserID || transfer.PayFrom != PayFromReward || transfer.Asset != TokenUSDT {
+			continue
+		}
+		recordDirection := "in"
+		counterpartyID := transfer.FromUserID
+		if transfer.FromUserID == user.ID {
+			recordDirection = "out"
+			counterpartyID = transfer.ToUserID
+		}
+		if direction != "all" && direction != recordDirection {
+			continue
+		}
+		counterparty := userByID[counterpartyID]
+		if counterparty == nil || !IsLinealRelation(user.ID, counterpartyID, parents) {
+			continue
+		}
+		relationship := "downline"
+		for parentID, seen := parents[user.ID], map[int64]struct{}{}; parentID > 0; parentID = parents[parentID] {
+			if parentID == counterpartyID {
+				relationship = "upline"
+				break
+			}
+			if _, ok := seen[parentID]; ok {
+				break
+			}
+			seen[parentID] = struct{}{}
+		}
+		result = append(result, &LinealTransferRecord{
+			ID:                  transfer.ID,
+			Direction:           recordDirection,
+			Relationship:        relationship,
+			CounterpartyUserID:  counterpartyID,
+			CounterpartyAddress: counterparty.Address,
+			Asset:               transfer.Asset,
+			Amount:              transfer.Amount,
+			FromWallet:          PayFromReward,
+			ToWallet:            PayFromReward,
+			CreatedTime:         transfer.CreatedTime,
+		})
+	}
+	return result, nil
+}
+
 func (uc *WalletUsecase) ListRewardLogs(ctx context.Context, tokenString string) ([]*RewardLog, error) {
 	user, err := uc.resolveUser(ctx, tokenString)
 	if err != nil {
 		return nil, err
 	}
 	return uc.walletRepo.ListRewardLogsByUser(ctx, user.ID)
+}
+
+func (uc *WalletUsecase) GetMgmtRewardSummary(ctx context.Context, tokenString string) (*MgmtRewardSummary, error) {
+	user, err := uc.resolveUser(ctx, tokenString)
+	if err != nil {
+		return nil, err
+	}
+	return uc.walletRepo.GetMgmtRewardSummary(ctx, user.ID)
+}
+
+func (uc *WalletUsecase) ListMgmtRewards(ctx context.Context, tokenString string) ([]*MgmtReward, error) {
+	user, err := uc.resolveUser(ctx, tokenString)
+	if err != nil {
+		return nil, err
+	}
+	return uc.walletRepo.ListMgmtRewardsByUser(ctx, user.ID)
 }
 
 func (uc *WalletUsecase) GetAixPrice(ctx context.Context, date string) (string, error) {

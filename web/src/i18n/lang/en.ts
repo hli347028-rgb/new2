@@ -297,7 +297,7 @@ export default {
     income: 'Income',
     exitProgress: 'Exit Progress', rechargeBalance: 'Recharge Balance', rewardBalance: 'Reward Balance',
     withdrawableAix: 'Withdrawable AIX', directReferralReward: 'Direct Referral Reward',
-    managementReward: 'Management Reward', totalIncome: 'Total Income'
+    managementReward: 'Management Reward', releasedManagementReward: 'Released Management Reward', pendingManagementReward: 'Pending Management Reward', totalIncome: 'Total Income'
   },
   payment: {
     walletNumber: 'Wallet {number}', walletTransfer: 'Wallet Transfer', copy: 'Copy', from: 'From', to: 'To',

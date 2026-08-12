@@ -295,7 +295,7 @@ export default {
     noDirectReferral: '직추가 없습니다',
     income: '수익',
     exitProgress: '아웃 진행', rechargeBalance: '충전 잔액', rewardBalance: '보상 잔액',
-    withdrawableAix: '출금 가능 AIX', directReferralReward: '직접 추천 보상', managementReward: '관리 보상', totalIncome: '누적 수익'
+    withdrawableAix: '출금 가능 AIX', directReferralReward: '직접 추천 보상', managementReward: '관리 보상', releasedManagementReward: '지급된 관리 보상', pendingManagementReward: '대기 중인 관리 보상', totalIncome: '누적 수익'
   },
   payment: {
     walletNumber: '지갑 {number}', walletTransfer: '지갑 이체', copy: '복사', from: '보내는 곳', to: '받는 곳',

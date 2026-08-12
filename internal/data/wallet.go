@@ -107,6 +107,76 @@ func (r *walletRepo) ConfirmRechargeCredit(ctx context.Context, id int64, txHash
 	return newBal, err
 }
 
+func (r *walletRepo) DeletePendingRecharge(ctx context.Context, id int64) error {
+	return r.data.db.WithContext(ctx).
+		Where("id = ? AND status <> ?", id, biz.RechargeStatusConfirmed).
+		Delete(&RechargePO{}).Error
+}
+
+// AutoCreditChainRecharge records and credits a confirmed on-chain USDT transfer.
+// The unique tx_hash index makes this idempotent with both the background scanner
+// and the user-triggered recharge confirmation flow.
+func (r *walletRepo) AutoCreditChainRecharge(
+	ctx context.Context,
+	txHash, fromAddress, toAddress, amount string,
+	blockNumber uint64,
+) (bool, error) {
+	txHash = strings.TrimSpace(txHash)
+	fromAddress = strings.TrimSpace(fromAddress)
+	toAddress = strings.TrimSpace(toAddress)
+	amountDec, err := decimal.NewFromString(strings.TrimSpace(amount))
+	if txHash == "" || fromAddress == "" || toAddress == "" || err != nil || !amountDec.GreaterThan(decimal.Zero) {
+		return false, fmt.Errorf("invalid chain recharge")
+	}
+
+	credited := false
+	err = r.data.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var existing int64
+		if err := tx.Model(&RechargePO{}).Where("tx_hash = ?", txHash).Count(&existing).Error; err != nil {
+			return err
+		}
+		if existing > 0 {
+			return nil
+		}
+
+		var user UserPO
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("address = ?", fromAddress).First(&user).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return nil
+			}
+			return err
+		}
+
+		now := time.Now()
+		recharge := &RechargePO{
+			UserID:        user.ID,
+			Amount:        amountDec,
+			TxHash:        txHash,
+			FromAddress:   fromAddress,
+			ToAddress:     toAddress,
+			Status:        biz.RechargeStatusConfirmed,
+			Message:       fmt.Sprintf("chain_monitor:block=%d", blockNumber),
+			ConfirmedTime: &now,
+		}
+		if err := tx.Create(recharge).Error; err != nil {
+			// A concurrent manual confirmation may have inserted the same hash.
+			if strings.Contains(strings.ToLower(err.Error()), "duplicate") {
+				return nil
+			}
+			return err
+		}
+
+		user.UsdtRecharge = user.UsdtRecharge.Add(amountDec)
+		if err := tx.Model(&user).Update("usdt_recharge", user.UsdtRecharge).Error; err != nil {
+			return err
+		}
+		credited = true
+		return nil
+	})
+	return credited, err
+}
+
 func (r *walletRepo) ListRechargesByUser(ctx context.Context, userID int64) ([]*biz.Recharge, error) {
 	var list []RechargePO
 	if err := r.data.db.WithContext(ctx).Where("user_id = ?", userID).Order("id desc").Find(&list).Error; err != nil {
@@ -193,9 +263,358 @@ func (r *walletRepo) Subscribe(ctx context.Context, userID int64, amount, payFro
 		if err := refreshAncestorPerformance(tx, userID); err != nil {
 			return err
 		}
+		// A subscription creates one-time differential management entitlements
+		// for its uplines. Any older pending entitlement owned by the subscriber
+		// is also released now that their own principal capacity has increased.
+		if err := r.createManagementRewards(tx, &user, po); err != nil {
+			return err
+		}
+		if err := r.releasePendingManagementRewards(tx, userID); err != nil {
+			return err
+		}
 		return nil
 	})
 	return created, balOut, err
+}
+
+// createManagementRewards applies the W-level differential to the source
+// order principal. Walking upward, only a positive rate gap creates a reward;
+// equal levels therefore create no reward (the former peer reward is gone).
+// After creating each MgmtRewardPO, the reward is immediately released
+// against the upline's active orders' remaining exit capacity. Any overflow
+// is stored in the user's pending_mgmt_reward pool for future release.
+func (r *walletRepo) createManagementRewards(tx *gorm.DB, sourceUser *UserPO, sourceOrder *OrderPO) error {
+	if sourceUser == nil || sourceOrder == nil || sourceUser.InviterID == nil || !sourceOrder.Principal.IsPositive() {
+		return nil
+	}
+	currentID := *sourceUser.InviterID
+	highestLowerRate := decimal.Zero
+	seen := map[int64]bool{sourceUser.ID: true}
+	ancestorIDs := make([]int64, 0)
+	for currentID > 0 {
+		if seen[currentID] {
+			return fmt.Errorf("invite relationship contains a cycle at user %d", currentID)
+		}
+		seen[currentID] = true
+		ancestorIDs = append(ancestorIDs, currentID)
+
+		var ancestor UserPO
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&ancestor, currentID).Error; err != nil {
+			return err
+		}
+		rate := decimal.NewFromFloat(biz.MgmtRateForLevel(ancestor.MgmtLevel))
+		gap := rate.Sub(highestLowerRate)
+		if gap.IsPositive() {
+			total := sourceOrder.Principal.Mul(gap).Round(8)
+			if total.IsPositive() {
+				reward := &MgmtRewardPO{
+					UserID: currentID, FromUserID: sourceUser.ID, SourceOrderID: sourceOrder.ID,
+					BaseAmount: sourceOrder.Principal, Rate: gap, TotalAmount: total,
+				}
+				if err := tx.Create(reward).Error; err != nil {
+					return err
+				}
+				if err := r.tryReleaseMgmtAgainstExitCap(tx, currentID, reward); err != nil {
+					return err
+				}
+			}
+		}
+		if rate.GreaterThan(highestLowerRate) {
+			highestLowerRate = rate
+		}
+		if ancestor.InviterID == nil {
+			break
+		}
+		currentID = *ancestor.InviterID
+	}
+
+	// Drain pool for all affected uplines after immediate release.
+	for _, userID := range ancestorIDs {
+		if err := r.drainMgmtPool(tx, userID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// tryReleaseMgmtAgainstExitCap releases a management reward against the
+// upline's active orders' remaining exit capacity. The released amount is
+// credited to usdt_reward and counted toward exit progress. Any overflow is
+// stored in the user's pending_mgmt_reward pool.
+func (r *walletRepo) tryReleaseMgmtAgainstExitCap(tx *gorm.DB, userID int64, reward *MgmtRewardPO) error {
+	if reward == nil || !reward.TotalAmount.IsPositive() {
+		return nil
+	}
+	var orders []OrderPO
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("user_id = ? AND status = ?", userID, biz.OrderStatusActive).
+		Order("id asc").Find(&orders).Error; err != nil {
+		return err
+	}
+	remainTotal := decimal.Zero
+	for _, o := range orders {
+		cap, _ := decimal.NewFromString(o.ExitCap.String())
+		earned, _ := decimal.NewFromString(o.EarnedTotal.String())
+		rem := cap.Sub(earned)
+		if rem.IsPositive() {
+			remainTotal = remainTotal.Add(rem)
+		}
+	}
+
+	var user UserPO
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, userID).Error; err != nil {
+		return err
+	}
+
+	want := reward.TotalAmount
+	pay := want
+	if remainTotal.IsPositive() && pay.GreaterThan(remainTotal) {
+		pay = remainTotal
+	}
+	exitApplied := decimal.Zero
+
+	if remainTotal.IsPositive() {
+		left := pay
+		for i := range orders {
+			if left.LessThanOrEqual(decimal.Zero) {
+				break
+			}
+			o := &orders[i]
+			cap, _ := decimal.NewFromString(o.ExitCap.String())
+			earned, _ := decimal.NewFromString(o.EarnedTotal.String())
+			rem := cap.Sub(earned)
+			if rem.LessThanOrEqual(decimal.Zero) {
+				continue
+			}
+			apply := left
+			if apply.GreaterThan(rem) {
+				apply = rem
+			}
+			o.EarnedTotal = o.EarnedTotal.Add(apply)
+			status := biz.OrderStatusActive
+			var exitedAt *time.Time
+			if o.EarnedTotal.GreaterThanOrEqual(cap) {
+				status = biz.OrderStatusExited
+				t := time.Now()
+				exitedAt = &t
+				o.EarnedTotal = cap
+			}
+			if err := tx.Model(o).Updates(map[string]interface{}{
+				"earned_total": o.EarnedTotal,
+				"status":       status,
+				"exited_time":  exitedAt,
+			}).Error; err != nil {
+				return err
+			}
+			exitApplied = exitApplied.Add(apply)
+			left = left.Sub(apply)
+		}
+	}
+
+	user.UsdtReward = user.UsdtReward.Add(pay)
+
+	fromID := reward.FromUserID
+	sourceOrderID := reward.SourceOrderID
+	base := reward.BaseAmount
+	rate := reward.Rate
+	if err := tx.Create(&RewardLogPO{
+		UserID:      userID,
+		FromUserID:  &fromID,
+		OrderID:     &sourceOrderID,
+		Type:        biz.RewardTypeMgmt,
+		Asset:       biz.TokenUSDT,
+		Amount:      pay,
+		BaseAmount:  &base,
+		Rate:        &rate,
+		ExitApplied: exitApplied,
+	}).Error; err != nil {
+		return err
+	}
+
+	reward.ReleasedAmount = reward.ReleasedAmount.Add(pay)
+	if err := tx.Model(reward).Update("released_amount", reward.ReleasedAmount).Error; err != nil {
+		return err
+	}
+
+	overflow := want.Sub(pay)
+	if overflow.IsPositive() {
+		user.PendingMgmtReward = user.PendingMgmtReward.Add(overflow)
+	}
+	return tx.Model(&user).Updates(map[string]interface{}{
+		"usdt_reward":         user.UsdtReward,
+		"pending_mgmt_reward": user.PendingMgmtReward,
+	}).Error
+}
+
+// drainMgmtPool releases pending_mgmt_reward against the user's active orders'
+// remaining exit capacity. The pool is drained first before any new management
+// rewards are released.
+func (r *walletRepo) drainMgmtPool(tx *gorm.DB, userID int64) error {
+	var user UserPO
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, userID).Error; err != nil {
+		return err
+	}
+	if !user.PendingMgmtReward.IsPositive() {
+		return nil
+	}
+
+	var orders []OrderPO
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("user_id = ? AND status = ?", userID, biz.OrderStatusActive).
+		Order("id asc").Find(&orders).Error; err != nil {
+		return err
+	}
+	remainTotal := decimal.Zero
+	for _, o := range orders {
+		cap, _ := decimal.NewFromString(o.ExitCap.String())
+		earned, _ := decimal.NewFromString(o.EarnedTotal.String())
+		rem := cap.Sub(earned)
+		if rem.IsPositive() {
+			remainTotal = remainTotal.Add(rem)
+		}
+	}
+	if remainTotal.LessThanOrEqual(decimal.Zero) {
+		return nil
+	}
+
+	want := user.PendingMgmtReward
+	pay := want
+	if pay.GreaterThan(remainTotal) {
+		pay = remainTotal
+	}
+	exitApplied := decimal.Zero
+
+	left := pay
+	for i := range orders {
+		if left.LessThanOrEqual(decimal.Zero) {
+			break
+		}
+		o := &orders[i]
+		cap, _ := decimal.NewFromString(o.ExitCap.String())
+		earned, _ := decimal.NewFromString(o.EarnedTotal.String())
+		rem := cap.Sub(earned)
+		if rem.LessThanOrEqual(decimal.Zero) {
+			continue
+		}
+		apply := left
+		if apply.GreaterThan(rem) {
+			apply = rem
+		}
+		o.EarnedTotal = o.EarnedTotal.Add(apply)
+		status := biz.OrderStatusActive
+		var exitedAt *time.Time
+		if o.EarnedTotal.GreaterThanOrEqual(cap) {
+			status = biz.OrderStatusExited
+			t := time.Now()
+			exitedAt = &t
+			o.EarnedTotal = cap
+		}
+		if err := tx.Model(o).Updates(map[string]interface{}{
+			"earned_total": o.EarnedTotal,
+			"status":       status,
+			"exited_time":  exitedAt,
+		}).Error; err != nil {
+			return err
+		}
+		exitApplied = exitApplied.Add(apply)
+		left = left.Sub(apply)
+	}
+
+	user.UsdtReward = user.UsdtReward.Add(pay)
+	user.PendingMgmtReward = user.PendingMgmtReward.Sub(pay)
+	if user.PendingMgmtReward.IsNegative() {
+		user.PendingMgmtReward = decimal.Zero
+	}
+	if err := tx.Create(&RewardLogPO{
+		UserID:      userID,
+		Type:        biz.RewardTypeMgmtPoolRelease,
+		Asset:       biz.TokenUSDT,
+		Amount:      pay,
+		ExitApplied: exitApplied,
+	}).Error; err != nil {
+		return err
+	}
+	return tx.Model(&user).Updates(map[string]interface{}{
+		"usdt_reward":         user.UsdtReward,
+		"pending_mgmt_reward": user.PendingMgmtReward,
+	}).Error
+}
+
+// releasePendingManagementRewards first drains the user's pending_mgmt_reward
+// pool, then releases any remaining mgmt_rewards records against active orders'
+// exit capacity. This is called when a user subscribes so that previously
+// unreleased management rewards can now be claimed.
+func (r *walletRepo) releasePendingManagementRewards(tx *gorm.DB, userID int64) error {
+	// Step 1: Drain pending_mgmt_reward pool first.
+	if err := r.drainMgmtPool(tx, userID); err != nil {
+		return err
+	}
+
+	// Step 2: Release remaining mgmt_rewards records.
+	var orders []OrderPO
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("user_id = ? AND status = ?", userID, biz.OrderStatusActive).
+		Order("id asc").Find(&orders).Error; err != nil {
+		return err
+	}
+	remainTotal := decimal.Zero
+	for _, o := range orders {
+		cap, _ := decimal.NewFromString(o.ExitCap.String())
+		earned, _ := decimal.NewFromString(o.EarnedTotal.String())
+		rem := cap.Sub(earned)
+		if rem.IsPositive() {
+			remainTotal = remainTotal.Add(rem)
+		}
+	}
+	if remainTotal.LessThanOrEqual(decimal.Zero) {
+		return nil
+	}
+
+	var rewards []MgmtRewardPO
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("user_id = ? AND released_amount < total_amount", userID).Order("id asc").Find(&rewards).Error; err != nil {
+		return err
+	}
+	var user UserPO
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, userID).Error; err != nil {
+		return err
+	}
+	credited := decimal.Zero
+	left := remainTotal
+	for i := range rewards {
+		if left.LessThanOrEqual(decimal.Zero) {
+			break
+		}
+		reward := &rewards[i]
+		pending := reward.TotalAmount.Sub(reward.ReleasedAmount)
+		pay := pending
+		if pay.GreaterThan(left) {
+			pay = left
+		}
+		if !pay.IsPositive() {
+			continue
+		}
+		reward.ReleasedAmount = reward.ReleasedAmount.Add(pay)
+		if err := tx.Model(reward).Update("released_amount", reward.ReleasedAmount).Error; err != nil {
+			return err
+		}
+		fromID, sourceOrderID := reward.FromUserID, reward.SourceOrderID
+		base, rate := reward.BaseAmount, reward.Rate
+		if err := tx.Create(&RewardLogPO{
+			UserID: userID, FromUserID: &fromID, OrderID: &sourceOrderID,
+			Type: biz.RewardTypeMgmt, Asset: biz.TokenUSDT, Amount: pay,
+			BaseAmount: &base, Rate: &rate, ExitApplied: decimal.Zero,
+		}).Error; err != nil {
+			return err
+		}
+		credited = credited.Add(pay)
+		left = left.Sub(pay)
+	}
+	if credited.IsPositive() {
+		user.UsdtReward = user.UsdtReward.Add(credited)
+		return tx.Model(&user).Update("usdt_reward", user.UsdtReward).Error
+	}
+	return nil
 }
 
 func (r *walletRepo) payDirectReward(tx *gorm.DB, inviterID, fromUserID, orderID int64, directBase decimal.Decimal, directRate float64) error {
@@ -451,6 +870,116 @@ func (r *walletRepo) MoveRechargeToReward(ctx context.Context, userID int64, amo
 }
 
 func (r *walletRepo) CreateAixWithdrawal(ctx context.Context, userID int64, amount, toAddress string) (*biz.Withdrawal, string, error) {
+	return nil, "", fmt.Errorf("AIX withdraw disabled; use ExchangeAixToWin then withdraw WIN")
+}
+
+// ExchangeAixToWin AIX → WIN 兑换。返回兑换记录、AIX 剩余余额、WIN 新余额。
+// 兑换公式：按当前 WIN 价格（USDT/枚）折算。AIX 1 枚 = 1 USDT（金本位），
+// 故 WIN 数量 = AIX 数量 / WIN 价格。
+func (r *walletRepo) ExchangeAixToWin(ctx context.Context, userID int64, aixAmount string) (*biz.ExchangeRecord, string, string, error) {
+	amt, err := decimal.NewFromString(aixAmount)
+	if err != nil || !amt.GreaterThan(decimal.Zero) {
+		return nil, "", "", fmt.Errorf("invalid amount")
+	}
+	price := decimal.NewFromFloat(biz.GetWinPrice())
+	if !price.IsPositive() {
+		return nil, "", "", fmt.Errorf("win price not configured")
+	}
+	winAmount := amt.Div(price).Round(8)
+	if !winAmount.IsPositive() {
+		return nil, "", "", fmt.Errorf("win amount too small")
+	}
+
+	var rec *biz.ExchangeRecord
+	var aixLeft, winBal string
+	err = r.data.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var u UserPO
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&u, userID).Error; err != nil {
+			return err
+		}
+		if u.AixBalance.LessThan(amt) {
+			return fmt.Errorf("insufficient aix_balance")
+		}
+		u.AixBalance = u.AixBalance.Sub(amt)
+		u.WinBalance = u.WinBalance.Add(winAmount)
+		if err := tx.Model(&u).Updates(map[string]interface{}{
+			"aix_balance": u.AixBalance,
+			"win_balance": u.WinBalance,
+		}).Error; err != nil {
+			return err
+		}
+		po := &ExchangeRecordPO{
+			UserID:        userID,
+			FromAsset:     biz.TokenAIX,
+			FromAmount:    amt,
+			ToAsset:       biz.TokenWIN,
+			ToAmount:      winAmount,
+			ExchangePrice: price,
+			Status:        "completed",
+			Remark:        fmt.Sprintf("AIX→WIN exchange at price %s", price.String()),
+		}
+		if err := tx.Create(po).Error; err != nil {
+			return err
+		}
+		aixLeft = u.AixBalance.String()
+		winBal = u.WinBalance.String()
+		rec = &biz.ExchangeRecord{
+			ID: po.ID, UserID: po.UserID, UserAddress: u.Address,
+			FromAsset: po.FromAsset, FromAmount: po.FromAmount.String(),
+			ToAsset: po.ToAsset, ToAmount: po.ToAmount.String(),
+			ExchangePrice: po.ExchangePrice.String(),
+			Status:        po.Status, Remark: po.Remark, CreatedTime: po.CreatedTime,
+		}
+		return nil
+	})
+	return rec, aixLeft, winBal, err
+}
+
+func (r *walletRepo) ListExchangeRecordsByUser(ctx context.Context, userID int64) ([]*biz.ExchangeRecord, error) {
+	var list []ExchangeRecordPO
+	if err := r.data.db.WithContext(ctx).Where("user_id = ?", userID).Order("id desc").Find(&list).Error; err != nil {
+		return nil, err
+	}
+	out := make([]*biz.ExchangeRecord, 0, len(list))
+	for _, po := range list {
+		out = append(out, exchangeRecordToBiz(&po, ""))
+	}
+	return out, nil
+}
+
+func (r *walletRepo) ListAllExchangeRecords(ctx context.Context) ([]*biz.ExchangeRecord, error) {
+	var list []ExchangeRecordPO
+	if err := r.data.db.WithContext(ctx).Order("id desc").Find(&list).Error; err != nil {
+		return nil, err
+	}
+	if len(list) == 0 {
+		return []*biz.ExchangeRecord{}, nil
+	}
+	userIDs := make([]int64, 0, len(list))
+	seen := map[int64]bool{}
+	for _, po := range list {
+		if !seen[po.UserID] {
+			seen[po.UserID] = true
+			userIDs = append(userIDs, po.UserID)
+		}
+	}
+	var users []UserPO
+	if err := r.data.db.WithContext(ctx).Select("id, address").Where("id IN ?", userIDs).Find(&users).Error; err != nil {
+		return nil, err
+	}
+	addrMap := make(map[int64]string, len(users))
+	for _, u := range users {
+		addrMap[u.ID] = u.Address
+	}
+	out := make([]*biz.ExchangeRecord, 0, len(list))
+	for i := range list {
+		out = append(out, exchangeRecordToBiz(&list[i], addrMap[list[i].UserID]))
+	}
+	return out, nil
+}
+
+// CreateWinWithdrawal WIN 代币提现：扣 WinBalance，创建 WithdrawalPO
+func (r *walletRepo) CreateWinWithdrawal(ctx context.Context, userID int64, amount, toAddress string) (*biz.Withdrawal, string, error) {
 	amt, err := decimal.NewFromString(amount)
 	if err != nil || !amt.GreaterThan(decimal.Zero) {
 		return nil, "", fmt.Errorf("invalid amount")
@@ -462,42 +991,47 @@ func (r *walletRepo) CreateAixWithdrawal(ctx context.Context, userID int64, amou
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&u, userID).Error; err != nil {
 			return err
 		}
-		if u.AixBalance.LessThan(amt) {
-			return fmt.Errorf("insufficient aix_balance")
+		if u.WinBalance.LessThan(amt) {
+			return fmt.Errorf("insufficient win_balance")
 		}
-		u.AixBalance = u.AixBalance.Sub(amt)
-		if err := tx.Model(&u).Update("aix_balance", u.AixBalance).Error; err != nil {
+		u.WinBalance = u.WinBalance.Sub(amt)
+		if err := tx.Model(&u).Update("win_balance", u.WinBalance).Error; err != nil {
 			return err
 		}
 		po := &WithdrawalPO{
 			UserID:    userID,
-			Asset:     biz.TokenAIX,
+			Asset:     biz.TokenWIN,
 			Amount:    amt,
 			Fee:       decimal.Zero,
 			PayAmount: amt,
 			ToAddress: toAddress,
 			Status:    biz.WithdrawStatusPending,
-			Remark:    "AIX token withdraw; chain payout pending contract",
+			Remark:    "WIN token withdraw; chain payout pending",
 		}
 		if err := tx.Create(po).Error; err != nil {
 			return err
 		}
-		left = u.AixBalance.String()
+		left = u.WinBalance.String()
 		created = &biz.Withdrawal{
-			ID:        po.ID,
-			UserID:    po.UserID,
-			Address:   u.Address,
-			ToAddress: po.ToAddress,
-			Amount:    po.Amount.String(),
-			Fee:       po.Fee.String(),
-			NetAmount: po.PayAmount.String(),
-			Status:    po.Status,
-			TxHash:    po.TxHash,
+			ID: po.ID, UserID: po.UserID, Address: u.Address,
+			ToAddress: po.ToAddress, Amount: po.Amount.String(),
+			Fee: po.Fee.String(), NetAmount: po.PayAmount.String(),
+			Status: po.Status, TxHash: po.TxHash, Asset: po.Asset,
 			CreatedAt: po.CreatedTime,
 		}
 		return nil
 	})
 	return created, left, err
+}
+
+func exchangeRecordToBiz(po *ExchangeRecordPO, userAddr string) *biz.ExchangeRecord {
+	return &biz.ExchangeRecord{
+		ID: po.ID, UserID: po.UserID, UserAddress: userAddr,
+		FromAsset: po.FromAsset, FromAmount: po.FromAmount.String(),
+		ToAsset: po.ToAsset, ToAmount: po.ToAmount.String(),
+		ExchangePrice: po.ExchangePrice.String(),
+		Status:        po.Status, Remark: po.Remark, CreatedTime: po.CreatedTime,
+	}
 }
 
 func (r *walletRepo) CreateRewardLog(ctx context.Context, log *biz.RewardLog) error {
@@ -543,6 +1077,50 @@ func (r *walletRepo) ListRewardLogsByUser(ctx context.Context, userID int64) ([]
 	out := make([]*biz.RewardLog, 0, len(list))
 	for i := range list {
 		out = append(out, rewardLogToBiz(&list[i]))
+	}
+	return out, nil
+}
+
+func (r *walletRepo) GetMgmtRewardSummary(ctx context.Context, userID int64) (*biz.MgmtRewardSummary, error) {
+	type row struct {
+		Total    decimal.Decimal
+		Released decimal.Decimal
+	}
+	var result row
+	if err := r.data.db.WithContext(ctx).Model(&MgmtRewardPO{}).
+		Select("COALESCE(SUM(total_amount),0) AS total, COALESCE(SUM(released_amount),0) AS released").
+		Where("user_id = ?", userID).Scan(&result).Error; err != nil {
+		return nil, err
+	}
+	pending := result.Total.Sub(result.Released)
+	if pending.IsNegative() {
+		pending = decimal.Zero
+	}
+	return &biz.MgmtRewardSummary{
+		Released: result.Released.Round(8).String(),
+		Pending:  pending.Round(8).String(),
+		Total:    result.Total.Round(8).String(),
+	}, nil
+}
+
+func (r *walletRepo) ListMgmtRewardsByUser(ctx context.Context, userID int64) ([]*biz.MgmtReward, error) {
+	var list []MgmtRewardPO
+	if err := r.data.db.WithContext(ctx).Where("user_id = ?", userID).Order("id desc").Find(&list).Error; err != nil {
+		return nil, err
+	}
+	out := make([]*biz.MgmtReward, 0, len(list))
+	for _, item := range list {
+		pending := item.TotalAmount.Sub(item.ReleasedAmount)
+		if pending.IsNegative() {
+			pending = decimal.Zero
+		}
+		out = append(out, &biz.MgmtReward{
+			ID: item.ID, UserID: item.UserID, FromUserID: item.FromUserID,
+			SourceOrderID: item.SourceOrderID, BaseAmount: item.BaseAmount.String(),
+			Rate: item.Rate.String(), TotalAmount: item.TotalAmount.String(),
+			ReleasedAmount: item.ReleasedAmount.String(), PendingAmount: pending.String(),
+			CreatedTime: item.CreatedTime,
+		})
 	}
 	return out, nil
 }
@@ -679,7 +1257,7 @@ func (r *walletRepo) ListWithdrawalsByUser(ctx context.Context, userID int64) ([
 		out = append(out, &biz.Withdrawal{
 			ID: po.ID, UserID: po.UserID, ToAddress: po.ToAddress,
 			Amount: po.Amount.String(), Fee: po.Fee.String(), NetAmount: po.PayAmount.String(),
-			Status: po.Status, TxHash: po.TxHash, CreatedAt: po.CreatedTime,
+			Status: po.Status, TxHash: po.TxHash, Asset: po.Asset, CreatedAt: po.CreatedTime,
 		})
 	}
 	return out, nil
@@ -697,7 +1275,40 @@ func (r *walletRepo) SumWithdrawnByUser(ctx context.Context, userID int64) (stri
 	return "0", nil
 }
 func (r *walletRepo) ListAllWithdrawals(ctx context.Context) ([]*biz.Withdrawal, error) {
-	return nil, fmt.Errorf("not supported in AIX")
+	var list []WithdrawalPO
+	if err := r.data.db.WithContext(ctx).Order("id desc").Find(&list).Error; err != nil {
+		return nil, err
+	}
+	if len(list) == 0 {
+		return []*biz.Withdrawal{}, nil
+	}
+	userIDs := make([]int64, 0, len(list))
+	seen := map[int64]bool{}
+	for _, po := range list {
+		if !seen[po.UserID] {
+			seen[po.UserID] = true
+			userIDs = append(userIDs, po.UserID)
+		}
+	}
+	var users []UserPO
+	if err := r.data.db.WithContext(ctx).Select("id, address").Where("id IN ?", userIDs).Find(&users).Error; err != nil {
+		return nil, err
+	}
+	addrMap := make(map[int64]string, len(users))
+	for _, u := range users {
+		addrMap[u.ID] = u.Address
+	}
+	out := make([]*biz.Withdrawal, 0, len(list))
+	for _, po := range list {
+		out = append(out, &biz.Withdrawal{
+			ID: po.ID, UserID: po.UserID, Address: addrMap[po.UserID],
+			ToAddress: po.ToAddress, Amount: po.Amount.String(),
+			Fee: po.Fee.String(), NetAmount: po.PayAmount.String(),
+			Status: po.Status, TxHash: po.TxHash, Asset: po.Asset,
+			CreatedAt: po.CreatedTime,
+		})
+	}
+	return out, nil
 }
 func (r *walletRepo) ApproveWithdrawal(ctx context.Context, id int64) error {
 	return fmt.Errorf("not supported in AIX")

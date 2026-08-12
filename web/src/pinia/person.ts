@@ -32,7 +32,6 @@ export default defineStore('person', {
       recommendNum: 0,
       recommendTwo: '0.00',
       team: '0.00',
-      teamTwo: '0.00',
       all: '0.00',
       usdt: '0.00',
       withdrawRate: 0.06,

@@ -176,10 +176,11 @@ async function fetchUserInfo() {
   }
   try {
     // 核心接口：失败才整体失败；releases 仅用于静态收益，失败不阻断
-    const [profileRes, balanceRes, ordersRes] = await Promise.all([
+    const [profileRes, balanceRes, ordersRes, aixProfileRes] = await Promise.all([
       authGet('/v1/auth/profile'),
       authGet('/v1/wallet/balance'),
       authGet('/v1/wallet/orders'),
+      authGet('/v1/wallet/aix-profile'),
     ])
     let releaseList: any[] = []
     let referralList: any[] = []
@@ -201,6 +202,7 @@ async function fetchUserInfo() {
     }
     const p = apiBody(profileRes)
     const b = apiBody(balanceRes)
+    const aixProfile = apiBody(aixProfileRes)
     // AIX 模式不提供传统商城商品；保留空数组兼容上游页面字段。
     const goods: any[] = []
     const orderList = apiBody(ordersRes).orders || []
@@ -234,10 +236,9 @@ async function fetchUserInfo() {
     let teamProfit = 0
     for (const r of referralList) {
       const amt = numOrZero(r.reward_amount)
-      if (Number(r.generation) > 1) teamProfit += amt
-      else directProfit += amt
+      directProfit += amt
     }
-    const equalProfit = ecoList.reduce((sum: number, r: any) => sum + numOrZero(r.equal_reward), 0)
+    const equalProfit = 0
     let ecoBaseProfit = ecoList.reduce((sum: number, r: any) => sum + numOrZero(r.base_reward), 0)
     const ecoTotalFromList = ecoList.reduce((sum: number, r: any) => sum + numOrZero(r.total_reward), 0)
     // 兼容旧数据：仅有 total_reward 时，基础奖 = 合计 - 平级
@@ -298,8 +299,8 @@ async function fetchUserInfo() {
       location: String(staticTotal),
       recommend: referralLoaded ? String(directProfit) : p.share_profit_total || '0',
       recommendTwo: '0.00',
-      team: referralLoaded ? String(teamProfit) : '0',
-      teamTwo: String(equalProfit),
+      // 管理奖展示包含已释放和仍待释放的完整权益。
+      team: String(numOrZero(aixProfile.mgmt_reward_total)),
       // 代数奖励合计（1代+≥2代，累计）
       generationReward: String(generationProfit),
       // 社区基础奖累计（不含平级）
@@ -309,7 +310,6 @@ async function fetchUserInfo() {
       dailyStatic: String(dayReward.staticIncome),
       dailyGeneration: String(dayReward.generation),
       dailyEcoBase: String(dayReward.ecoBase),
-      dailyEqual: String(dayReward.equal),
       dailyRewardTotal: String(dayReward.total),
       all: String(ecoTotal),
       usdt: b.balance || '0',
@@ -785,12 +785,25 @@ export async function adaptRequest(
         const res = await authGet('/v1/wallet/referral-rewards')
         records = mapReferralRecords(apiBody(res).rewards || [])
       } else if (reqType === '5') {
-        const res = await authGet('/v1/wallet/referral-rewards')
-        const all = apiBody(res).rewards || []
-        records = mapReferralRecords(all.filter((r: any) => Number(r.generation) > 1))
+		const res = await authGet('/v1/wallet/management-rewards')
+		records = (apiBody(res).rewards || []).map((item: any) => {
+		  const createdAt = formatUnixTime(item.created_time)
+		  return {
+			id: item.id,
+			amount: String(item.base_amount || '0'),
+			amountTwo: String(item.total_amount || '0'),
+			reward: String(item.total_amount || '0'),
+			released: String(item.released_amount || '0'),
+			pending: String(item.pending_amount || '0'),
+			rate: String(item.rate || '0'),
+			address: item.source_address || '',
+			createdAt,
+			created_at: createdAt,
+			name: '管理奖',
+			type: 'mgmt',
+		  }
+		})
       } else if (reqType === '11') {
-        records = []
-      } else if (reqType === '6') {
         records = []
       } else if (reqType === 'eco_base') {
         records = []

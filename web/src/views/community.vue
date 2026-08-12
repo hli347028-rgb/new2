@@ -55,11 +55,6 @@
             <p>{{ formatNum(userinfo.team) }}</p>
             <p>{{ $t('community.managementReward') }}</p>
           </div>
-          <!-- 
-          <div class="performance-info-item">
-            <p>{{ formatNum(userinfo.teamTwo) }}</p>
-            <p>{{ $t('community.peerDividendTotal') }}</p>
-          </div> -->
           <div class="performance-info-item">
             <p>{{ formatNum(userinfo.all) }}</p>
             <p>{{ $t('community.incomeTotal') }}</p>

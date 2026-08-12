@@ -5,6 +5,7 @@ import (
 	authv1 "backend/api/auth/v1"
 	walletv1 "backend/api/wallet/v1"
 	"backend/internal/conf"
+	"backend/internal/job"
 	authmw "backend/internal/middleware"
 	"backend/internal/service"
 
@@ -14,7 +15,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, auth *service.AuthService, wallet *service.WalletService, admin *service.AdminService, legacy *service.AdminLegacyService, _ log.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, auth *service.AuthService, wallet *service.WalletService, admin *service.AdminService, legacy *service.AdminLegacyService, recharge *job.ChainRechargeJob, _ log.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(authmw.CORS()),
 		http.Middleware(
@@ -43,5 +44,6 @@ func NewHTTPServer(c *conf.Server, auth *service.AuthService, wallet *service.Wa
 	adminv1.RegisterAdminHTTPServer(srv, admin)
 	service.RegisterWalletExtraRoutes(srv, wallet)
 	RegisterAdminLegacyRoutes(srv, legacy)
+	RegisterDepositOnlyRoute(srv, recharge)
 	return srv
 }

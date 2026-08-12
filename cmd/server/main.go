@@ -1,9 +1,9 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
-	"context"
 
 	"backend/internal/conf"
 
@@ -100,7 +100,7 @@ func main() {
 		panic(err)
 	}
 
-	app, settlementJob, adminUsecase, cleanup, err := wireApp(serverCfg, &dbCfg, &authCfg, &walletCfg, logger)
+	app, settlementJob, chainRechargeJob, adminUsecase, cleanup, err := wireApp(serverCfg, &dbCfg, &authCfg, &walletCfg, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -110,6 +110,8 @@ func main() {
 
 	settlementJob.Start()
 	defer settlementJob.Stop()
+	chainRechargeJob.Start()
+	defer chainRechargeJob.Stop()
 
 	// start and wait for stop signal
 	if err := app.Run(); err != nil {

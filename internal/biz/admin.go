@@ -128,6 +128,8 @@ type AdminUserUpdate struct {
 	UsdtRecharge      string
 	UsdtReward        string
 	AixBalance        string
+	WinBalance        string
+	PendingMgmtReward string
 	StaticUsdtTotal   string
 	Role              string
 	CommunityLevel    string
@@ -197,6 +199,7 @@ func (uc *AdminUsecase) buildConfigSnapshot() *conf.SystemConfigSnapshot {
 		MgmtThresholds:       append([]float64(nil), MgmtThresholds...),
 		MgmtRates:            append([]float64(nil), MgmtRates...),
 		AixPriceInitial:      AixPriceInitial,
+		WinPrice:             WinPrice,
 		MgmtCountsTowardExit: MgmtCountsTowardExit,
 	}
 	conf.NormalizeBusinessDefaults(snap)
@@ -405,6 +408,22 @@ func (uc *AdminUsecase) ListOrders(ctx context.Context, tokenString string) ([]*
 		return nil, err
 	}
 	return uc.walletRepo.ListAllOrders(ctx)
+}
+
+// ListExchangeRecords 管理端：列出所有 AIX→WIN 兑换记录
+func (uc *AdminUsecase) ListExchangeRecords(ctx context.Context, tokenString string) ([]*ExchangeRecord, error) {
+	if _, err := uc.requireAdmin(ctx, tokenString); err != nil {
+		return nil, err
+	}
+	return uc.walletRepo.ListAllExchangeRecords(ctx)
+}
+
+// ListAllWithdrawals 管理端：列出所有提现记录（仅 WIN）
+func (uc *AdminUsecase) ListAllWithdrawals(ctx context.Context, tokenString string) ([]*Withdrawal, error) {
+	if _, err := uc.requireAdmin(ctx, tokenString); err != nil {
+		return nil, err
+	}
+	return uc.walletRepo.ListAllWithdrawals(ctx)
 }
 
 func (uc *AdminUsecase) UpdateOrder(ctx context.Context, tokenString string, update *AdminOrderUpdate) (*AdminOrderDetail, error) {

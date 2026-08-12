@@ -10,10 +10,12 @@ type User struct {
 	ID              int64
 	Address         string
 	InviteCode      string
-	UsdtRecharge    string
-	UsdtReward      string
-	AixBalance      string // AIX 代币数
-	StaticUsdtTotal string // 静态总收益（USDT）
+	UsdtRecharge      string
+	UsdtReward        string
+	AixBalance        string // AIX 代币数
+	WinBalance        string // WIN 代币数
+	PendingMgmtReward string // 待释放管理奖（USDT）
+	StaticUsdtTotal   string // 静态总收益（USDT）
 	MgmtLevel       int32
 	LargeAreaPerf   string
 	SmallAreaPerf   string

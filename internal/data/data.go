@@ -29,8 +29,12 @@ func NewData(dbCfg *conf.DatabaseConfig, logger log.Logger) (*Data, func(), erro
 	}
 	if err := db.AutoMigrate(
 		&UserPO{}, &OrderPO{}, &RechargePO{}, &TransferPO{}, &WithdrawalPO{},
-		&RewardLogPO{}, &AixPricePO{}, &SettlementBatchPO{}, &SettingPO{},
+		&RewardLogPO{}, &MgmtRewardPO{}, &AixPricePO{}, &SettlementBatchPO{}, &SettingPO{},
+		&ExchangeRecordPO{},
 	); err != nil {
+		return nil, nil, err
+	}
+	if err := ensureSettlementBatchMultiPerDay(db); err != nil {
 		return nil, nil, err
 	}
 	if err := seedDefaults(db); err != nil {
@@ -51,6 +55,51 @@ func NewData(dbCfg *conf.DatabaseConfig, logger log.Logger) (*Data, func(), erro
 		log.NewHelper(logger).Info("closing the data resources")
 	}
 	return data, cleanup, nil
+}
+
+// ensureSettlementBatchMultiPerDay removes the historical unique constraint
+// on settlement_date so every manual settlement can retain its own batch and
+// reward base. Automatic settlement still checks for an existing successful
+// date before creating a batch.
+func ensureSettlementBatchMultiPerDay(db *gorm.DB) error {
+	type indexRow struct {
+		IndexName string `gorm:"column:INDEX_NAME"`
+	}
+	var uniqueIndexes []indexRow
+	if err := db.Raw(`
+		SELECT INDEX_NAME
+		FROM information_schema.statistics
+		WHERE table_schema = DATABASE()
+		  AND table_name = 'settlement_batches'
+		  AND column_name = 'settlement_date'
+		  AND NON_UNIQUE = 0
+	`).Scan(&uniqueIndexes).Error; err != nil {
+		return err
+	}
+	for _, index := range uniqueIndexes {
+		if index.IndexName == "" || index.IndexName == "PRIMARY" {
+			continue
+		}
+		if err := db.Exec("ALTER TABLE settlement_batches DROP INDEX `" + index.IndexName + "`").Error; err != nil {
+			return err
+		}
+	}
+
+	var normalIndexCount int64
+	if err := db.Raw(`
+		SELECT COUNT(1)
+		FROM information_schema.statistics
+		WHERE table_schema = DATABASE()
+		  AND table_name = 'settlement_batches'
+		  AND column_name = 'settlement_date'
+		  AND NON_UNIQUE = 1
+	`).Scan(&normalIndexCount).Error; err != nil {
+		return err
+	}
+	if normalIndexCount == 0 {
+		return db.Exec("CREATE INDEX idx_settlement_batches_settlement_date ON settlement_batches (settlement_date)").Error
+	}
+	return nil
 }
 
 // DB exposes the underlying gorm handle for admin legacy queries.

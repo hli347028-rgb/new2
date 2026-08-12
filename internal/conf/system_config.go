@@ -21,6 +21,7 @@ type SystemConfigSnapshot struct {
 	MgmtThresholds        []float64 `json:"mgmt_thresholds"`         // W1–W10 小区业绩门槛
 	MgmtRates             []float64 `json:"mgmt_rates"`              // W1–W10 管理奖比例
 	AixPriceInitial       float64   `json:"aix_price_initial"`       // 初始 AIX 价格
+	WinPrice              float64   `json:"win_price"`               // WIN 代币价格（USDT/枚）
 	MgmtCountsTowardExit  bool      `json:"mgmt_counts_toward_exit"` // 管理奖是否计入出局
 	MgmtCountsTowardExitP *bool     `json:"-"`                       // 内部：区分 JSON 缺省与 false
 
@@ -39,6 +40,7 @@ const (
 	DefaultExitMultiplier = 4.0
 	DefaultDirectRate     = 0.5
 	DefaultAixPrice       = 1.0
+	DefaultWinPrice       = 1.0
 	DefaultMinSubscribe   = "100"
 )
 
@@ -68,6 +70,9 @@ func NormalizeBusinessDefaults(s *SystemConfigSnapshot) {
 	}
 	if s.AixPriceInitial <= 0 {
 		s.AixPriceInitial = DefaultAixPrice
+	}
+	if s.WinPrice <= 0 {
+		s.WinPrice = DefaultWinPrice
 	}
 	if s.MinSubscribe == "" {
 		s.MinSubscribe = DefaultMinSubscribe

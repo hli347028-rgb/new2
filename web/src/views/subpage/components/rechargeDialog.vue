@@ -28,7 +28,7 @@ const { t: $t } = useI18n()
 const isOpen = ref(false)
 const amount = ref(null)
 const loading = ref(false)
-const MIN_RECHARGE_AMOUNT = 100
+const MIN_RECHARGE_AMOUNT = 10
 
 
 const props = defineProps({

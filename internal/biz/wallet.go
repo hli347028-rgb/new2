@@ -19,21 +19,29 @@ const (
 	OrderStatusExited = "exited"
 
 	// Legacy aliases
-	OrderStatusCompleted = "exited"
+	OrderStatusCompleted    = "exited"
 	WithdrawStatusPending   = "pending"
 	WithdrawStatusCompleted = "completed"
 	WithdrawStatusFailed    = "failed"
 
 	TokenUSDT = "USDT"
 	TokenAIX  = "AIX"
+	TokenWIN  = "WIN"
 
-	RewardTypeStaticAix   = "static_aix"
-	RewardTypeDynamicUsdt = "dynamic_usdt"
-	RewardTypeMgmt        = "mgmt"
-	RewardTypeExitAccel   = "exit_accel"
-	RewardTypeTransferIn  = "transfer_in"
-	RewardTypeTransferOut = "transfer_out"
+	RewardTypeStaticAix       = "static_aix"
+	RewardTypeDynamicUsdt     = "dynamic_usdt"
+	RewardTypeMgmt            = "mgmt"
+	RewardTypeMgmtPoolRelease = "mgmt_pool_release"
+	RewardTypeExitAccel       = "exit_accel"
+	RewardTypeTransferIn      = "transfer_in"
+	RewardTypeTransferOut     = "transfer_out"
 )
+
+// GetWinPrice 返回 WIN 代币价格（USDT/枚）。
+// TODO: 后续接入链上预言机或外部价格源，当前暂返回管理后台配置价。
+func GetWinPrice() float64 {
+	return WinPrice
+}
 
 // Recharge represents a USDT recharge order.
 type Recharge struct {
@@ -69,6 +77,28 @@ type Transfer struct {
 	CreatedTime       time.Time
 }
 
+type SelfTransferRecord struct {
+	ID          int64
+	Asset       string
+	Amount      string
+	FromWallet  string
+	ToWallet    string
+	CreatedTime time.Time
+}
+
+type LinealTransferRecord struct {
+	ID                  int64
+	Direction           string
+	Relationship        string
+	CounterpartyUserID  int64
+	CounterpartyAddress string
+	Asset               string
+	Amount              string
+	FromWallet          string
+	ToWallet            string
+	CreatedTime         time.Time
+}
+
 // RewardLog AIX reward ledger row.
 type RewardLog struct {
 	ID             int64
@@ -84,6 +114,25 @@ type RewardLog struct {
 	ExitApplied    string
 	Meta           string
 	SettlementDate string
+	CreatedTime    time.Time
+}
+
+type MgmtRewardSummary struct {
+	Released string
+	Pending  string
+	Total    string
+}
+
+type MgmtReward struct {
+	ID             int64
+	UserID         int64
+	FromUserID     int64
+	SourceOrderID  int64
+	BaseAmount     string
+	Rate           string
+	TotalAmount    string
+	ReleasedAmount string
+	PendingAmount  string
 	CreatedTime    time.Time
 }
 
@@ -115,7 +164,23 @@ type Withdrawal struct {
 	NetAmount string
 	Status    string
 	TxHash    string
+	Asset     string
 	CreatedAt time.Time
+}
+
+// ExchangeRecord AIX → WIN 兑换记录
+type ExchangeRecord struct {
+	ID            int64
+	UserID        int64
+	UserAddress   string
+	FromAsset     string
+	FromAmount    string
+	ToAsset       string
+	ToAmount      string
+	ExchangePrice string
+	Status        string
+	Remark        string
+	CreatedTime   time.Time
 }
 
 // Product legacy stub
@@ -179,6 +244,8 @@ type WalletRepo interface {
 	FindRechargeByTxHash(ctx context.Context, txHash string) (*Recharge, error)
 	ConfirmRecharge(ctx context.Context, id int64, txHash string) error
 	ConfirmRechargeCredit(ctx context.Context, id int64, txHash string) (newRechargeBalance string, err error)
+	DeletePendingRecharge(ctx context.Context, id int64) error
+	AutoCreditChainRecharge(ctx context.Context, txHash, fromAddress, toAddress, amount string, blockNumber uint64) (credited bool, err error)
 	ListRechargesByUser(ctx context.Context, userID int64) ([]*Recharge, error)
 
 	Subscribe(ctx context.Context, userID int64, amount, payFrom string, exitMul, directRate float64) (*Order, string, error)
@@ -194,12 +261,19 @@ type WalletRepo interface {
 
 	CreateRewardLog(ctx context.Context, log *RewardLog) error
 	ListRewardLogsByUser(ctx context.Context, userID int64) ([]*RewardLog, error)
+	GetMgmtRewardSummary(ctx context.Context, userID int64) (*MgmtRewardSummary, error)
+	ListMgmtRewardsByUser(ctx context.Context, userID int64) ([]*MgmtReward, error)
 
 	GetAixPrice(ctx context.Context, date string) (string, error)
 	UpsertAixPrice(ctx context.Context, date, price, remark string) error
 
-	// 仅 AIX 提现
-	CreateAixWithdrawal(ctx context.Context, userID int64, amount, toAddress string) (*Withdrawal, string, error)
+	// ExchangeAixToWin AIX → WIN 兑换：扣 AixBalance，加 WinBalance，记录 ExchangeRecord
+	ExchangeAixToWin(ctx context.Context, userID int64, aixAmount string) (*ExchangeRecord, string, string, error)
+	ListExchangeRecordsByUser(ctx context.Context, userID int64) ([]*ExchangeRecord, error)
+	ListAllExchangeRecords(ctx context.Context) ([]*ExchangeRecord, error)
+
+	// CreateWinWithdrawal WIN 代币提现（AIX 当前禁止提现）
+	CreateWinWithdrawal(ctx context.Context, userID int64, amount, toAddress string) (*Withdrawal, string, error)
 	ListWithdrawalsByUser(ctx context.Context, userID int64) ([]*Withdrawal, error)
 	// Legacy stubs
 	CreateWithdrawal(ctx context.Context, userID int64, amount, fee, netAmount, toAddress string) (*Withdrawal, string, error)

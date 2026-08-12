@@ -17,6 +17,9 @@ vendor/
 # Go workspace file
 go.work
 
+# Go build cache
+.cache/
+
 # Compiled Object files, Static and Dynamic libs (Shared Objects)
 *.o
 *.a
@@ -44,9 +47,15 @@ web/dist/
 admin/node_modules/
 admin/dist/
 
+# Production env files (may contain sensitive config)
+*.env.prod
+web/.env.prod
+admin/.env
+
 # Local deploy artifacts
 deploy/
 deploy-build/
+release/
 server-linux
 taurus-deploy.tar.gz
 taurus-deploy.zip

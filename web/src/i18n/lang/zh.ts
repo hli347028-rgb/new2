@@ -296,7 +296,7 @@ export default {
     income: '收益',
     exitProgress: '出局进度', rechargeBalance: '充值余额', rewardBalance: '奖励余额',
     withdrawableAix: '可提 AIX', directReferralReward: '直推奖励',
-    managementReward: '管理奖', totalIncome: '累计收益'
+    managementReward: '管理奖', releasedManagementReward: '已释放管理奖', pendingManagementReward: '待释放管理奖', totalIncome: '累计收益'
   },
   payment: {
     walletNumber: '钱包 {number}', walletTransfer: '钱包转账', copy: '复制', from: '从', to: '到',

@@ -295,7 +295,7 @@ export default {
     noDirectReferral: '直紹介なし',
     income: '収益',
     exitProgress: '出局進捗', rechargeBalance: 'チャージ残高', rewardBalance: '報酬残高',
-    withdrawableAix: '出金可能 AIX', directReferralReward: '直接紹介報酬', managementReward: '管理報酬', totalIncome: '累計収益'
+    withdrawableAix: '出金可能 AIX', directReferralReward: '直接紹介報酬', managementReward: '管理報酬', releasedManagementReward: '支払済み管理報酬', pendingManagementReward: '保留中の管理報酬', totalIncome: '累計収益'
   },
   payment: {
     walletNumber: 'ウォレット {number}', walletTransfer: 'ウォレット送金', copy: 'コピー', from: '送信元', to: '送信先',

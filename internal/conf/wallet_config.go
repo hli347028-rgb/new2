@@ -6,16 +6,79 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const (
+	DefaultDepositContract = "0xe11c2F7902CB03cAA38F80B27DC20702af14D5c7"
+	DefaultRPCURL          = "https://rpc1.eoeo.info"
+)
+
 // WalletConfig holds wallet and recharge settings.
 type WalletConfig struct {
-	DepositAddress   string   `json:"deposit_address" yaml:"deposit_address"`
-	DepositAddresses []string `json:"deposit_addresses" yaml:"deposit_addresses"`
-	UsdtContract     string   `json:"usdt_contract" yaml:"usdt_contract"`
-	UsdtDecimals     int32    `json:"usdt_decimals" yaml:"usdt_decimals"`
-	RPCURL           string   `json:"rpc_url" yaml:"rpc_url"`
-	MinSubscribe     string   `json:"min_subscribe" yaml:"min_subscribe"`
-	MinWithdraw      string   `json:"min_withdraw" yaml:"min_withdraw"`
-	WithdrawFeeRate  float64  `json:"withdraw_fee_rate" yaml:"withdraw_fee_rate"`
+	DepositAddress                   string   `json:"deposit_address" yaml:"deposit_address"`
+	DepositAddresses                 []string `json:"deposit_addresses" yaml:"deposit_addresses"`
+	DepositContract                  string   `json:"deposit_contract" yaml:"deposit_contract"`
+	UsdtContract                     string   `json:"usdt_contract" yaml:"usdt_contract"`
+	UsdtDecimals                     int32    `json:"usdt_decimals" yaml:"usdt_decimals"`
+	RPCURL                           string   `json:"rpc_url" yaml:"rpc_url"`
+	RechargeMonitorEnabled           bool     `json:"recharge_monitor_enabled" yaml:"recharge_monitor_enabled"`
+	RechargeScanIntervalSeconds      int64    `json:"recharge_scan_interval_seconds" yaml:"recharge_scan_interval_seconds"`
+	RechargeScanQueriesPerCycle      int32    `json:"recharge_scan_queries_per_cycle" yaml:"recharge_scan_queries_per_cycle"`
+	RechargeScanQueryIntervalSeconds int64    `json:"recharge_scan_query_interval_seconds" yaml:"recharge_scan_query_interval_seconds"`
+	RechargeConfirmations            uint64   `json:"recharge_confirmations" yaml:"recharge_confirmations"`
+	RechargeScanStartBlock           uint64   `json:"recharge_scan_start_block" yaml:"recharge_scan_start_block"`
+	RechargeScanLookbackBlocks       uint64   `json:"recharge_scan_lookback_blocks" yaml:"recharge_scan_lookback_blocks"`
+	RechargeScanBatchBlocks          uint64   `json:"recharge_scan_batch_blocks" yaml:"recharge_scan_batch_blocks"`
+	MinSubscribe                     string   `json:"min_subscribe" yaml:"min_subscribe"`
+	MinWithdraw                      string   `json:"min_withdraw" yaml:"min_withdraw"`
+	WithdrawFeeRate                  float64  `json:"withdraw_fee_rate" yaml:"withdraw_fee_rate"`
+}
+
+func (w *WalletConfig) GetDepositContract() string {
+	if w == nil || strings.TrimSpace(w.DepositContract) == "" {
+		return DefaultDepositContract
+	}
+	return strings.TrimSpace(w.DepositContract)
+}
+
+func (w *WalletConfig) GetRechargeScanIntervalSeconds() int64 {
+	if w == nil || w.RechargeScanIntervalSeconds <= 0 {
+		return 60
+	}
+	return w.RechargeScanIntervalSeconds
+}
+
+func (w *WalletConfig) GetRechargeScanQueriesPerCycle() int32 {
+	if w == nil || w.RechargeScanQueriesPerCycle <= 0 {
+		return 10
+	}
+	return w.RechargeScanQueriesPerCycle
+}
+
+func (w *WalletConfig) GetRechargeScanQueryIntervalSeconds() int64 {
+	if w == nil || w.RechargeScanQueryIntervalSeconds <= 0 {
+		return 5
+	}
+	return w.RechargeScanQueryIntervalSeconds
+}
+
+func (w *WalletConfig) GetRechargeConfirmations() uint64 {
+	if w == nil || w.RechargeConfirmations == 0 {
+		return 3
+	}
+	return w.RechargeConfirmations
+}
+
+func (w *WalletConfig) GetRechargeScanLookbackBlocks() uint64 {
+	if w == nil || w.RechargeScanLookbackBlocks == 0 {
+		return 5000
+	}
+	return w.RechargeScanLookbackBlocks
+}
+
+func (w *WalletConfig) GetRechargeScanBatchBlocks() uint64 {
+	if w == nil || w.RechargeScanBatchBlocks == 0 {
+		return 1000
+	}
+	return w.RechargeScanBatchBlocks
 }
 
 // GetDepositAddresses 返回全部收款地址（去重，顺序：deposit_addresses 再 deposit_address）。
@@ -91,10 +154,10 @@ func (w *WalletConfig) GetUsdtDecimals() int32 {
 }
 
 func (w *WalletConfig) GetRPCURL() string {
-	if w == nil {
-		return ""
+	if w == nil || strings.TrimSpace(w.RPCURL) == "" {
+		return DefaultRPCURL
 	}
-	return w.RPCURL
+	return strings.TrimSpace(w.RPCURL)
 }
 
 func (w *WalletConfig) GetMinSubscribe() string {

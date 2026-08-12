@@ -5,22 +5,24 @@ type ListUsersRequest struct {
 }
 
 type AdminUser struct {
-	ID               int64  `json:"id"`
-	Address          string `json:"address"`
-	Balance          string `json:"balance"`
-	ReleasedBalance  string `json:"released_balance"`
-	Role             string `json:"role"`
-	InviterID        *int64 `json:"inviter_id"`
-	InviterAddress   string `json:"inviter_address"`
-	InviteeCount     int32  `json:"invitee_count"`
-	CommunityLevel   string `json:"community_level"`
-	CommunityStake   string `json:"community_stake"`
-	TeamStake        string `json:"team_stake"`
-	LargeAreaPerf    string `json:"large_area_perf"`
-	ShareProfitTotal string `json:"share_profit_total"`
-	EcoRewardTotal   string `json:"eco_reward_total"`
-	WithdrawReset    bool   `json:"withdraw_reset"`
-	CreatedAt        int64  `json:"created_at"`
+	ID                int64  `json:"id"`
+	Address           string `json:"address"`
+	Balance           string `json:"balance"`
+	ReleasedBalance   string `json:"released_balance"`
+	Role              string `json:"role"`
+	InviterID         *int64 `json:"inviter_id"`
+	InviterAddress    string `json:"inviter_address"`
+	InviteeCount      int32  `json:"invitee_count"`
+	CommunityLevel    string `json:"community_level"`
+	CommunityStake    string `json:"community_stake"`
+	TeamStake         string `json:"team_stake"`
+	LargeAreaPerf     string `json:"large_area_perf"`
+	ShareProfitTotal  string `json:"share_profit_total"`
+	EcoRewardTotal    string `json:"eco_reward_total"`
+	WinBalance        string `json:"win_balance"`
+	PendingMgmtReward string `json:"pending_mgmt_reward"`
+	WithdrawReset     bool   `json:"withdraw_reset"`
+	CreatedAt         int64  `json:"created_at"`
 }
 
 type ListUsersReply struct {
@@ -28,18 +30,20 @@ type ListUsersReply struct {
 }
 
 type UpdateUserRequest struct {
-	Token            string `json:"token"`
-	UserID           int64  `json:"user_id"`
-	Balance          string `json:"balance"`
-	ReleasedBalance  string `json:"released_balance"`
-	Role             string `json:"role"`
-	CommunityLevel   string `json:"community_level"`
-	CommunityStake   string `json:"community_stake"`
-	TeamStake        string `json:"team_stake"`
-	ShareProfitTotal string `json:"share_profit_total"`
-	EcoRewardTotal   string `json:"eco_reward_total"`
-	InviterID        *int64 `json:"inviter_id"`
-	WithdrawReset    *bool  `json:"withdraw_reset"`
+	Token             string `json:"token"`
+	UserID            int64  `json:"user_id"`
+	Balance           string `json:"balance"`
+	ReleasedBalance   string `json:"released_balance"`
+	Role              string `json:"role"`
+	CommunityLevel    string `json:"community_level"`
+	CommunityStake    string `json:"community_stake"`
+	TeamStake         string `json:"team_stake"`
+	ShareProfitTotal  string `json:"share_profit_total"`
+	EcoRewardTotal    string `json:"eco_reward_total"`
+	WinBalance        string `json:"win_balance"`
+	PendingMgmtReward string `json:"pending_mgmt_reward"`
+	InviterID         *int64 `json:"inviter_id"`
+	WithdrawReset     *bool  `json:"withdraw_reset"`
 }
 
 type UpdateUserReply struct {
@@ -60,6 +64,7 @@ type SystemConfig struct {
 	RPCURL          string   `json:"rpc_url"`
 	MinSubscribe    string   `json:"min_subscribe"`
 	WithdrawFeeRate float64  `json:"withdraw_fee_rate"`
+	WinPrice        float64  `json:"win_price"`
 }
 
 type GetConfigReply struct {
@@ -77,6 +82,7 @@ type UpdateConfigRequest struct {
 	RPCURL          string   `json:"rpc_url"`
 	MinSubscribe    string   `json:"min_subscribe"`
 	WithdrawFeeRate float64  `json:"withdraw_fee_rate"`
+	WinPrice        float64  `json:"win_price"`
 }
 
 type UpdateConfigReply struct {

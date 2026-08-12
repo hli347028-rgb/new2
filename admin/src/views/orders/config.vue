@@ -60,7 +60,7 @@ export default {
                 content: (
                     <div>
                         <div style="margin-bottom:8px;color:#888;font-size:12px;">
-                            静态利率填百分数如 0.5；直推/W 收益系数填小数如 0.2 表示 20%；出局倍数默认 4
+                            静态利率填百分数如 0.5；直推/W 收益系数填小数如 0.2 表示 20%；W 晋级金额按小区业绩填写且必须逐级递增；出局倍数默认 4
                         </div>
                         <a-input style="margin-top:8px;" defaultValue={value} placeholder="请输入" onInput={(val) => {
                             value = val.target.value

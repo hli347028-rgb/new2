@@ -76,6 +76,16 @@ var legacyConfigDefs = []struct {
 	{18, "W8 收益系数"},
 	{19, "W9 收益系数"},
 	{20, "W10 收益系数"},
+	{21, "成为 W1 的小区业绩金额(USDT)"},
+	{22, "成为 W2 的小区业绩金额(USDT)"},
+	{23, "成为 W3 的小区业绩金额(USDT)"},
+	{24, "成为 W4 的小区业绩金额(USDT)"},
+	{25, "成为 W5 的小区业绩金额(USDT)"},
+	{26, "成为 W6 的小区业绩金额(USDT)"},
+	{27, "成为 W7 的小区业绩金额(USDT)"},
+	{28, "成为 W8 的小区业绩金额(USDT)"},
+	{29, "成为 W9 的小区业绩金额(USDT)"},
+	{30, "成为 W10 的小区业绩金额(USDT)"},
 }
 
 func (s *AdminLegacyService) HandleLogin(ctx khttp.Context) error {
@@ -222,6 +232,11 @@ func (s *AdminLegacyService) HandleConfigUpdate(ctx khttp.Context) error {
 	if _, err := s.admin.UpdateSystemConfig(ctx, s.token(ctx), snapshot); err != nil {
 		return err
 	}
+	if id >= 21 && id <= 30 {
+		if err := s.userRepo.RefreshPerformance(ctx); err != nil {
+			return err
+		}
+	}
 	if id == 7 && strings.TrimSpace(value) != "" {
 		date := jwtpkg.NowChina().Format("2006-01-02")
 		_ = s.walletRepo.UpsertAixPrice(ctx, date, strings.TrimSpace(value), "admin config")
@@ -237,10 +252,87 @@ func (s *AdminLegacyService) HandleWithdrawList(ctx khttp.Context) error {
 	if _, err := s.requireAdmin(ctx); err != nil {
 		return err
 	}
+	q := ctx.Request().URL.Query()
+	page, pageSize, offset := parsePage(q)
+	addressFilter := strings.TrimSpace(q.Get("address"))
+
+	list, err := s.admin.ListAllWithdrawals(ctx, s.token(ctx))
+	if err != nil {
+		return err
+	}
+	filtered := make([]*biz.Withdrawal, 0, len(list))
+	for _, w := range list {
+		if addressFilter != "" && !strings.Contains(strings.ToLower(w.Address), strings.ToLower(addressFilter)) {
+			continue
+		}
+		filtered = append(filtered, w)
+	}
+	total := len(filtered)
+	pageItems := paginateSlice(filtered, offset, pageSize)
+	items := make([]map[string]interface{}, 0, len(pageItems))
+	for _, w := range pageItems {
+		items = append(items, map[string]interface{}{
+			"id":        w.ID,
+			"address":   w.Address,
+			"toAddress": w.ToAddress,
+			"amount":    w.Amount,
+			"fee":       w.Fee,
+			"netAmount": w.NetAmount,
+			"asset":     w.Asset,
+			"status":    w.Status,
+			"txHash":    w.TxHash,
+			"createdAt": formatLegacyTime(w.CreatedAt),
+		})
+	}
 	return ctx.Result(200, map[string]interface{}{
-		"withdraw": []interface{}{},
-		"count":    0,
-		"page":     1,
+		"withdraw": items,
+		"list":     items,
+		"count":    total,
+		"page":     page,
+	})
+}
+
+// HandleExchangeList 管理端：AIX→WIN 兑换记录列表
+func (s *AdminLegacyService) HandleExchangeList(ctx khttp.Context) error {
+	if _, err := s.requireAdmin(ctx); err != nil {
+		return err
+	}
+	q := ctx.Request().URL.Query()
+	page, pageSize, offset := parsePage(q)
+	addressFilter := strings.TrimSpace(q.Get("address"))
+
+	list, err := s.admin.ListExchangeRecords(ctx, s.token(ctx))
+	if err != nil {
+		return err
+	}
+	filtered := make([]*biz.ExchangeRecord, 0, len(list))
+	for _, r := range list {
+		if addressFilter != "" && !strings.Contains(strings.ToLower(r.UserAddress), strings.ToLower(addressFilter)) {
+			continue
+		}
+		filtered = append(filtered, r)
+	}
+	total := len(filtered)
+	pageItems := paginateSlice(filtered, offset, pageSize)
+	items := make([]map[string]interface{}, 0, len(pageItems))
+	for _, r := range pageItems {
+		items = append(items, map[string]interface{}{
+			"id":            r.ID,
+			"address":       r.UserAddress,
+			"fromAsset":     r.FromAsset,
+			"fromAmount":    r.FromAmount,
+			"toAsset":       r.ToAsset,
+			"toAmount":      r.ToAmount,
+			"exchangePrice": r.ExchangePrice,
+			"status":        r.Status,
+			"remark":        r.Remark,
+			"createdAt":     formatLegacyTime(r.CreatedTime),
+		})
+	}
+	return ctx.Result(200, map[string]interface{}{
+		"list":  items,
+		"count": total,
+		"page":  page,
 	})
 }
 
@@ -999,6 +1091,13 @@ func legacyConfigValue(cfg *conf.SystemConfigSnapshot, walletCfg *conf.WalletCon
 			rates = cfg.MgmtRates
 		}
 		return strconv.FormatFloat(rates[idx], 'f', -1, 64)
+	case 21, 22, 23, 24, 25, 26, 27, 28, 29, 30:
+		idx := id - 21
+		thresholds := conf.DefaultMgmtThresholds()
+		if cfg != nil && len(cfg.MgmtThresholds) == 10 {
+			thresholds = cfg.MgmtThresholds
+		}
+		return strconv.FormatFloat(thresholds[idx], 'f', -1, 64)
 	default:
 		return ""
 	}
@@ -1058,6 +1157,22 @@ func applyLegacyConfigUpdate(snapshot *conf.SystemConfigSnapshot, walletCfg *con
 			snapshot.MgmtRates = conf.DefaultMgmtRates()
 		}
 		snapshot.MgmtRates[id-11] = rate
+	case 21, 22, 23, 24, 25, 26, 27, 28, 29, 30:
+		threshold, err := strconv.ParseFloat(value, 64)
+		if err != nil || threshold <= 0 {
+			return errors.BadRequest("INVALID_VALUE", "晋级业绩金额必须为大于 0 的数字")
+		}
+		if len(snapshot.MgmtThresholds) != 10 {
+			snapshot.MgmtThresholds = conf.DefaultMgmtThresholds()
+		}
+		idx := id - 21
+		if idx > 0 && threshold <= snapshot.MgmtThresholds[idx-1] {
+			return errors.BadRequest("INVALID_VALUE", "晋级业绩金额必须高于前一级")
+		}
+		if idx < len(snapshot.MgmtThresholds)-1 && threshold >= snapshot.MgmtThresholds[idx+1] {
+			return errors.BadRequest("INVALID_VALUE", "晋级业绩金额必须低于后一级")
+		}
+		snapshot.MgmtThresholds[idx] = threshold
 	default:
 		return errors.BadRequest("INVALID_ID", "未知配置项")
 	}

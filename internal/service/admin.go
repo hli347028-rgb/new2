@@ -40,6 +40,8 @@ func (s *AdminService) UpdateUser(ctx context.Context, req *v1.UpdateUserRequest
 		TeamStake:         req.TeamStake,
 		InviterID:         req.InviterID,
 		WithdrawReset:     req.WithdrawReset,
+		WinBalance:        req.WinBalance,
+		PendingMgmtReward: req.PendingMgmtReward,
 	})
 	if err != nil {
 		return nil, err
@@ -66,6 +68,7 @@ func (s *AdminService) UpdateConfig(ctx context.Context, req *v1.UpdateConfigReq
 		RPCURL:          req.RPCURL,
 		MinSubscribe:    req.MinSubscribe,
 		WithdrawFeeRate: req.WithdrawFeeRate,
+		WinPrice:        req.WinPrice,
 	})
 	if err != nil {
 		return nil, err
@@ -151,7 +154,9 @@ func toAdminUser(u *biz.AdminUserDetail) *v1.AdminUser {
 		CommunityStake: u.User.CommunityStake, TeamStake: u.User.TeamStake,
 		LargeAreaPerf:    u.User.LargeAreaPerf,
 		ShareProfitTotal: u.User.ShareProfitTotal, EcoRewardTotal: u.User.EcoRewardTotal,
-		WithdrawReset: u.WithdrawReset, CreatedAt: u.User.CreatedAt.Unix(),
+		WinBalance:        u.User.WinBalance,
+		PendingMgmtReward: u.User.PendingMgmtReward,
+		WithdrawReset:     u.WithdrawReset, CreatedAt: u.User.CreatedAt.Unix(),
 	}
 }
 
@@ -165,6 +170,7 @@ func toSystemConfig(cfg *conf.SystemConfigSnapshot) *v1.SystemConfig {
 		UsdtContract: cfg.UsdtContract, UsdtDecimals: cfg.UsdtDecimals,
 		RPCURL: cfg.RPCURL, MinSubscribe: cfg.MinSubscribe,
 		WithdrawFeeRate: cfg.WithdrawFeeRate,
+		WinPrice:        cfg.WinPrice,
 	}
 }
 

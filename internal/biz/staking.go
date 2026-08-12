@@ -18,6 +18,7 @@ var (
 	MgmtRates            = conf.DefaultMgmtRates()
 	MgmtCountsTowardExit = true
 	AixPriceInitial      = float64(conf.DefaultAixPrice)
+	WinPrice             = float64(conf.DefaultWinPrice)
 )
 
 // ApplyAixConfig hot-updates AIX business parameters.
@@ -34,6 +35,9 @@ func ApplyAixConfig(snap *conf.SystemConfigSnapshot) {
 	MgmtCountsTowardExit = snap.MgmtCountsTowardExit
 	if snap.AixPriceInitial > 0 {
 		AixPriceInitial = snap.AixPriceInitial
+	}
+	if snap.WinPrice > 0 {
+		WinPrice = snap.WinPrice
 	}
 }
 
@@ -176,12 +180,14 @@ type StakingRepo interface {
 	SumReleaseForBatch(ctx context.Context, date string, startedAt time.Time, finishedAt *time.Time) (string, error)
 	ListUserIDsWithReleaseOnDate(ctx context.Context, date string) ([]int64, error)
 	ListUserIDsWithReleaseOnDateSince(ctx context.Context, date string, since time.Time) ([]int64, error)
+	ListUserIDsWithStaticByBatch(ctx context.Context, batchID int64) ([]int64, error)
+	SumStaticByUserBatch(ctx context.Context, userID, batchID int64) (string, error)
 	SumSettledByUser(ctx context.Context, userID int64) (string, error)
 }
 
 // Legacy helpers kept so admin config compile paths don't break
 var (
-	ReferralRates  = []float64{conf.DefaultDirectRate}
+	ReferralRates        = []float64{conf.DefaultDirectRate}
 	MaxReferralGen int32 = 1
 )
 

@@ -59,15 +59,6 @@ func (uc *SettlementUsecase) runDailySettlement(ctx context.Context, settlementD
 			uc.log.Infof("settlement %s already completed, skip", settlementDate)
 			return nil
 		}
-	} else {
-		completed, err := uc.stakingRepo.HasCompletedSettlement(ctx, settlementDate)
-		if err != nil {
-			return err
-		}
-		if completed {
-			uc.log.Infof("settlement %s already success (unique date), skip force", settlementDate)
-			return nil
-		}
 	}
 
 	price, err := uc.stakingRepo.GetAixPrice(ctx, settlementDate)
@@ -92,7 +83,7 @@ func (uc *SettlementUsecase) runDailySettlement(ctx context.Context, settlementD
 	}
 	uc.log.Infof("settlement %s batch#%d started", settlementDate, batch.ID)
 
-	staticCount, staticAmt, err := uc.processStatic(ctx, settlementDate, batch.ID, priceDec)
+	staticCount, staticAmt, err := uc.processStatic(ctx, settlementDate, batch.ID, priceDec, force)
 	if err != nil {
 		_ = uc.stakingRepo.FinishSettlementBatch(ctx, batch.ID, SettlementStatusFailed, 0, "0", 0, "0", err.Error())
 		return err
@@ -101,21 +92,13 @@ func (uc *SettlementUsecase) runDailySettlement(ctx context.Context, settlementD
 		_ = uc.stakingRepo.FinishSettlementBatch(ctx, batch.ID, SettlementStatusFailed, staticCount, staticAmt.String(), 0, "0", err.Error())
 		return err
 	}
-	mgmtCount, mgmtAmt, err := uc.processMgmtRewards(ctx, settlementDate, batch.ID, staticAmt)
-	if err != nil {
-		_ = uc.stakingRepo.FinishSettlementBatch(ctx, batch.ID, SettlementStatusFailed, staticCount, staticAmt.String(), 0, "0", err.Error())
-		return err
-	}
-	// Management rewards may also complete orders. Refresh again so those
-	// orders are removed from every upstream performance branch immediately.
-	if err := uc.refreshMgmtLevels(ctx); err != nil {
-		_ = uc.stakingRepo.FinishSettlementBatch(ctx, batch.ID, SettlementStatusFailed, staticCount, staticAmt.String(), mgmtCount, mgmtAmt.String(), err.Error())
-		return err
-	}
+	// Management rewards are generated once when a downline subscribes. Daily
+	// settlement now handles static rewards only; flat-level rewards are gone.
+	mgmtCount, mgmtAmt := int32(0), decimal.Zero
 	return uc.stakingRepo.FinishSettlementBatch(ctx, batch.ID, SettlementStatusSuccess, staticCount, staticAmt.String(), mgmtCount, mgmtAmt.String(), "")
 }
 
-func (uc *SettlementUsecase) processStatic(ctx context.Context, date string, batchID int64, aixPrice decimal.Decimal) (int32, decimal.Decimal, error) {
+func (uc *SettlementUsecase) processStatic(ctx context.Context, date string, batchID int64, aixPrice decimal.Decimal, allowRepeat bool) (int32, decimal.Decimal, error) {
 	orders, err := uc.stakingRepo.ListActiveOrders(ctx)
 	if err != nil {
 		return 0, decimal.Zero, err
@@ -128,12 +111,14 @@ func (uc *SettlementUsecase) processStatic(ctx context.Context, date string, bat
 	totalAix := decimal.Zero
 
 	for _, order := range orders {
-		exists, err := uc.stakingRepo.HasStaticReward(ctx, order.ID, date)
-		if err != nil {
-			return 0, decimal.Zero, err
-		}
-		if exists {
-			continue
+		if !allowRepeat {
+			exists, err := uc.stakingRepo.HasStaticReward(ctx, order.ID, date)
+			if err != nil {
+				return 0, decimal.Zero, err
+			}
+			if exists {
+				continue
+			}
 		}
 		principal, _ := decimal.NewFromString(order.Principal)
 		exitCap, _ := decimal.NewFromString(order.ExitCap)
@@ -230,107 +215,11 @@ func (uc *SettlementUsecase) refreshMgmtLevels(ctx context.Context) error {
 	return uc.userRepo.RefreshPerformance(ctx)
 }
 
-// processMgmtRewards 级差管理奖：以当日静态 USDT 池为底数，按上级链级差分配
-func (uc *SettlementUsecase) processMgmtRewards(ctx context.Context, date string, batchID int64, staticAixTotal decimal.Decimal) (int32, decimal.Decimal, error) {
-	// 底数：当日静态金本位合计 ≈ static_aix * price；用 reward_logs 汇总 exit_applied 更准
-	basePool, err := uc.stakingRepo.SumStaticByDate(ctx, date)
-	if err != nil {
-		return 0, decimal.Zero, err
-	}
-	pool, _ := decimal.NewFromString(basePool)
-	if pool.LessThanOrEqual(decimal.Zero) {
-		// fallback: aix total * 1
-		pool = staticAixTotal
-	}
-	if pool.LessThanOrEqual(decimal.Zero) {
-		return 0, decimal.Zero, nil
-	}
-
-	users, err := uc.userRepo.ListAllUsers(ctx)
-	if err != nil {
-		return 0, decimal.Zero, err
-	}
-	byID := map[int64]*User{}
-	for _, u := range users {
-		byID[u.ID] = u
-	}
-
-	var count int32
-	total := decimal.Zero
-	// 对每个有静态产出的用户，沿上级链发级差
-	sourceIDs, err := uc.stakingRepo.ListUserIDsWithReleaseOnDate(ctx, date)
-	if err != nil {
-		return 0, decimal.Zero, err
-	}
-	for _, sid := range sourceIDs {
-		srcAmtStr, err := uc.stakingRepo.SumReleaseByUserDate(ctx, sid, date)
-		if err != nil {
-			return 0, decimal.Zero, err
-		}
-		srcBase, _ := decimal.NewFromString(srcAmtStr)
-		if srcBase.LessThanOrEqual(decimal.Zero) {
-			continue
-		}
-		src := byID[sid]
-		if src == nil {
-			continue
-		}
-		lastRate := 0.0
-		current := src
-		seen := map[int64]bool{sid: true}
-		for current.InviterID != nil {
-			pid := *current.InviterID
-			if seen[pid] {
-				break
-			}
-			seen[pid] = true
-			parent := byID[pid]
-			if parent == nil {
-				break
-			}
-			rate := MgmtRateForLevel(parent.MgmtLevel)
-			diff := rate - lastRate
-			if diff > 0 {
-				pay := srcBase.Mul(decimal.NewFromFloat(diff))
-				pay, applied, err := uc.applyExitCapReward(ctx, parent.ID, pay)
-				if err != nil {
-					return 0, decimal.Zero, err
-				}
-				if pay.GreaterThan(decimal.Zero) {
-					if err := uc.creditUsdtReward(ctx, parent.ID, pay); err != nil {
-						return 0, decimal.Zero, err
-					}
-					oid := parent.ID
-					_ = oid
-					bid := batchID
-					fromID := sid
-					rateDec := decimal.NewFromFloat(diff)
-					base := srcBase
-					if err := uc.stakingRepo.CreateRewardLog(ctx, &RewardLog{
-						UserID:         parent.ID,
-						FromUserID:     &fromID,
-						BatchID:        &bid,
-						Type:           RewardTypeMgmt,
-						Asset:          TokenUSDT,
-						Amount:         pay.String(),
-						BaseAmount:     base.String(),
-						Rate:           rateDec.String(),
-						ExitApplied:    applied.String(),
-						SettlementDate: date,
-					}); err != nil {
-						return 0, decimal.Zero, err
-					}
-					count++
-					total = total.Add(pay)
-				}
-				lastRate = rate
-			} else if rate > lastRate {
-				lastRate = rate
-			}
-			current = parent
-		}
-	}
-	return count, total, nil
+// processMgmtRewards is retained for compatibility with older callers. New
+// management rewards are generated by walletRepo.Subscribe and never by a
+// daily settlement batch.
+func (uc *SettlementUsecase) processMgmtRewards(ctx context.Context, date string, batchID int64, _ decimal.Decimal) (int32, decimal.Decimal, error) {
+	return 0, decimal.Zero, nil
 }
 
 // applyExitCapReward 将奖励计入活跃订单出局进度，返回实发与计入出局金额

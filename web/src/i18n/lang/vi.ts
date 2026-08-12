@@ -295,7 +295,7 @@ export default {
     noDirectReferral: 'Chưa có giới thiệu trực tiếp',
     income: 'Thu nhập',
     exitProgress: 'Tiến độ thoát', rechargeBalance: 'Số dư nạp', rewardBalance: 'Số dư thưởng',
-    withdrawableAix: 'AIX có thể rút', directReferralReward: 'Thưởng giới thiệu trực tiếp', managementReward: 'Thưởng quản lý', totalIncome: 'Tổng thu nhập'
+    withdrawableAix: 'AIX có thể rút', directReferralReward: 'Thưởng giới thiệu trực tiếp', managementReward: 'Thưởng quản lý', releasedManagementReward: 'Thưởng quản lý đã phát hành', pendingManagementReward: 'Thưởng quản lý đang chờ', totalIncome: 'Tổng thu nhập'
   },
   payment: {
     walletNumber: 'Ví {number}', walletTransfer: 'Chuyển ví', copy: 'Sao chép', from: 'Từ', to: 'Đến',

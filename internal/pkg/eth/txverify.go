@@ -8,11 +8,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/shopspring/decimal"
 )
 
-var erc20TransferEvent = common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4c11628f55e4df523b3ef")
+var erc20TransferEvent = crypto.Keccak256Hash([]byte("Transfer(address,address,uint256)"))
 
 // VerifyUSDTTransfer verifies an ERC20 USDT transfer in transaction logs.
 // depositAddresses 可为多个平台收款地址，转账到其中任一地址即通过。
