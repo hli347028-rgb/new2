@@ -30,7 +30,16 @@ type WalletConfig struct {
 	MinSubscribe                     string   `json:"min_subscribe" yaml:"min_subscribe"`
 	MinWithdraw                      string   `json:"min_withdraw" yaml:"min_withdraw"`
 	WithdrawFeeRate                  float64  `json:"withdraw_fee_rate" yaml:"withdraw_fee_rate"`
+	// WinSwap V2 Pair（WWIN/USDT），用于链上轮询 WIN 价格
+	WinPair                string `json:"win_pair" yaml:"win_pair"`
+	WinPriceOracleEnabled  bool   `json:"win_price_oracle_enabled" yaml:"win_price_oracle_enabled"`
+	WinPricePollSeconds    int64  `json:"win_price_poll_seconds" yaml:"win_price_poll_seconds"`
 }
+
+const (
+	DefaultWinPair             = "0x15ad085fc866370b59936575565434b14d22281d"
+	DefaultWinPricePollSeconds = int64(60)
+)
 
 func (w *WalletConfig) GetDepositContract() string {
 	if w == nil || strings.TrimSpace(w.DepositContract) == "" {
@@ -179,4 +188,25 @@ func (w *WalletConfig) GetWithdrawFeeRate() decimal.Decimal {
 		return decimal.NewFromFloat(0.06)
 	}
 	return decimal.NewFromFloat(w.WithdrawFeeRate)
+}
+
+func (w *WalletConfig) GetWinPair() string {
+	if w == nil || strings.TrimSpace(w.WinPair) == "" {
+		return DefaultWinPair
+	}
+	return strings.TrimSpace(w.WinPair)
+}
+
+func (w *WalletConfig) IsWinPriceOracleEnabled() bool {
+	if w == nil {
+		return true
+	}
+	return w.WinPriceOracleEnabled
+}
+
+func (w *WalletConfig) GetWinPricePollSeconds() int64 {
+	if w == nil || w.WinPricePollSeconds <= 0 {
+		return DefaultWinPricePollSeconds
+	}
+	return w.WinPricePollSeconds
 }

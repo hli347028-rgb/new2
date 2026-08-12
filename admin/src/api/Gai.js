@@ -95,6 +95,13 @@ export default {
             params: parameter
         })
     },
+    exchange_list: (parameter) => {
+        return axios({
+            url: `${api8005}/exchange_list`,
+            method: 'get',
+            params: parameter
+        })
+    },
     withdraw_pass: (parameter) => {
         return axios({
             url: `${api8005}/withdraw_pass`,

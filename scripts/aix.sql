@@ -109,6 +109,16 @@ CREATE TABLE IF NOT EXISTS aix_prices (
   UNIQUE KEY uk_aix_prices_effective_date (effective_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- WIN 现价：全表仅 1 条（id=1），预言机/后台覆盖更新，不保留历史
+CREATE TABLE IF NOT EXISTS win_prices (
+  id              BIGINT UNSIGNED NOT NULL,
+  price           DECIMAL(36,18)  NOT NULL,
+  source          VARCHAR(32)     NOT NULL DEFAULT 'oracle',
+  updated_time    DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  created_time    DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS settlement_batches (
   id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   settlement_date  DATE            NOT NULL,

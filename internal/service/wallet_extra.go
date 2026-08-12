@@ -329,6 +329,23 @@ func (s *WalletService) HandleAixProfile(ctx khttp.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// AIX 现价以管理配置 AixPriceInitial 为准（当日 aix_prices 供日结历史用）
+	aixPrice := biz.AixPriceInitial
+	if aixPrice <= 0 {
+		if priceStr, priceErr := s.uc.GetAixPrice(ctx, ""); priceErr == nil {
+			if parsed, parseErr := strconv.ParseFloat(strings.TrimSpace(priceStr), 64); parseErr == nil && parsed > 0 {
+				aixPrice = parsed
+			}
+		}
+	}
+	winPrice := biz.GetWinPrice()
+	aixToWinRate := 0.0
+	if winPrice > 0 {
+		// 1 AIX 可兑多少 WIN（毛量，未扣手续费）= aix_price / win_price
+		aixToWinRate = aixPrice / winPrice
+	}
+
 	return ctx.JSON(http.StatusOK, map[string]any{
 		"address":              user.Address,
 		"usdt_recharge":        recharge,
@@ -349,7 +366,10 @@ func (s *WalletService) HandleAixProfile(ctx khttp.Context) error {
 		"team_perf":            teamPerf,
 		"server_time":          serverTime,
 		"next_release_at":      nextReleaseAt,
-		"win_price":            biz.GetWinPrice(),
+		"aix_price":            aixPrice,
+		"win_price":            winPrice,
+		"aix_to_win_rate":      aixToWinRate,
+		"exchange_fee_rate":    biz.GetExchangeFeeRate(),
 		"aix_contract":         "", // TODO
 	})
 }
@@ -369,16 +389,17 @@ func (s *WalletService) HandleExchangeAixToWin(ctx khttp.Context) error {
 		return err
 	}
 	return ctx.JSON(http.StatusOK, map[string]any{
-		"record_id":      rec.ID,
-		"from_asset":     rec.FromAsset,
-		"from_amount":    rec.FromAmount,
-		"to_asset":       rec.ToAsset,
-		"to_amount":      rec.ToAmount,
-		"exchange_price": rec.ExchangePrice,
-		"status":         rec.Status,
-		"aix_balance":    aixLeft,
-		"win_balance":    winBal,
-		"created_at":     rec.CreatedTime.Unix(),
+		"record_id":         rec.ID,
+		"from_asset":        rec.FromAsset,
+		"from_amount":       rec.FromAmount,
+		"to_asset":          rec.ToAsset,
+		"to_amount":         rec.ToAmount,
+		"exchange_price":    rec.ExchangePrice,
+		"exchange_fee_rate": biz.GetExchangeFeeRate(),
+		"status":            rec.Status,
+		"aix_balance":       aixLeft,
+		"win_balance":       winBal,
+		"created_at":        rec.CreatedTime.Unix(),
 	})
 }
 
@@ -424,6 +445,8 @@ func (s *WalletService) HandleExchangeRecords(ctx khttp.Context) error {
 			"from_amount":    r.FromAmount,
 			"to_asset":       r.ToAsset,
 			"to_amount":      r.ToAmount,
+			"fee_amount":     r.FeeAmount,
+			"fee_rate":       r.FeeRate,
 			"exchange_price": r.ExchangePrice,
 			"status":         r.Status,
 			"remark":         r.Remark,

@@ -100,7 +100,7 @@ func main() {
 		panic(err)
 	}
 
-	app, settlementJob, chainRechargeJob, adminUsecase, cleanup, err := wireApp(serverCfg, &dbCfg, &authCfg, &walletCfg, logger)
+	app, settlementJob, chainRechargeJob, winPriceOracleJob, adminUsecase, cleanup, err := wireApp(serverCfg, &dbCfg, &authCfg, &walletCfg, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -112,6 +112,8 @@ func main() {
 	defer settlementJob.Stop()
 	chainRechargeJob.Start()
 	defer chainRechargeJob.Stop()
+	winPriceOracleJob.Start()
+	defer winPriceOracleJob.Stop()
 
 	// start and wait for stop signal
 	if err := app.Run(); err != nil {

@@ -19,6 +19,7 @@ const mainRoutes = [
   { path: "/node", component: Node },
   { path: "/community", component: Community },
   { path: "/wallet", component: Wallet },
+  { path: "/exchange", component: () => import("@/views/exchange.vue") },
   { path: "/withdrawal", component: Withdrawal },
   { path: "/count", component: Count },
   { path: "/profile", component: () => import("@/views/profile/index.vue") },

@@ -19,6 +19,7 @@ var (
 	MgmtCountsTowardExit = true
 	AixPriceInitial      = float64(conf.DefaultAixPrice)
 	WinPrice             = float64(conf.DefaultWinPrice)
+	ExchangeFeeRate      = float64(conf.DefaultExchangeFeeRate)
 )
 
 // ApplyAixConfig hot-updates AIX business parameters.
@@ -38,6 +39,9 @@ func ApplyAixConfig(snap *conf.SystemConfigSnapshot) {
 	}
 	if snap.WinPrice > 0 {
 		WinPrice = snap.WinPrice
+	}
+	if snap.ExchangeFeeRate > 0 {
+		ExchangeFeeRate = snap.ExchangeFeeRate
 	}
 }
 

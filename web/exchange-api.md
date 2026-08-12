@@ -466,16 +466,14 @@ AIX 代币当前**禁止**直接提现，需先兑换为 WIN 后再通过 `/v1/w
 - **Path:** `/v1/wallet/aix-profile`
 - **Auth:** ✅ 需要用户 Token
 
-**响应中与价格 / WIN 相关的字段：**
+**响应中与 WIN 相关的字段：**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| aix_balance | string | 当前 AIX 代币余额 |
 | win_balance | string | 当前 WIN 代币余额 |
-| aix_price | **number(float64)** | 当日 AIX 价格（USDT/枚），来自 `aix_prices`，缺省为配置初始价 |
-| win_price | **number(float64)** | WIN 价格（USDT/枚） |
-| aix_to_win_rate | **number(float64)** | 直接汇率：`1 AIX = aix_to_win_rate WIN`（毛量，未扣手续费）= `aix_price / win_price` |
+| win_price | **number(float64)** | **⚠️ 注意：此字段为 float64 类型**。前端展示时请勿直接与 string 类型金额做算术运算 |
 | exchange_fee_rate | **number(float64)** | 当前兑换手续费率（如 `0.05` = 5%） |
+| aix_balance | string | 当前 AIX 代币余额 |
 
 **响应示例（节选）：**
 ```json
@@ -483,9 +481,7 @@ AIX 代币当前**禁止**直接提现，需先兑换为 WIN 后再通过 `/v1/w
   "address": "0xUserAddress",
   "aix_balance": "1000.0000000000000000",
   "win_balance": "47.5000000000000000",
-  "aix_price": 1.0,
   "win_price": 2.0,
-  "aix_to_win_rate": 0.5,
   "exchange_fee_rate": 0.05,
   "pending_mgmt_reward": "0.0000000000000000",
   "usdt_recharge": "1000.0000000000000000",
@@ -494,9 +490,10 @@ AIX 代币当前**禁止**直接提现，需先兑换为 WIN 后再通过 `/v1/w
 }
 ```
 
-> **前端预估：** `WIN毛量 = AIX数量 × aix_to_win_rate`，`WIN净量 = WIN毛量 × (1 - exchange_fee_rate)`。
->
-> **⚠️ 重要类型差异：** `aix_price`、`win_price`、`aix_to_win_rate`、`exchange_fee_rate` 为 **`float64`**，而 `win_balance`、`aix_balance` 等金额字段为 **`string`**。前端请用 `decimal.js` 处理，禁止原生 `Number` 混合运算。
+> **⚠️ 重要类型差异：** `win_price` 和 `exchange_fee_rate` 为 **`float64`** 类型（如 `2.0`、`0.05`），而 `win_balance`、`aix_balance` 等金额字段均为 **`string`** 类型（decimal 精度）。前端处理时必须：
+> 1. 使用 `decimal.js` 的 `Decimal(win_price)` 将 float64 转为 decimal
+> 2. 再与 string 类型的余额字段进行乘法运算
+> 3. **禁止**直接使用 JavaScript 原生 `Number` 混合运算
 
 ### 4.2 WIN 余额变动时机
 
@@ -730,9 +727,7 @@ id=9&value=3
 ### 8.2 兑换页面对接要点
 
 1. **获取实时费率：** 调用 `GET /v1/wallet/aix-profile` 获取：
-   - `aix_price`（float64）：当日 AIX 价格（USDT/枚）
    - `win_price`（float64）：当前 WIN 价格
-   - `aix_to_win_rate`（float64）：直接汇率（1 AIX 兑多少 WIN，毛量）
    - `exchange_fee_rate`（float64）：当前手续费率
    - `aix_balance`（string）：AIX 可用余额
    
@@ -741,10 +736,7 @@ id=9&value=3
    输入 100 AIX → 预估获得 47.5 WIN（扣 2.5 WIN 手续费）
    ```
    ```javascript
-   // 推荐：直接用 aix_to_win_rate
-   const winGross = Decimal(aixAmount).mul(Decimal(aixToWinRate))
-   // 等价：aix_price / win_price
-   // const winGross = Decimal(aixAmount).mul(Decimal(aixPrice)).div(Decimal(winPrice))
+   const winGross = Decimal(aixAmount).div(Decimal(winPrice))
    const fee = winGross.mul(Decimal(exchangeFeeRate))
    const winNet = winGross.sub(fee)
    ```

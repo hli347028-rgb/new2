@@ -110,7 +110,9 @@ type ExchangeRecordPO struct {
 	FromAmount    decimal.Decimal `gorm:"column:from_amount;type:decimal(36,18);not null"`
 	ToAsset       string          `gorm:"column:to_asset;size:16;not null"` // 固定 WIN
 	ToAmount      decimal.Decimal `gorm:"column:to_amount;type:decimal(36,18);not null"`
+	FeeAmount     decimal.Decimal `gorm:"column:fee_amount;type:decimal(36,18);not null;default:0"`
 	ExchangePrice decimal.Decimal `gorm:"column:exchange_price;type:decimal(36,18);not null"` // 兑换时的 WIN 价格（USDT/枚）
+	FeeRate       decimal.Decimal `gorm:"column:fee_rate;type:decimal(12,6);not null;default:0"` // 兑换时的手续费率
 	Status        string          `gorm:"size:16;default:completed;not null"`                 // completed
 	Remark        string          `gorm:"size:255"`
 	CreatedTime   time.Time       `gorm:"column:created_time;autoCreateTime"`
@@ -165,6 +167,19 @@ type AixPricePO struct {
 }
 
 func (AixPricePO) TableName() string { return "aix_prices" }
+
+// WinPricePO 当前 WIN 价格（全表仅保留 1 条，固定 ID=1，预言机/后台均覆盖更新）。
+type WinPricePO struct {
+	ID          int64           `gorm:"primaryKey"`
+	Price       decimal.Decimal `gorm:"type:decimal(36,18);not null"`
+	Source      string          `gorm:"size:32;default:oracle;not null"`
+	UpdatedTime time.Time       `gorm:"column:updated_time;autoUpdateTime"`
+	CreatedTime time.Time       `gorm:"column:created_time;autoCreateTime"`
+}
+
+const WinPriceRowID int64 = 1
+
+func (WinPricePO) TableName() string { return "win_prices" }
 
 type SettlementBatchPO struct {
 	ID             int64           `gorm:"primaryKey;autoIncrement"`

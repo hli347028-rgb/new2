@@ -8,7 +8,7 @@
     @click-left="handleBack"
   />
   <div class="page-main">
-    <div class="usdt-price" @click="router.push('/withdrawal')">
+    <div class="usdt-price">
       <div class="price-list">
         <div class="price-item">
           <p>{{ $t('wallet.rechargeBalance') }}</p>
@@ -18,11 +18,27 @@
           <p>{{ $t('wallet.rewardBalance') }}</p>
           <p>{{ userinfo.reward || 0 }}</p>
         </div>
+        <div class="price-item price-item-action">
+          <p>{{ $t('wallet.aixBalance') }}</p>
+          <div class="price-value-action">
+            <p>{{ profile.aix_balance || userinfo.amountGet || 0 }}</p>
+          </div>
+        </div>
         <div class="price-item">
-          <p>{{ $t('wallet.withdrawableAix') }}</p>
-          <p>{{ userinfo.amountGet || 0 }}<van-icon style="margin-left: 5px;" name="arrow" /></p>
+          <p>{{ $t('wallet.winBalance') }}</p>
+          <p>{{ profile.win_balance || 0 }}</p>
         </div>
       </div>
+    </div>
+    <div class="wallet-actions">
+      <button type="button" class="wallet-action" @click="router.push('/exchange')">
+        <van-icon name="exchange" />
+        <span>{{ $t('wallet.exchange') }}</span>
+      </button>
+      <button type="button" class="wallet-action" @click="router.push('/withdrawal')">
+        <van-icon name="balance-pay" />
+        <span>{{ $t('withdraw.title') }}</span>
+      </button>
     </div>
     <ul class="wallet-tab">
       <li :class="tab === 1 ? 'active' : ''" @click="tab = 1">{{ $t('wallet.myIncome') }}</li>
@@ -51,7 +67,7 @@
           <p>{{ formatFour(userinfo.recommend) }}</p>
         </div>
         <div class="pledge-frame-item">
-          <p>{{ $t('wallet.managementReward') }}</p>
+          <p>{{ $t('wallet.pendingManagementReward') }}</p>
           <p>{{ formatFour(userinfo.team) }}</p>
         </div>
         <div class="pledge-frame-item">
@@ -135,6 +151,7 @@ const { t: $t, locale } = useI18n()
 const router = useRouter()
 const person = userPerson();
 const userinfo = $computed(() => person.userinfo);
+const profile = $computed(() => person.profile);
 const address = $computed(() => person.address);
 
 let active = $ref('1')
@@ -290,7 +307,7 @@ watch(locale, () => {
 })
 
 onMounted(async () => {
-  await person.getUser?.()
+  await Promise.allSettled([person.getUser?.(), person.refreshProfile()])
   getRewardList(1)
   getUserArea()
 })
@@ -329,24 +346,119 @@ const handleBack = () => {
       padding: 20px 20px 0 20px;
       display: flex;
       box-sizing: border-box;
-      font-size: 15px;
+      font-size: 12px;
       .price-list {
         width: 60%;
         display: flex;
         flex: 1;
         flex-direction: column;
         justify-content: center;
-        gap: 6px;
+        gap: 4px;
 
         .price-item {
-          display: flex;
-          flex-direction: row;
+          position: relative;
+          width: 100%;
+          min-height: 20px;
+          display: grid;
+          grid-template-columns: 72px minmax(0, 1fr);
           align-items: center;
-          gap: 10px;
+          gap: 8px;
 
           p {
             margin: 0;
           }
+
+          > p:first-child {
+            color: rgba(255, 255, 255, .72);
+            white-space: nowrap;
+          }
+
+          > p:nth-child(2),
+          .price-value-action > p {
+            min-width: 0;
+            overflow: hidden;
+            color: #fff;
+            font-weight: 600;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .price-value-action {
+            min-width: 0;
+            max-width: 100%;
+            display: grid;
+            grid-template-columns: minmax(0, max-content) auto;
+            align-items: center;
+            justify-content: start;
+            gap: 5px;
+          }
+
+          .exchange-entry {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            min-height: 20px;
+            box-sizing: border-box;
+            border: 1px solid rgba(52, 174, 247, .45);
+            border-radius: 10px;
+            padding: 2px 7px;
+            color: #8ed5ff;
+            background: rgba(8, 123, 193, .2);
+            font-size: 11px;
+            line-height: 1;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background-color .15s ease, transform .15s ease;
+
+            .van-icon {
+              font-size: 10px;
+            }
+
+            &:active {
+              background: rgba(8, 123, 193, .45);
+              transform: scale(.96);
+            }
+          }
+
+          &.price-item-action {
+            grid-template-columns: 72px minmax(0, 1fr);
+          }
+        }
+      }
+    }
+    .wallet-actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+
+      .wallet-action {
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        box-sizing: border-box;
+        border: 1px solid rgba(52, 174, 247, .42);
+        border-radius: 20px;
+        color: #b9e5ff;
+        background: rgba(8, 123, 193, .18);
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1;
+        cursor: pointer;
+        transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+
+        .van-icon {
+          color: #39b7ff;
+          font-size: 16px;
+        }
+
+        &:active {
+          border-color: rgba(52, 174, 247, .7);
+          background: rgba(8, 123, 193, .4);
+          transform: scale(.98);
         }
       }
     }

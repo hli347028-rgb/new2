@@ -299,8 +299,10 @@ async function fetchUserInfo() {
       location: String(staticTotal),
       recommend: referralLoaded ? String(directProfit) : p.share_profit_total || '0',
       recommendTwo: '0.00',
-      // 管理奖展示包含已释放和仍待释放的完整权益。
-      team: String(numOrZero(aixProfile.mgmt_reward_total)),
+      // 管理奖主展示 = 待释放管理奖（用户池 + mgmt_rewards 未释放）
+      team: String(
+        numOrZero(aixProfile.pending_mgmt_reward) + numOrZero(aixProfile.mgmt_reward_pending)
+      ),
       // 代数奖励合计（1代+≥2代，累计）
       generationReward: String(generationProfit),
       // 社区基础奖累计（不含平级）

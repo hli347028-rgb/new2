@@ -1,10 +1,11 @@
 package data
 
 import (
-	"backend/internal/biz"
-	"backend/internal/conf"
 	"encoding/json"
 	"time"
+
+	"backend/internal/biz"
+	"backend/internal/conf"
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/google/wire"
@@ -29,7 +30,7 @@ func NewData(dbCfg *conf.DatabaseConfig, logger log.Logger) (*Data, func(), erro
 	}
 	if err := db.AutoMigrate(
 		&UserPO{}, &OrderPO{}, &RechargePO{}, &TransferPO{}, &WithdrawalPO{},
-		&RewardLogPO{}, &MgmtRewardPO{}, &AixPricePO{}, &SettlementBatchPO{}, &SettingPO{},
+		&RewardLogPO{}, &MgmtRewardPO{}, &AixPricePO{}, &WinPricePO{}, &SettlementBatchPO{}, &SettingPO{},
 		&ExchangeRecordPO{},
 	); err != nil {
 		return nil, nil, err
@@ -112,33 +113,61 @@ func seedDefaults(db *gorm.DB) error {
 	if err := db.Model(&SettingPO{}).Where("`key` = ?", conf.SettingsKeySystemConfig).Count(&cnt).Error; err != nil {
 		return err
 	}
+	snap := conf.SystemConfigSnapshot{
+		StaticRate:           conf.DefaultStaticRate,
+		ExitMultiplier:       conf.DefaultExitMultiplier,
+		DirectRate:           conf.DefaultDirectRate,
+		MgmtThresholds:       conf.DefaultMgmtThresholds(),
+		MgmtRates:            conf.DefaultMgmtRates(),
+		AixPriceInitial:      conf.DefaultAixPrice,
+		WinPrice:             conf.DefaultWinPrice,
+		MgmtCountsTowardExit: true,
+		MinSubscribe:         conf.DefaultMinSubscribe,
+	}
 	if cnt == 0 {
-		snap := conf.SystemConfigSnapshot{
-			StaticRate:           conf.DefaultStaticRate,
-			ExitMultiplier:       conf.DefaultExitMultiplier,
-			DirectRate:           conf.DefaultDirectRate,
-			MgmtThresholds:       conf.DefaultMgmtThresholds(),
-			MgmtRates:            conf.DefaultMgmtRates(),
-			AixPriceInitial:      conf.DefaultAixPrice,
-			MgmtCountsTowardExit: true,
-			MinSubscribe:         conf.DefaultMinSubscribe,
-		}
 		conf.NormalizeBusinessDefaults(&snap)
 		raw, _ := json.Marshal(snap)
 		if err := db.Create(&SettingPO{Key: conf.SettingsKeySystemConfig, Value: string(raw)}).Error; err != nil {
 			return err
 		}
+	} else {
+		var po SettingPO
+		if err := db.Where("`key` = ?", conf.SettingsKeySystemConfig).First(&po).Error; err == nil && po.Value != "" {
+			_ = json.Unmarshal([]byte(po.Value), &snap)
+			conf.NormalizeBusinessDefaults(&snap)
+		}
 	}
 	today := time.Now().Format("2006-01-02")
+	aixSeed := decimal.NewFromFloat(snap.AixPriceInitial)
+	if !aixSeed.IsPositive() {
+		aixSeed = decimal.NewFromFloat(conf.DefaultAixPrice)
+	}
 	var priceCnt int64
 	if err := db.Model(&AixPricePO{}).Where("effective_date = ?", today).Count(&priceCnt).Error; err != nil {
 		return err
 	}
 	if priceCnt == 0 {
-		return db.Create(&AixPricePO{
-			Price:         decimal.NewFromInt(1),
+		if err := db.Create(&AixPricePO{
+			Price:         aixSeed,
 			EffectiveDate: today,
 			Remark:        "initial",
+		}).Error; err != nil {
+			return err
+		}
+	}
+	var winCnt int64
+	if err := db.Model(&WinPricePO{}).Where("id = ?", WinPriceRowID).Count(&winCnt).Error; err != nil {
+		return err
+	}
+	if winCnt == 0 {
+		winSeed := decimal.NewFromFloat(snap.WinPrice)
+		if !winSeed.IsPositive() {
+			winSeed = decimal.NewFromFloat(conf.DefaultWinPrice)
+		}
+		return db.Create(&WinPricePO{
+			ID:     WinPriceRowID,
+			Price:  winSeed,
+			Source: "initial",
 		}).Error
 	}
 	return nil

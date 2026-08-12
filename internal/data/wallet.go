@@ -875,7 +875,7 @@ func (r *walletRepo) CreateAixWithdrawal(ctx context.Context, userID int64, amou
 
 // ExchangeAixToWin AIX → WIN 兑换。返回兑换记录、AIX 剩余余额、WIN 新余额。
 // 兑换公式：按当前 WIN 价格（USDT/枚）折算。AIX 1 枚 = 1 USDT（金本位），
-// 故 WIN 数量 = AIX 数量 / WIN 价格。
+// 故 WIN 毛量 = AIX 数量 / WIN 价格，扣除手续费后 WIN 净量 = WIN 毛量 × (1 - 手续费率)。
 func (r *walletRepo) ExchangeAixToWin(ctx context.Context, userID int64, aixAmount string) (*biz.ExchangeRecord, string, string, error) {
 	amt, err := decimal.NewFromString(aixAmount)
 	if err != nil || !amt.GreaterThan(decimal.Zero) {
@@ -885,9 +885,15 @@ func (r *walletRepo) ExchangeAixToWin(ctx context.Context, userID int64, aixAmou
 	if !price.IsPositive() {
 		return nil, "", "", fmt.Errorf("win price not configured")
 	}
-	winAmount := amt.Div(price).Round(8)
-	if !winAmount.IsPositive() {
+	feeRate := decimal.NewFromFloat(biz.GetExchangeFeeRate())
+	winGross := amt.Div(price).Round(8)
+	if !winGross.IsPositive() {
 		return nil, "", "", fmt.Errorf("win amount too small")
+	}
+	feeAmount := winGross.Mul(feeRate).Round(8)
+	winNet := winGross.Sub(feeAmount).Round(8)
+	if !winNet.IsPositive() {
+		return nil, "", "", fmt.Errorf("win net amount too small after fee")
 	}
 
 	var rec *biz.ExchangeRecord
@@ -901,7 +907,7 @@ func (r *walletRepo) ExchangeAixToWin(ctx context.Context, userID int64, aixAmou
 			return fmt.Errorf("insufficient aix_balance")
 		}
 		u.AixBalance = u.AixBalance.Sub(amt)
-		u.WinBalance = u.WinBalance.Add(winAmount)
+		u.WinBalance = u.WinBalance.Add(winNet)
 		if err := tx.Model(&u).Updates(map[string]interface{}{
 			"aix_balance": u.AixBalance,
 			"win_balance": u.WinBalance,
@@ -913,10 +919,12 @@ func (r *walletRepo) ExchangeAixToWin(ctx context.Context, userID int64, aixAmou
 			FromAsset:     biz.TokenAIX,
 			FromAmount:    amt,
 			ToAsset:       biz.TokenWIN,
-			ToAmount:      winAmount,
+			ToAmount:      winNet,
+			FeeAmount:     feeAmount,
 			ExchangePrice: price,
+			FeeRate:       feeRate.Round(6),
 			Status:        "completed",
-			Remark:        fmt.Sprintf("AIX→WIN exchange at price %s", price.String()),
+			Remark:        fmt.Sprintf("AIX→WIN exchange at price %s, fee %s%%", price.String(), feeRate.Mul(decimal.NewFromInt(100)).Round(2).String()),
 		}
 		if err := tx.Create(po).Error; err != nil {
 			return err
@@ -1029,6 +1037,8 @@ func exchangeRecordToBiz(po *ExchangeRecordPO, userAddr string) *biz.ExchangeRec
 		ID: po.ID, UserID: po.UserID, UserAddress: userAddr,
 		FromAsset: po.FromAsset, FromAmount: po.FromAmount.String(),
 		ToAsset: po.ToAsset, ToAmount: po.ToAmount.String(),
+		FeeAmount:     po.FeeAmount.String(),
+		FeeRate:       po.FeeRate.String(),
 		ExchangePrice: po.ExchangePrice.String(),
 		Status:        po.Status, Remark: po.Remark, CreatedTime: po.CreatedTime,
 	}
@@ -1151,6 +1161,49 @@ func (r *walletRepo) UpsertAixPrice(ctx context.Context, date, price, remark str
 		return err
 	}
 	return r.data.db.WithContext(ctx).Model(&po).Updates(map[string]interface{}{"price": p, "remark": remark}).Error
+}
+
+// GetCurrentWinPrice 读取唯一一条 WIN 现价。
+func (r *walletRepo) GetCurrentWinPrice(ctx context.Context) (string, error) {
+	var po WinPricePO
+	err := r.data.db.WithContext(ctx).Where("id = ?", WinPriceRowID).First(&po).Error
+	if err == gorm.ErrRecordNotFound {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return po.Price.String(), nil
+}
+
+// UpsertCurrentWinPrice 覆盖更新唯一一条 WIN 现价（不新增历史行）。
+func (r *walletRepo) UpsertCurrentWinPrice(ctx context.Context, price, source string) error {
+	p, err := decimal.NewFromString(price)
+	if err != nil {
+		return err
+	}
+	if !p.IsPositive() {
+		return fmt.Errorf("invalid win price")
+	}
+	if source == "" {
+		source = "oracle"
+	}
+	var po WinPricePO
+	err = r.data.db.WithContext(ctx).Where("id = ?", WinPriceRowID).First(&po).Error
+	if err == gorm.ErrRecordNotFound {
+		return r.data.db.WithContext(ctx).Create(&WinPricePO{
+			ID:     WinPriceRowID,
+			Price:  p,
+			Source: source,
+		}).Error
+	}
+	if err != nil {
+		return err
+	}
+	return r.data.db.WithContext(ctx).Model(&po).Updates(map[string]interface{}{
+		"price":  p,
+		"source": source,
+	}).Error
 }
 
 func (r *walletRepo) rechargeToBiz(po *RechargePO) *biz.Recharge {

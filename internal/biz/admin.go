@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -174,6 +175,10 @@ func (uc *AdminUsecase) UpdateSystemConfig(ctx context.Context, tokenString stri
 	if err := uc.settingsRepo.Set(ctx, conf.SettingsKeySystemConfig, string(data)); err != nil {
 		return nil, err
 	}
+	// 后台改 WIN 价时，同步覆盖 win_prices 唯一一行
+	if snapshot != nil && snapshot.WinPrice > 0 {
+		_ = uc.walletRepo.UpsertCurrentWinPrice(ctx, strconv.FormatFloat(snapshot.WinPrice, 'f', -1, 64), "admin")
+	}
 	return uc.buildConfigSnapshot(), nil
 }
 
@@ -200,6 +205,7 @@ func (uc *AdminUsecase) buildConfigSnapshot() *conf.SystemConfigSnapshot {
 		MgmtRates:            append([]float64(nil), MgmtRates...),
 		AixPriceInitial:      AixPriceInitial,
 		WinPrice:             WinPrice,
+		ExchangeFeeRate:      ExchangeFeeRate,
 		MgmtCountsTowardExit: MgmtCountsTowardExit,
 	}
 	conf.NormalizeBusinessDefaults(snap)
@@ -241,13 +247,38 @@ func (uc *AdminUsecase) applyConfigSnapshot(snapshot *conf.SystemConfigSnapshot)
 func (uc *AdminUsecase) LoadPersistedConfig(ctx context.Context) error {
 	raw, err := uc.settingsRepo.Get(ctx, conf.SettingsKeySystemConfig)
 	if err != nil || raw == "" {
+		// 仍尝试加载唯一 WIN 现价
+	} else {
+		var snapshot conf.SystemConfigSnapshot
+		if err := json.Unmarshal([]byte(raw), &snapshot); err != nil {
+			return err
+		}
+		uc.applyConfigSnapshot(&snapshot)
+	}
+	if priceStr, err := uc.walletRepo.GetCurrentWinPrice(ctx); err == nil && strings.TrimSpace(priceStr) != "" {
+		if p, err := decimal.NewFromString(strings.TrimSpace(priceStr)); err == nil && p.IsPositive() {
+			f, _ := p.Float64()
+			WinPrice = f
+		}
+	}
+	// 将配置中的 AIX 现价同步到当日 aix_prices，避免种子价 1 覆盖后台配置
+	if AixPriceInitial > 0 {
+		date := token.NowChina().Format("2006-01-02")
+		_ = uc.walletRepo.UpsertAixPrice(ctx, date, strconv.FormatFloat(AixPriceInitial, 'f', -1, 64), "sync from config")
+	}
+	return nil
+}
+
+// SetWinPriceFromOracle 由链上预言机写入 WIN 价格（内存 + win_prices 唯一一行）。
+func (uc *AdminUsecase) SetWinPriceFromOracle(ctx context.Context, price float64) error {
+	if price <= 0 {
+		return fmt.Errorf("invalid win price: %v", price)
+	}
+	priceStr := strconv.FormatFloat(price, 'f', -1, 64)
+	if err := uc.walletRepo.UpsertCurrentWinPrice(ctx, priceStr, "oracle"); err != nil {
 		return err
 	}
-	var snapshot conf.SystemConfigSnapshot
-	if err := json.Unmarshal([]byte(raw), &snapshot); err != nil {
-		return err
-	}
-	uc.applyConfigSnapshot(&snapshot)
+	WinPrice = price
 	return nil
 }
 

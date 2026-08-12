@@ -22,10 +22,10 @@ import (
 	_ "go.uber.org/automaxprocs"
 )
 
-func wireApp(confServer *conf.Server, dbCfg *conf.DatabaseConfig, authCfg *conf.AuthConfig, walletCfg *conf.WalletConfig, logger log.Logger) (*kratos.App, *job.SettlementJob, *job.ChainRechargeJob, *biz.AdminUsecase, func(), error) {
+func wireApp(confServer *conf.Server, dbCfg *conf.DatabaseConfig, authCfg *conf.AuthConfig, walletCfg *conf.WalletConfig, logger log.Logger) (*kratos.App, *job.SettlementJob, *job.ChainRechargeJob, *job.WinPriceOracleJob, *biz.AdminUsecase, func(), error) {
 	dataData, cleanup, err := data.NewData(dbCfg, logger)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	userRepo := data.NewUserRepo(dataData)
 	challengeRepo := data.NewChallengeRepo()
@@ -42,10 +42,11 @@ func wireApp(confServer *conf.Server, dbCfg *conf.DatabaseConfig, authCfg *conf.
 	adminLegacyService := service.NewAdminLegacyService(adminUsecase, userRepo, walletRepo, dataData, authCfg, walletCfg)
 	settlementJob := job.NewSettlementJob(settlementUsecase, logger)
 	chainRechargeJob := job.NewChainRechargeJob(walletRepo, settingsRepo, walletCfg, logger)
+	winPriceOracleJob := job.NewWinPriceOracleJob(adminUsecase, walletCfg, logger)
 	grpcServer := server.NewGRPCServer(confServer, authService, walletService, logger)
 	httpServer := server.NewHTTPServer(confServer, authService, walletService, adminService, adminLegacyService, chainRechargeJob, logger)
 	app := newApp(logger, grpcServer, httpServer)
-	return app, settlementJob, chainRechargeJob, adminUsecase, func() {
+	return app, settlementJob, chainRechargeJob, winPriceOracleJob, adminUsecase, func() {
 		cleanup()
 	}, nil
 }

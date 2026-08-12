@@ -44,6 +44,12 @@ export const asyncRouterMap = [
                 meta: { title: '配置项', keepAlive: true, icon: "setting", permission: ['dashboard'] },
             },
             {
+                path: '/exchangeList',
+                name: 'exchangeList',
+                component: () => import('@/views/orders/exchangeList'),
+                meta: { title: '兑换记录', keepAlive: true, icon: "swap", permission: ['dashboard'] },
+            },
+            {
                 path: '/settlement',
                 name: 'settlement',
                 component: () => import('@/views/orders/settlement'),

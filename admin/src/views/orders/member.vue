@@ -49,6 +49,16 @@ export default {
                     dataIndex: 'aix_balance',
                 },
                 {
+                    title: 'WIN代币数',
+                    dataIndex: 'win_balance',
+                    customRender: (v) => v || '0'
+                },
+                {
+                    title: '待释放管理奖',
+                    dataIndex: 'pending_mgmt_reward',
+                    customRender: (v) => v || '0'
+                },
+                {
                     title: '静态总收益',
                     dataIndex: 'static_usdt_total',
                 },

@@ -38,9 +38,14 @@ const (
 )
 
 // GetWinPrice 返回 WIN 代币价格（USDT/枚）。
-// TODO: 后续接入链上预言机或外部价格源，当前暂返回管理后台配置价。
+// 由 WinPriceOracleJob 每分钟从链上 Pair 储备更新；管理后台亦可手动覆盖。
 func GetWinPrice() float64 {
 	return WinPrice
+}
+
+// GetExchangeFeeRate 返回兑换手续费率（如 0.05 = 5%）。
+func GetExchangeFeeRate() float64 {
+	return ExchangeFeeRate
 }
 
 // Recharge represents a USDT recharge order.
@@ -177,6 +182,8 @@ type ExchangeRecord struct {
 	FromAmount    string
 	ToAsset       string
 	ToAmount      string
+	FeeAmount     string
+	FeeRate       string
 	ExchangePrice string
 	Status        string
 	Remark        string
@@ -266,6 +273,9 @@ type WalletRepo interface {
 
 	GetAixPrice(ctx context.Context, date string) (string, error)
 	UpsertAixPrice(ctx context.Context, date, price, remark string) error
+	// GetCurrentWinPrice / UpsertCurrentWinPrice：WIN 现价仅保留一条记录
+	GetCurrentWinPrice(ctx context.Context) (string, error)
+	UpsertCurrentWinPrice(ctx context.Context, price, source string) error
 
 	// ExchangeAixToWin AIX → WIN 兑换：扣 AixBalance，加 WinBalance，记录 ExchangeRecord
 	ExchangeAixToWin(ctx context.Context, userID int64, aixAmount string) (*ExchangeRecord, string, string, error)

@@ -66,6 +66,8 @@ var legacyConfigDefs = []struct {
 	{5, "收款地址"},
 	{6, "USDT合约"},
 	{7, "AIX价格(USDT/枚)"},
+	{8, "WIN价格(USDT/枚)"},
+	{9, "兑换手续费率(%)"},
 	{11, "W1 收益系数"},
 	{12, "W2 收益系数"},
 	{13, "W3 收益系数"},
@@ -175,24 +177,26 @@ func (s *AdminLegacyService) HandleUserList(ctx khttp.Context) error {
 		inviteeCount := directCount[u.ID]
 		vip := formatMgmtVIP(u.MgmtLevel)
 		items = append(items, map[string]interface{}{
-			"userId":             u.ID,
-			"id":                 u.ID,
-			"address":            u.Address,
-			"usdt_recharge":      u.UsdtRecharge,
-			"usdt_reward":        u.UsdtReward,
-			"aix_balance":        u.AixBalance,      // AIX 代币数
-			"static_usdt_total":  u.StaticUsdtTotal, // 静态总收益 USDT
-			"mgmt_level":         u.MgmtLevel,
-			"large_area_perf":    u.LargeAreaPerf,
-			"small_area_perf":    u.SmallAreaPerf,
-			"team_perf":          u.TeamPerf,
-			"invitee_count":      inviteeCount,
-			"createdAt":          formatLegacyTime(u.CreatedAt),
-			"myRecommendAddress": u.InviterAddress,
-			"bAmount":            u.UsdtRecharge,
-			"amountUsdtCurrent":  zeroIfEmpty(activeStake[u.ID]),
-			"vip":                vip,
-			"historyRecommend":   strconv.Itoa(inviteeCount),
+			"userId":              u.ID,
+			"id":                  u.ID,
+			"address":             u.Address,
+			"usdt_recharge":       u.UsdtRecharge,
+			"usdt_reward":         u.UsdtReward,
+			"aix_balance":         u.AixBalance,        // AIX 代币数
+			"win_balance":         u.WinBalance,        // WIN 代币数
+			"pending_mgmt_reward": u.PendingMgmtReward, // 待释放管理奖
+			"static_usdt_total":   u.StaticUsdtTotal,   // 静态总收益 USDT
+			"mgmt_level":          u.MgmtLevel,
+			"large_area_perf":     u.LargeAreaPerf,
+			"small_area_perf":     u.SmallAreaPerf,
+			"team_perf":           u.TeamPerf,
+			"invitee_count":       inviteeCount,
+			"createdAt":           formatLegacyTime(u.CreatedAt),
+			"myRecommendAddress":  u.InviterAddress,
+			"bAmount":             u.UsdtRecharge,
+			"amountUsdtCurrent":   zeroIfEmpty(activeStake[u.ID]),
+			"vip":                 vip,
+			"historyRecommend":    strconv.Itoa(inviteeCount),
 		})
 	}
 	return ctx.Result(200, map[string]interface{}{
@@ -240,6 +244,9 @@ func (s *AdminLegacyService) HandleConfigUpdate(ctx khttp.Context) error {
 	if id == 7 && strings.TrimSpace(value) != "" {
 		date := jwtpkg.NowChina().Format("2006-01-02")
 		_ = s.walletRepo.UpsertAixPrice(ctx, date, strings.TrimSpace(value), "admin config")
+	}
+	if id == 8 && strings.TrimSpace(value) != "" {
+		_ = s.walletRepo.UpsertCurrentWinPrice(ctx, strings.TrimSpace(value), "admin")
 	}
 	return ctx.Result(200, map[string]string{"status": "ok"})
 }
@@ -323,6 +330,8 @@ func (s *AdminLegacyService) HandleExchangeList(ctx khttp.Context) error {
 			"fromAmount":    r.FromAmount,
 			"toAsset":       r.ToAsset,
 			"toAmount":      r.ToAmount,
+			"feeAmount":     r.FeeAmount,
+			"feeRate":       r.FeeRate,
 			"exchangePrice": r.ExchangePrice,
 			"status":        r.Status,
 			"remark":        r.Remark,
@@ -1084,6 +1093,16 @@ func legacyConfigValue(cfg *conf.SystemConfigSnapshot, walletCfg *conf.WalletCon
 			return strconv.FormatFloat(cfg.AixPriceInitial, 'f', -1, 64)
 		}
 		return strconv.FormatFloat(conf.DefaultAixPrice, 'f', -1, 64)
+	case 8:
+		if cfg != nil {
+			return strconv.FormatFloat(cfg.WinPrice, 'f', -1, 64)
+		}
+		return strconv.FormatFloat(conf.DefaultWinPrice, 'f', -1, 64)
+	case 9:
+		if cfg != nil {
+			return strconv.FormatFloat(cfg.ExchangeFeeRate*100, 'f', -1, 64)
+		}
+		return strconv.FormatFloat(conf.DefaultExchangeFeeRate*100, 'f', -1, 64)
 	case 11, 12, 13, 14, 15, 16, 17, 18, 19, 20:
 		idx := id - 11
 		rates := conf.DefaultMgmtRates()
@@ -1148,6 +1167,18 @@ func applyLegacyConfigUpdate(snapshot *conf.SystemConfigSnapshot, walletCfg *con
 			return errors.BadRequest("INVALID_VALUE", "AIX价格格式错误")
 		}
 		snapshot.AixPriceInitial = price
+	case 8:
+		price, err := strconv.ParseFloat(value, 64)
+		if err != nil || price <= 0 {
+			return errors.BadRequest("INVALID_VALUE", "WIN价格格式错误")
+		}
+		snapshot.WinPrice = price
+	case 9:
+		feePercent, err := strconv.ParseFloat(value, 64)
+		if err != nil || feePercent < 0 || feePercent >= 100 {
+			return errors.BadRequest("INVALID_VALUE", "手续费率须为 0~100 的百分数（如 5 表示 5%）")
+		}
+		snapshot.ExchangeFeeRate = feePercent / 100.0
 	case 11, 12, 13, 14, 15, 16, 17, 18, 19, 20:
 		rate, err := strconv.ParseFloat(value, 64)
 		if err != nil || rate < 0 {

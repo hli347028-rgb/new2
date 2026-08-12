@@ -53,7 +53,7 @@
           </div>
           <div class="performance-info-item">
             <p>{{ formatNum(userinfo.team) }}</p>
-            <p>{{ $t('community.managementReward') }}</p>
+            <p>{{ $t('wallet.pendingManagementReward') }}</p>
           </div>
           <div class="performance-info-item">
             <p>{{ formatNum(userinfo.all) }}</p>
