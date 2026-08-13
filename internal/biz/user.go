@@ -14,7 +14,8 @@ type User struct {
 	UsdtReward        string
 	AixBalance        string // AIX 代币数
 	WinBalance        string // WIN 代币数
-	PendingMgmtReward string // 待释放管理奖（USDT）
+	PendingMgmtReward string // 兼容旧字段 = OverflowReward
+	OverflowReward    string // 溢出奖励（USDT）
 	StaticUsdtTotal   string // 静态总收益（USDT）
 	MgmtLevel       int32
 	LargeAreaPerf   string

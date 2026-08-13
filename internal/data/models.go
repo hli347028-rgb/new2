@@ -17,7 +17,8 @@ type UserPO struct {
 	UsdtReward        decimal.Decimal `gorm:"column:usdt_reward;type:decimal(36,18);default:0;not null"`
 	AixBalance        decimal.Decimal `gorm:"column:aix_balance;type:decimal(36,18);default:0;not null"`         // AIX 代币数（静态换算入账）
 	WinBalance        decimal.Decimal `gorm:"column:win_balance;type:decimal(36,18);default:0;not null"`         // WIN 代币数
-	PendingMgmtReward decimal.Decimal `gorm:"column:pending_mgmt_reward;type:decimal(36,18);default:0;not null"` // 待释放管理奖（USDT）
+	PendingMgmtReward decimal.Decimal `gorm:"column:pending_mgmt_reward;type:decimal(36,18);default:0;not null"` // 兼容旧列；业务以 OverflowReward 为准
+	OverflowReward    decimal.Decimal `gorm:"column:overflow_reward;type:decimal(36,18);default:0;not null"`     // 溢出奖励（订单全部出局后剩余直推/管理奖）
 	StaticUsdtTotal   decimal.Decimal `gorm:"column:static_usdt_total;type:decimal(36,18);default:0;not null"`   // 静态总收益（USDT 金本位累计）
 	MgmtLevel         int32           `gorm:"column:mgmt_level;default:0;not null"`
 	MgmtLevelLocked   bool            `gorm:"column:mgmt_level_locked;default:false;not null"`
@@ -41,6 +42,7 @@ type OrderPO struct {
 	DirectBase   decimal.Decimal `gorm:"column:direct_base;type:decimal(36,18);default:0;not null"`
 	FromRecharge decimal.Decimal `gorm:"column:from_recharge;type:decimal(36,18);default:0;not null"`
 	FromReward   decimal.Decimal `gorm:"column:from_reward;type:decimal(36,18);default:0;not null"`
+	FromWin      decimal.Decimal `gorm:"column:from_win;type:decimal(36,18);default:0;not null"` // WIN 扣款数量（按认购时 win_price 折算）
 	FundSource   string          `gorm:"column:fund_source;size:16;not null"`
 	Status       string          `gorm:"size:16;default:active;not null"`
 	ExitedTime   *time.Time      `gorm:"column:exited_time"`
@@ -53,6 +55,7 @@ func (OrderPO) TableName() string { return "orders" }
 type RechargePO struct {
 	ID            int64           `gorm:"primaryKey;autoIncrement"`
 	UserID        int64           `gorm:"index;not null"`
+	Asset         string          `gorm:"size:16;default:USDT;not null;index"` // USDT | WIN
 	Amount        decimal.Decimal `gorm:"type:decimal(36,18);not null"`
 	TxHash        string          `gorm:"size:66;uniqueIndex;not null"`
 	FromAddress   string          `gorm:"column:from_address;size:42"`

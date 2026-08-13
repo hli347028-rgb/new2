@@ -67,8 +67,12 @@
           <p>{{ formatFour(userinfo.recommend) }}</p>
         </div>
         <div class="pledge-frame-item">
-          <p>{{ $t('wallet.pendingManagementReward') }}</p>
+          <p>{{ $t('wallet.managementReward') }}</p>
           <p>{{ formatFour(userinfo.team) }}</p>
+        </div>
+        <div class="pledge-frame-item">
+          <p>{{ $t('wallet.overflowReward') }}</p>
+          <p>{{ formatFour(userinfo.overflowReward) }}</p>
         </div>
         <div class="pledge-frame-item">
           <p>{{ $t('wallet.totalIncome') }}</p>
@@ -612,9 +616,9 @@ const handleBack = () => {
         }
       }
       .pledge-frame {
-        height: 220px;
+        min-height: 330px;
         background: url('@/assets/images/boxbg1.png') no-repeat;
-        background-size: 100% 220px;
+        background-size: 100% 100%;
         box-sizing: border-box;
         display: flex;
         flex-wrap: wrap;

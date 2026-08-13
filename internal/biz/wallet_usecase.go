@@ -442,21 +442,21 @@ func (uc *WalletUsecase) ListProducts(ctx context.Context) ([]*Product, error) {
 	return nil, errAIXUnsupported
 }
 
-// Subscribe AIX 报单：amount + pay_from(recharge|reward)
+// Subscribe AIX 报单：amount + pay_from(recharge|reward|win)
 func (uc *WalletUsecase) Subscribe(ctx context.Context, tokenString string, productID int64, quantity int32, amountStr string) (*Order, string, error) {
 	// Legacy proto path without pay_from — reject and ask for custom route
-	return nil, "", errors.BadRequest("PAY_FROM_REQUIRED", "请使用 /v1/wallet/subscribe 并传 pay_from=recharge|reward")
+	return nil, "", errors.BadRequest("PAY_FROM_REQUIRED", "请使用 /v1/wallet/subscribe-aix 并传 pay_from=recharge|reward|win")
 }
 
-// SubscribeAIX 报单 / 复投
+// SubscribeAIX 报单 / 复投 / WIN 替代充值钱包认购
 func (uc *WalletUsecase) SubscribeAIX(ctx context.Context, tokenString, amountStr, payFrom string) (*Order, string, error) {
 	user, err := uc.resolveUser(ctx, tokenString)
 	if err != nil {
 		return nil, "", err
 	}
 	payFrom = strings.ToLower(strings.TrimSpace(payFrom))
-	if payFrom != PayFromRecharge && payFrom != PayFromReward {
-		return nil, "", errors.BadRequest("INVALID_PAY_FROM", "pay_from 必须为 recharge 或 reward")
+	if payFrom != PayFromRecharge && payFrom != PayFromReward && payFrom != PayFromWin {
+		return nil, "", errors.BadRequest("INVALID_PAY_FROM", "pay_from 必须为 recharge、reward 或 win")
 	}
 	minSubscribe, err := ParseAmount(uc.walletCfg.GetMinSubscribe())
 	if err != nil {
@@ -469,15 +469,156 @@ func (uc *WalletUsecase) SubscribeAIX(ctx context.Context, tokenString, amountSt
 	if total.LessThan(minSubscribe) {
 		return nil, "", errors.BadRequest("MIN_SUBSCRIBE_LIMIT", fmt.Sprintf("认购金额不能低于 %s USDT", minSubscribe.String()))
 	}
+	if payFrom == PayFromWin {
+		winPrice := decimal.NewFromFloat(GetWinPrice())
+		if !winPrice.IsPositive() {
+			return nil, "", errors.BadRequest("WIN_PRICE_NOT_CONFIGURED", "WIN 价格未配置")
+		}
+	}
 	order, bal, err := uc.walletRepo.Subscribe(ctx, user.ID, total.String(), payFrom, ExitMultiplier, DirectRate)
 	if err != nil {
-		if strings.Contains(err.Error(), "insufficient") {
+		if strings.Contains(err.Error(), "insufficient usdt_recharge") || strings.Contains(err.Error(), "insufficient usdt_reward") {
 			return nil, "", errors.BadRequest("INSUFFICIENT_BALANCE", "账户余额不足")
+		}
+		if strings.Contains(err.Error(), "insufficient win_balance") {
+			return nil, "", errors.BadRequest("INSUFFICIENT_WIN", "WIN 代币余额不足")
+		}
+		if strings.Contains(err.Error(), "win price not configured") {
+			return nil, "", errors.BadRequest("WIN_PRICE_NOT_CONFIGURED", "WIN 价格未配置")
 		}
 		return nil, "", err
 	}
 	order.SyncCompatFields()
 	return order, bal, nil
+}
+
+func (uc *WalletUsecase) CreateWinRecharge(ctx context.Context, tokenString, amount string) (*Recharge, error) {
+	user, err := uc.resolveUser(ctx, tokenString)
+	if err != nil {
+		return nil, err
+	}
+	amountDec, err := ParseAmount(amount)
+	minRecharge := decimal.NewFromInt(1)
+	if err != nil || amountDec.LessThan(minRecharge) {
+		return nil, errors.BadRequest("INVALID_AMOUNT", "WIN 充值数量不能小于1")
+	}
+	depositAddress := uc.walletCfg.GetDepositAddress()
+	if !uc.IsDevMode() {
+		if depositAddress == "" || depositAddress == ZeroAddress {
+			return nil, errors.BadRequest("DEPOSIT_NOT_CONFIGURED", "平台收款地址未配置，请联系管理员")
+		}
+	}
+	winContract := uc.walletCfg.GetWinContract()
+	if !uc.IsDevMode() && winContract == "" {
+		return nil, errors.BadRequest("WIN_NOT_CONFIGURED", "WIN 合约地址未配置")
+	}
+	now := time.Now()
+	message := fmt.Sprintf(
+		"Recharge WIN to AIX account\nAddress: %s\nAmount: %s WIN\nToken: %s\nRechargeAt: %d",
+		user.Address, amountDec.String(), winContract, now.Unix(),
+	)
+	recharge := &Recharge{
+		UserID:      user.ID,
+		Address:     user.Address,
+		Asset:       TokenWIN,
+		FromAddress: user.Address,
+		ToAddress:   depositAddress,
+		Amount:      amountDec.String(),
+		Message:     message,
+		Status:      RechargeStatusPending,
+		ExpireAt:    now.Add(30 * time.Minute),
+	}
+	return uc.walletRepo.CreateRecharge(ctx, recharge)
+}
+
+func (uc *WalletUsecase) ConfirmWinRecharge(ctx context.Context, tokenString string, rechargeID int64, txHash string, signature string) (string, string, error) {
+	user, err := uc.resolveUser(ctx, tokenString)
+	if err != nil {
+		return "", "", err
+	}
+	recharge, err := uc.walletRepo.FindRecharge(ctx, rechargeID)
+	if err != nil {
+		return "", "", err
+	}
+	if recharge == nil {
+		return "", "", errors.NotFound("RECHARGE_NOT_FOUND", "充值记录不存在")
+	}
+	if recharge.UserID != user.ID {
+		return "", "", errors.Forbidden("RECHARGE_FORBIDDEN", "无权确认该充值记录")
+	}
+	if !strings.EqualFold(recharge.Asset, TokenWIN) {
+		return "", "", errors.BadRequest("INVALID_ASSET", "非 WIN 充值单，请使用 USDT 确认接口")
+	}
+	if recharge.Status == RechargeStatusConfirmed {
+		return "", "", errors.BadRequest("RECHARGE_CONFIRMED", "充值记录已确认")
+	}
+	if !recharge.ExpireAt.IsZero() && time.Now().After(recharge.ExpireAt) {
+		return "", "", errors.BadRequest("RECHARGE_EXPIRED", "充值单已过期，请重新创建")
+	}
+	txHash = strings.TrimSpace(txHash)
+	if txHash == "" {
+		return "", "", errors.BadRequest("INVALID_TX_HASH", "交易哈希不能为空")
+	}
+	exists, err := uc.walletRepo.FindRechargeByTxHash(ctx, txHash)
+	if err != nil {
+		return "", "", err
+	}
+	if exists != nil && exists.ID != rechargeID {
+		if exists.UserID == user.ID && exists.Status == RechargeStatusConfirmed && strings.EqualFold(exists.Asset, TokenWIN) {
+			userFresh, err2 := uc.userRepo.FindByID(ctx, user.ID)
+			if err2 != nil || userFresh == nil {
+				return "", "", err2
+			}
+			return userFresh.WinBalance, exists.Amount, nil
+		}
+		return "", "", errors.BadRequest("TX_HASH_USED", "交易哈希已被使用")
+	}
+	if err := eth.VerifyPersonalSign(recharge.Message, signature, user.Address); err != nil {
+		return "", "", errors.Unauthorized("INVALID_SIGNATURE", "签名校验失败")
+	}
+	amountDec, _ := ParseAmount(recharge.Amount)
+	depositAddrs := uc.walletCfg.GetDepositAddresses()
+	if uc.walletCfg.GetRPCURL() != "" {
+		if len(depositAddrs) == 0 {
+			return "", "", errors.BadRequest("DEPOSIT_NOT_CONFIGURED", "平台收款地址未配置，请联系管理员")
+		}
+		winContract := uc.walletCfg.GetWinContract()
+		if winContract == "" {
+			return "", "", errors.BadRequest("WIN_NOT_CONFIGURED", "WIN 合约地址未配置")
+		}
+		if err := eth.VerifyERC20Transfer(ctx, uc.walletCfg.GetRPCURL(), txHash, winContract, depositAddrs, user.Address, amountDec, uc.walletCfg.GetWinDecimals(), TokenWIN); err != nil {
+			return "", "", errors.BadRequest("TX_VERIFY_FAILED", err.Error())
+		}
+	}
+
+	// 校验通过后直接入账 win_balance（无 WIN 链上扫描任务时由确认接口负责入账）
+	balance, err := uc.walletRepo.ConfirmRechargeCredit(ctx, rechargeID, txHash)
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "already confirmed") {
+			credited, bal, creditErr := uc.walletRepo.AutoCreditWinRecharge(ctx, txHash, user.Address, recharge.ToAddress, recharge.Amount)
+			if creditErr == nil && (credited || bal != "") {
+				return bal, recharge.Amount, nil
+			}
+		}
+		return "", "", err
+	}
+	return balance, recharge.Amount, nil
+}
+
+func (uc *WalletUsecase) ListWinRecharges(ctx context.Context, tokenString string) ([]*Recharge, error) {
+	user, err := uc.resolveUser(ctx, tokenString)
+	if err != nil {
+		return nil, err
+	}
+	return uc.walletRepo.ListRechargesByUserAsset(ctx, user.ID, TokenWIN)
+}
+
+func (uc *WalletUsecase) WinContract() string {
+	return uc.walletCfg.GetWinContract()
+}
+
+func (uc *WalletUsecase) WinDecimals() int32 {
+	return uc.walletCfg.GetWinDecimals()
 }
 
 func (uc *WalletUsecase) ListOrders(ctx context.Context, tokenString string) ([]*Order, error) {

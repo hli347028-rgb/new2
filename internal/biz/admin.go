@@ -131,6 +131,7 @@ type AdminUserUpdate struct {
 	AixBalance        string
 	WinBalance        string
 	PendingMgmtReward string
+	OverflowReward    string
 	StaticUsdtTotal   string
 	Role              string
 	CommunityLevel    string
@@ -371,6 +372,7 @@ func (uc *AdminUsecase) AdminCreditBalance(ctx context.Context, tokenString, add
 	recharge, err := uc.walletRepo.CreateRecharge(ctx, &Recharge{
 		UserID:      user.ID,
 		Address:     user.Address,
+		Asset:       TokenUSDT,
 		FromAddress: user.Address,
 		Amount:      amountDec.String(),
 		Message:     fmt.Sprintf("admin credit %s USDT", amountDec.String()),
@@ -385,6 +387,48 @@ func (uc *AdminUsecase) AdminCreditBalance(ctx context.Context, tokenString, add
 		return "", "", err
 	}
 	uc.log.Infof("admin credited %s USDT to %s (usdt_recharge), balance=%s", amountDec.String(), user.Address, balance)
+	return balance, amountDec.String(), nil
+}
+
+// AdminCreditWinBalance 管理端人工给用户充值 WIN → win_balance
+func (uc *AdminUsecase) AdminCreditWinBalance(ctx context.Context, tokenString, address, amount string) (string, string, error) {
+	if _, err := uc.requireAdmin(ctx, tokenString); err != nil {
+		return "", "", err
+	}
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return "", "", errors.BadRequest("INVALID_ADDRESS", "请填写用户地址")
+	}
+	amountDec, err := ParseAmount(strings.TrimSpace(amount))
+	if err != nil || !amountDec.GreaterThan(decimal.Zero) {
+		return "", "", errors.BadRequest("INVALID_AMOUNT", "充值数量必须大于0")
+	}
+	user, err := uc.userRepo.FindByAddress(ctx, address)
+	if err != nil {
+		return "", "", err
+	}
+	if user == nil {
+		return "", "", errors.NotFound("USER_NOT_FOUND", "用户不存在，请确认地址已注册登录")
+	}
+	now := time.Now()
+	recharge, err := uc.walletRepo.CreateRecharge(ctx, &Recharge{
+		UserID:      user.ID,
+		Address:     user.Address,
+		Asset:       TokenWIN,
+		FromAddress: user.Address,
+		Amount:      amountDec.String(),
+		Message:     fmt.Sprintf("admin credit %s WIN", amountDec.String()),
+		Status:      RechargeStatusPending,
+		ExpireAt:    now.Add(24 * time.Hour),
+	})
+	if err != nil {
+		return "", "", err
+	}
+	balance, err := uc.walletRepo.ConfirmRechargeCredit(ctx, recharge.ID, fmt.Sprintf("admin-win-%d", recharge.ID))
+	if err != nil {
+		return "", "", err
+	}
+	uc.log.Infof("admin credited %s WIN to %s (win_balance), balance=%s", amountDec.String(), user.Address, balance)
 	return balance, amountDec.String(), nil
 }
 

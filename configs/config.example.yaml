@@ -33,6 +33,9 @@ wallet:
     - "replace-with-your-deposit-address"
   usdt_contract: "0x926632975149221891f1b9B56Efd125Dfe90ba2f"
   usdt_decimals: 18
+  # WIN ERC20 合约（用于 WIN 充值链上校验）；留空时仅允许管理端人工入账 / 开发模式
+  win_contract: ""
+  win_decimals: 18
   rpc_url: "https://rpc1.eoeo.info"
   recharge_monitor_enabled: true
   # 每60秒启动一轮；每轮查询10次，相邻查询间隔5秒。

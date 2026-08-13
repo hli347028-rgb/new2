@@ -29,13 +29,28 @@
             <span class="radio-dot" aria-hidden="true"></span>
             <strong>{{ $t('node.reinvest') }}</strong>
           </label>
+          <label class="mode-option" :class="{ active: activeMode === 'win', disabled: submitting }">
+            <input
+              type="radio"
+              name="subscribe-mode"
+              value="win"
+              :checked="activeMode === 'win'"
+              :disabled="submitting"
+              @change="switchMode('win')"
+            />
+            <span class="radio-dot" aria-hidden="true"></span>
+            <strong>{{ $t('node.winPay') }}</strong>
+          </label>
         </div>
 
         <div class="balance-card">
-          <span>{{ activeMode === 'recharge' ? $t('node.rechargeWalletBalance') : $t('node.rewardWalletBalance') }}</span>
-          <strong>{{ accountBalance }} <small>USDT</small></strong>
+          <span>{{ balanceLabel }}</span>
+          <strong>{{ accountBalance }} <small>{{ balanceUnit }}</small></strong>
         </div>
-        <p class="mode-tip">{{ $t('node.referralRewardTip') }}</p>
+        <p v-if="activeMode === 'win' && winPrice > 0" class="mode-tip win-cost-tip">
+          {{ $t('node.winPayHint', { price: winPrice, cost: estimatedWinCost }) }}
+        </p>
+        <p class="mode-tip">{{ modeTip }}</p>
       </div>
 
       <div class="node-tiers">
@@ -114,18 +129,36 @@ import { errMsg, listAixOrders, subscribeAix } from '@/api/aix'
 const { t: $t } = useI18n()
 const person = userPerson()
 
-type SubscribeMode = 'recharge' | 'reward'
+type SubscribeMode = 'recharge' | 'reward' | 'win'
 
 const activeMode = ref<SubscribeMode>('recharge')
+const winPrice = computed(() => Number(person.profile?.win_price || 0))
 const accountBalance = computed(() => {
   const profile = person.profile
-  return activeMode.value === 'recharge'
-    ? profile?.usdt_recharge || '0.00'
-    : profile?.usdt_reward || '0.00'
+  if (activeMode.value === 'win') return profile?.win_balance || '0.00'
+  if (activeMode.value === 'recharge') return profile?.usdt_recharge || '0.00'
+  return profile?.usdt_reward || '0.00'
 })
-const actionText = computed(() => activeMode.value === 'recharge'
-  ? $t('node.reportNow')
-  : $t('node.reinvestNow'))
+const balanceLabel = computed(() => {
+  if (activeMode.value === 'win') return $t('node.winWalletBalance')
+  if (activeMode.value === 'recharge') return $t('node.rechargeWalletBalance')
+  return $t('node.rewardWalletBalance')
+})
+const balanceUnit = computed(() => (activeMode.value === 'win' ? 'WIN' : 'USDT'))
+const modeTip = computed(() => {
+  if (activeMode.value === 'win') return $t('node.winReferralTip')
+  return $t('node.referralRewardTip')
+})
+const estimatedWinCost = computed(() => {
+  const amount = selectedTier.value || Number(customAmount.value) || minSubscribe.value
+  if (!winPrice.value || winPrice.value <= 0) return '-'
+  return (amount / winPrice.value).toFixed(4)
+})
+const actionText = computed(() => {
+  if (activeMode.value === 'reward') return $t('node.reinvestNow')
+  if (activeMode.value === 'win') return $t('node.winPayNow')
+  return $t('node.reportNow')
+})
 
 interface NodeTier {
   price: number
@@ -172,9 +205,11 @@ const getOrderList = async () => {
   }
 }
 
-const fundingSourceText = (source: string) => source === 'reward'
-  ? $t('node.rewardSource')
-  : $t('node.rechargeSource')
+const fundingSourceText = (source: string) => {
+  if (source === 'reward') return $t('node.rewardSource')
+  if (source === 'win') return $t('node.winSource')
+  return $t('node.rechargeSource')
+}
 
 const orderStatusText = (status: string | number) => {
   const s = String(status)
@@ -192,7 +227,17 @@ const handleSubscribe = async (amount: number) => {
   }
   const mode = activeMode.value
   const bal = Number(accountBalance.value)
-  if (Number.isFinite(bal) && amount > bal) {
+  if (mode === 'win') {
+    if (!winPrice.value || winPrice.value <= 0) {
+      showFailToast($t('node.winPriceMissing'))
+      return
+    }
+    const needWin = amount / winPrice.value
+    if (Number.isFinite(bal) && needWin > bal) {
+      showFailToast($t('common.insufficientBalance'))
+      return
+    }
+  } else if (Number.isFinite(bal) && amount > bal) {
     showFailToast($t('common.insufficientBalance'))
     return
   }
@@ -202,16 +247,22 @@ const handleSubscribe = async (amount: number) => {
   try {
     await subscribeAix(String(amount), mode)
     closeToast()
-    showSuccessToast(mode === 'recharge'
-      ? $t('node.reportSuccess')
-      : $t('node.reinvestSuccess'))
+    const okMsg = mode === 'reward'
+      ? $t('node.reinvestSuccess')
+      : mode === 'win'
+        ? $t('node.winPaySuccess')
+        : $t('node.reportSuccess')
+    showSuccessToast(okMsg)
     customAmount.value = ''
     await Promise.all([person.refreshProfile(), getOrderList()])
   } catch (error: any) {
     closeToast()
-    showFailToast(errMsg(error, mode === 'recharge'
-      ? $t('node.reportFailed')
-      : $t('node.reinvestFailed')))
+    const failMsg = mode === 'reward'
+      ? $t('node.reinvestFailed')
+      : mode === 'win'
+        ? $t('node.winPayFailed')
+        : $t('node.reportFailed')
+    showFailToast(errMsg(error, failMsg))
   } finally {
     submitting.value = false
   }
@@ -262,7 +313,7 @@ onMounted(async () => {
     border-radius: $radius-md;
     background: rgba(3, 10, 17, 0.72);
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .mode-option {

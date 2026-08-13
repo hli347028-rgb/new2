@@ -27,6 +27,7 @@ func RegisterAdminLegacyRoutes(srv *http.Server, legacy *service.AdminLegacyServ
 	r.GET(p+"/reward_list", legacy.HandleRewardList)
 	r.GET(p+"/record_list", legacy.HandleRecordList)
 	r.POST(p+"/admin_recharge", legacy.HandleAdminRecharge)
+	r.POST(p+"/admin_recharge_win", legacy.HandleAdminRechargeWin)
 	r.POST(p+"/recharge_to_reward", legacy.HandleRechargeToReward)
 	r.GET(p+"/good_list", legacy.HandleGoodList)
 	r.GET(p+"/good_list_two", legacy.HandleStubGoods)

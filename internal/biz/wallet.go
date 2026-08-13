@@ -14,6 +14,7 @@ const (
 
 	PayFromRecharge = "recharge"
 	PayFromReward   = "reward"
+	PayFromWin      = "win" // 用 WIN 余额按 win_price 折算，替代充值钱包 USDT 认购（产生直推）
 
 	OrderStatusActive = "active"
 	OrderStatusExited = "exited"
@@ -48,11 +49,12 @@ func GetExchangeFeeRate() float64 {
 	return ExchangeFeeRate
 }
 
-// Recharge represents a USDT recharge order.
+// Recharge represents a USDT/WIN recharge order.
 type Recharge struct {
 	ID            int64
 	UserID        int64
 	Address       string // from_address / user address for display
+	Asset         string // USDT | WIN
 	Amount        string
 	Message       string
 	TxHash        string
@@ -210,6 +212,8 @@ type Order struct {
 	DirectBase   string
 	FromRecharge string
 	FromReward   string
+	FromWin      string
+	WinPrice     string // 认购时 WIN 价格快照（仅 pay_from=win）
 	FundSource   string
 	Status       string
 	ExitedTime   *time.Time
@@ -253,7 +257,10 @@ type WalletRepo interface {
 	ConfirmRechargeCredit(ctx context.Context, id int64, txHash string) (newRechargeBalance string, err error)
 	DeletePendingRecharge(ctx context.Context, id int64) error
 	AutoCreditChainRecharge(ctx context.Context, txHash, fromAddress, toAddress, amount string, blockNumber uint64) (credited bool, err error)
+	// AutoCreditWinRecharge 链上/确认后入账 WIN → win_balance（按 tx_hash 幂等）
+	AutoCreditWinRecharge(ctx context.Context, txHash, fromAddress, toAddress, amount string) (credited bool, newWinBalance string, err error)
 	ListRechargesByUser(ctx context.Context, userID int64) ([]*Recharge, error)
+	ListRechargesByUserAsset(ctx context.Context, userID int64, asset string) ([]*Recharge, error)
 
 	Subscribe(ctx context.Context, userID int64, amount, payFrom string, exitMul, directRate float64) (*Order, string, error)
 	ListOrdersByUser(ctx context.Context, userID int64) ([]*Order, error)

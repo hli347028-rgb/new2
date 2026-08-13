@@ -25,11 +25,28 @@ func VerifyUSDTTransfer(
 	expectedAmount decimal.Decimal,
 	decimals int32,
 ) error {
+	return VerifyERC20Transfer(ctx, rpcURL, txHash, usdtContract, depositAddresses, fromAddress, expectedAmount, decimals, "USDT")
+}
+
+// VerifyERC20Transfer 校验交易回执中是否存在指定 ERC20 合约的 Transfer 日志。
+func VerifyERC20Transfer(
+	ctx context.Context,
+	rpcURL, txHash, tokenContract string,
+	depositAddresses []string,
+	fromAddress string,
+	expectedAmount decimal.Decimal,
+	decimals int32,
+	tokenSymbol string,
+) error {
 	if rpcURL == "" {
 		return nil
 	}
-	if usdtContract == "" {
-		return fmt.Errorf("usdt contract not configured")
+	symbol := strings.TrimSpace(tokenSymbol)
+	if symbol == "" {
+		symbol = "token"
+	}
+	if tokenContract == "" {
+		return fmt.Errorf("%s contract not configured", strings.ToLower(symbol))
 	}
 	allowed := make(map[string]struct{}, len(depositAddresses))
 	for _, a := range depositAddresses {
@@ -63,7 +80,7 @@ func VerifyUSDTTransfer(
 		return err
 	}
 
-	contractAddr := common.HexToAddress(usdtContract)
+	contractAddr := common.HexToAddress(tokenContract)
 	fromAddr := common.HexToAddress(fromAddress)
 
 	for _, logItem := range receipt.Logs {
@@ -88,16 +105,16 @@ func VerifyUSDTTransfer(
 
 		amount := new(big.Int).SetBytes(logItem.Data)
 		if amount.Cmp(expectedRaw) < 0 {
-			return fmt.Errorf("usdt transfer amount insufficient")
+			return fmt.Errorf("%s transfer amount insufficient", strings.ToLower(symbol))
 		}
 		return nil
 	}
-	return fmt.Errorf("usdt transfer log not found")
+	return fmt.Errorf("%s transfer log not found", strings.ToLower(symbol))
 }
 
 func amountToRaw(amount decimal.Decimal, decimals int32) (*big.Int, error) {
 	if decimals < 0 {
-		return nil, fmt.Errorf("invalid usdt decimals")
+		return nil, fmt.Errorf("invalid token decimals")
 	}
 	multiplier := decimal.New(1, decimals)
 	raw := amount.Mul(multiplier)

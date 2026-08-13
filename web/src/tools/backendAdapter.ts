@@ -299,10 +299,10 @@ async function fetchUserInfo() {
       location: String(staticTotal),
       recommend: referralLoaded ? String(directProfit) : p.share_profit_total || '0',
       recommendTwo: '0.00',
-      // 管理奖主展示 = 待释放管理奖（用户池 + mgmt_rewards 未释放）
-      team: String(
-        numOrZero(aixProfile.pending_mgmt_reward) + numOrZero(aixProfile.mgmt_reward_pending)
-      ),
+      // 管理奖 = 该用户全部管理奖总和
+      team: String(numOrZero(aixProfile.mgmt_reward_total)),
+      // 溢出奖励 = 订单全部出局后剩余直推/管理奖
+      overflowReward: String(numOrZero(aixProfile.overflow_reward ?? aixProfile.pending_mgmt_reward)),
       // 代数奖励合计（1代+≥2代，累计）
       generationReward: String(generationProfit),
       // 社区基础奖累计（不含平级）
@@ -859,12 +859,30 @@ export async function adaptRequest(
       if (!amount) return { status: 'fail', message: '请输入认购金额' }
       const payFrom = data?.pay_from === 'reward' || data?.payFrom === 'reward'
         ? 'reward'
-        : 'recharge'
+        : (data?.pay_from === 'win' || data?.payFrom === 'win' ? 'win' : 'recharge')
       const res = await authPost('/v1/wallet/subscribe-aix', {
         amount,
         pay_from: payFrom,
       })
       return { status: 'ok', ...res.data }
+    }
+    case 'app_server/deposit_win': {
+      const res = await authPost('/v1/wallet/recharge-win', {
+        amount: String(data?.amount || ''),
+      })
+      return { status: 'ok', ...res.data }
+    }
+    case 'app_server/deposit_win_confirm': {
+      const res = await authPost('/v1/wallet/recharge-win/confirm', {
+        recharge_id: Number(data?.recharge_id || data?.rechargeId || 0),
+        tx_hash: String(data?.tx_hash || data?.txHash || ''),
+        signature: String(data?.signature || data?.sign || ''),
+      })
+      return { status: 'ok', ...res.data }
+    }
+    case 'app_server/deposit_win_list': {
+      const res = await authGet('/v1/wallet/recharges-win')
+      return { status: 'ok', list: res.data?.recharges || [] }
     }
     case 'app_server/exchange':
     case 'app_server/set_info':

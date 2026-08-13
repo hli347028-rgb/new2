@@ -54,9 +54,9 @@ export default {
                     customRender: (v) => v || '0'
                 },
                 {
-                    title: '待释放管理奖',
-                    dataIndex: 'pending_mgmt_reward',
-                    customRender: (v) => v || '0'
+                    title: '溢出奖励',
+                    dataIndex: 'overflow_reward',
+                    customRender: (v, row) => v || (row && row.pending_mgmt_reward) || '0'
                 },
                 {
                     title: '静态总收益',

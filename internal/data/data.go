@@ -38,6 +38,9 @@ func NewData(dbCfg *conf.DatabaseConfig, logger log.Logger) (*Data, func(), erro
 	if err := ensureSettlementBatchMultiPerDay(db); err != nil {
 		return nil, nil, err
 	}
+	if err := migrateOverflowReward(db); err != nil {
+		return nil, nil, err
+	}
 	if err := seedDefaults(db); err != nil {
 		return nil, nil, err
 	}
@@ -101,6 +104,15 @@ func ensureSettlementBatchMultiPerDay(db *gorm.DB) error {
 		return db.Exec("CREATE INDEX idx_settlement_batches_settlement_date ON settlement_batches (settlement_date)").Error
 	}
 	return nil
+}
+
+// migrateOverflowReward 将历史 pending_mgmt_reward 迁入 overflow_reward，并保持两列同步。
+func migrateOverflowReward(db *gorm.DB) error {
+	return db.Exec(`
+		UPDATE users
+		SET overflow_reward = pending_mgmt_reward
+		WHERE overflow_reward = 0 AND pending_mgmt_reward > 0
+	`).Error
 }
 
 // DB exposes the underlying gorm handle for admin legacy queries.

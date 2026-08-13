@@ -184,7 +184,8 @@ func (s *AdminLegacyService) HandleUserList(ctx khttp.Context) error {
 			"usdt_reward":         u.UsdtReward,
 			"aix_balance":         u.AixBalance,        // AIX 代币数
 			"win_balance":         u.WinBalance,        // WIN 代币数
-			"pending_mgmt_reward": u.PendingMgmtReward, // 待释放管理奖
+			"pending_mgmt_reward": u.OverflowReward, // 兼容旧字段
+			"overflow_reward":     u.OverflowReward, // 溢出奖励
 			"static_usdt_total":   u.StaticUsdtTotal,   // 静态总收益 USDT
 			"mgmt_level":          u.MgmtLevel,
 			"large_area_perf":     u.LargeAreaPerf,
@@ -490,6 +491,28 @@ func (s *AdminLegacyService) HandleAdminRecharge(ctx khttp.Context) error {
 		"balance": balance,
 		"amount":  credited,
 		"message": "充值成功",
+	})
+}
+
+func (s *AdminLegacyService) HandleAdminRechargeWin(ctx khttp.Context) error {
+	if _, err := s.requireAdmin(ctx); err != nil {
+		return err
+	}
+	if err := ctx.Request().ParseForm(); err != nil {
+		return errors.BadRequest("INVALID_FORM", "请求格式错误")
+	}
+	address := strings.TrimSpace(ctx.Request().Form.Get("address"))
+	amount := strings.TrimSpace(ctx.Request().Form.Get("amount"))
+	balance, credited, err := s.admin.AdminCreditWinBalance(ctx, s.token(ctx), address, amount)
+	if err != nil {
+		return err
+	}
+	return ctx.Result(200, map[string]interface{}{
+		"status":      "ok",
+		"asset":       "WIN",
+		"win_balance": balance,
+		"amount":      credited,
+		"message":     "WIN 充值成功",
 	})
 }
 

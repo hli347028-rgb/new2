@@ -18,6 +18,8 @@ type WalletConfig struct {
 	DepositContract                  string   `json:"deposit_contract" yaml:"deposit_contract"`
 	UsdtContract                     string   `json:"usdt_contract" yaml:"usdt_contract"`
 	UsdtDecimals                     int32    `json:"usdt_decimals" yaml:"usdt_decimals"`
+	WinContract                      string   `json:"win_contract" yaml:"win_contract"`
+	WinDecimals                      int32    `json:"win_decimals" yaml:"win_decimals"`
 	RPCURL                           string   `json:"rpc_url" yaml:"rpc_url"`
 	RechargeMonitorEnabled           bool     `json:"recharge_monitor_enabled" yaml:"recharge_monitor_enabled"`
 	RechargeScanIntervalSeconds      int64    `json:"recharge_scan_interval_seconds" yaml:"recharge_scan_interval_seconds"`
@@ -160,6 +162,20 @@ func (w *WalletConfig) GetUsdtDecimals() int32 {
 		return 6
 	}
 	return w.UsdtDecimals
+}
+
+func (w *WalletConfig) GetWinContract() string {
+	if w == nil {
+		return ""
+	}
+	return strings.TrimSpace(w.WinContract)
+}
+
+func (w *WalletConfig) GetWinDecimals() int32 {
+	if w == nil || w.WinDecimals <= 0 {
+		return 18
+	}
+	return w.WinDecimals
 }
 
 func (w *WalletConfig) GetRPCURL() string {

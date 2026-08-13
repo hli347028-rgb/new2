@@ -30,6 +30,9 @@ func RegisterWalletExtraRoutes(srv *khttp.Server, wallet *WalletService) {
 	r.GET("/v1/wallet/rewards", wallet.HandleRewards)
 	r.GET("/v1/wallet/management-rewards", wallet.HandleManagementRewards)
 	r.GET("/v1/wallet/aix-profile", wallet.HandleAixProfile)
+	r.POST("/v1/wallet/recharge-win", wallet.HandleCreateWinRecharge)
+	r.POST("/v1/wallet/recharge-win/confirm", wallet.HandleConfirmWinRecharge)
+	r.GET("/v1/wallet/recharges-win", wallet.HandleListWinRecharges)
 }
 
 func transferRecordPagination(ctx khttp.Context) (page, pageSize int, err error) {
@@ -106,7 +109,7 @@ func (s *WalletService) HandleSubscribeAIX(ctx khttp.Context) error {
 	if err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"order_id":     order.ID,
 		"principal":    order.Principal,
 		"exit_cap":     order.ExitCap,
@@ -115,7 +118,16 @@ func (s *WalletService) HandleSubscribeAIX(ctx khttp.Context) error {
 		"status":       order.Status,
 		"balance":      bal,
 		"total_amount": order.Principal,
-	})
+	}
+	if order.FundSource == biz.PayFromWin {
+		resp["from_win"] = order.FromWin
+		resp["win_price"] = order.WinPrice
+		resp["win_balance"] = bal
+		if order.WinPrice == "" {
+			resp["win_price"] = fmt.Sprintf("%v", biz.GetWinPrice())
+		}
+	}
+	return ctx.JSON(http.StatusOK, resp)
 }
 
 type transferReq struct {
@@ -352,7 +364,8 @@ func (s *WalletService) HandleAixProfile(ctx khttp.Context) error {
 		"usdt_reward":          reward,
 		"aix_balance":          aix,
 		"win_balance":          user.WinBalance,
-		"pending_mgmt_reward":  user.PendingMgmtReward,
+		"pending_mgmt_reward":  user.OverflowReward, // 兼容旧字段，值为溢出奖励
+		"overflow_reward":      user.OverflowReward,
 		"static_usdt_total":    staticTotal,
 		"pending_amount":       pending,
 		"unexited_amount":      unexited,
@@ -371,6 +384,7 @@ func (s *WalletService) HandleAixProfile(ctx khttp.Context) error {
 		"aix_to_win_rate":      aixToWinRate,
 		"exchange_fee_rate":    biz.GetExchangeFeeRate(),
 		"aix_contract":         "", // TODO
+		"win_contract":         s.uc.WinContract(),
 	})
 }
 
@@ -426,8 +440,83 @@ func (s *WalletService) HandleWithdrawWIN(ctx khttp.Context) error {
 		"status":       w.Status,
 		"tx_hash":      w.TxHash,
 		"win_balance":  left,
-		"win_contract": "", // TODO: 待配置 WIN 代币合约
+		"win_contract": s.uc.WinContract(),
 	})
+}
+
+// HandleCreateWinRecharge 创建 WIN 充值单（链上转账到平台收款地址后确认入账）
+func (s *WalletService) HandleCreateWinRecharge(ctx khttp.Context) error {
+	var req struct {
+		Token  string `json:"token"`
+		Amount string `json:"amount"`
+	}
+	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil && err != io.EOF {
+		return ctx.JSON(http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid json"})
+	}
+	token := tokenFromRequest(ctx, req.Token)
+	recharge, err := s.uc.CreateWinRecharge(ctx, token, req.Amount)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, map[string]any{
+		"recharge_id":        recharge.ID,
+		"asset":              biz.TokenWIN,
+		"amount":             recharge.Amount,
+		"deposit_address":    s.uc.DepositAddress(),
+		"deposit_addresses":  s.uc.DepositAddresses(),
+		"win_contract":       s.uc.WinContract(),
+		"win_decimals":       s.uc.WinDecimals(),
+		"token_symbol":       biz.TokenWIN,
+		"message":            recharge.Message,
+		"expire_at":          recharge.ExpireAt.Unix(),
+		"dev_mode":           s.uc.IsDevMode(),
+		"win_price":          biz.GetWinPrice(),
+	})
+}
+
+// HandleConfirmWinRecharge 确认 WIN 链上充值并入账 win_balance
+func (s *WalletService) HandleConfirmWinRecharge(ctx khttp.Context) error {
+	var req struct {
+		Token      string `json:"token"`
+		RechargeID int64  `json:"recharge_id"`
+		TxHash     string `json:"tx_hash"`
+		Signature  string `json:"signature"`
+	}
+	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil && err != io.EOF {
+		return ctx.JSON(http.StatusBadRequest, map[string]any{"code": 400, "message": "invalid json"})
+	}
+	token := tokenFromRequest(ctx, req.Token)
+	balance, amount, err := s.uc.ConfirmWinRecharge(ctx, token, req.RechargeID, req.TxHash, req.Signature)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, map[string]any{
+		"asset":       biz.TokenWIN,
+		"amount":      amount,
+		"win_balance": balance,
+	})
+}
+
+// HandleListWinRecharges 查询本人 WIN 充值记录
+func (s *WalletService) HandleListWinRecharges(ctx khttp.Context) error {
+	token := tokenFromRequest(ctx, "")
+	records, err := s.uc.ListWinRecharges(ctx, token)
+	if err != nil {
+		return err
+	}
+	items := make([]map[string]any, 0, len(records))
+	for _, r := range records {
+		item := map[string]any{
+			"id": r.ID, "asset": r.Asset, "amount": r.Amount,
+			"tx_hash": r.TxHash, "status": r.Status,
+			"created_at": r.CreatedAt.Unix(),
+		}
+		if r.ConfirmedAt != nil {
+			item["confirmed_at"] = r.ConfirmedAt.Unix()
+		}
+		items = append(items, item)
+	}
+	return ctx.JSON(http.StatusOK, map[string]any{"recharges": items})
 }
 
 // HandleExchangeRecords 用户端：查询本人的 AIX→WIN 兑换记录

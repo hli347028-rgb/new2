@@ -136,7 +136,7 @@ func (s *WalletService) Subscribe(ctx context.Context, req *v1.SubscribeRequest)
 			TotalAmount: order.Principal, Balance: bal,
 		}, nil
 	}
-	return nil, errors.BadRequest("PAY_FROM_REQUIRED", "use POST /v1/wallet/subscribe-aix with amount and pay_from=recharge|reward")
+	return nil, errors.BadRequest("PAY_FROM_REQUIRED", "use POST /v1/wallet/subscribe-aix with amount and pay_from=recharge|reward|win")
 }
 
 func (s *WalletService) ListOrders(ctx context.Context, req *v1.ListOrdersRequest) (*v1.ListOrdersReply, error) {

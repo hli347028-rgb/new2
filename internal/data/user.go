@@ -246,6 +246,15 @@ func (r *userRepo) AdminUpdateUser(ctx context.Context, update *biz.AdminUserUpd
 		if err != nil {
 			return err
 		}
+		updates["overflow_reward"] = v
+		updates["pending_mgmt_reward"] = v
+	}
+	if update.OverflowReward != "" {
+		v, err := decimal.NewFromString(update.OverflowReward)
+		if err != nil {
+			return err
+		}
+		updates["overflow_reward"] = v
 		updates["pending_mgmt_reward"] = v
 	}
 	if update.StaticUsdtTotal != "" {
@@ -440,7 +449,8 @@ func (r *userRepo) toBiz(ctx context.Context, po *UserPO) *biz.User {
 		UsdtReward:           po.UsdtReward.String(),
 		AixBalance:           po.AixBalance.String(),
 		WinBalance:           po.WinBalance.String(),
-		PendingMgmtReward:    po.PendingMgmtReward.String(),
+		PendingMgmtReward:    po.OverflowReward.String(), // 兼容旧字段名，映射溢出奖励
+		OverflowReward:       po.OverflowReward.String(),
 		StaticUsdtTotal:      po.StaticUsdtTotal.String(),
 		MgmtLevel:            po.MgmtLevel,
 		CommunityLevelLocked: po.MgmtLevelLocked,

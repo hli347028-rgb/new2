@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS users (
   usdt_recharge     DECIMAL(36,18)  NOT NULL DEFAULT 0,
   usdt_reward       DECIMAL(36,18)  NOT NULL DEFAULT 0,
   aix_balance       DECIMAL(36,18)  NOT NULL DEFAULT 0,
+  win_balance       DECIMAL(36,18)  NOT NULL DEFAULT 0,
+  pending_mgmt_reward DECIMAL(36,18) NOT NULL DEFAULT 0,
+  overflow_reward   DECIMAL(36,18)  NOT NULL DEFAULT 0,
   mgmt_level        TINYINT UNSIGNED NOT NULL DEFAULT 0,
 	large_area_perf  DECIMAL(36,18)  NOT NULL DEFAULT 0,
   small_area_perf   DECIMAL(36,18)  NOT NULL DEFAULT 0,
@@ -33,6 +36,7 @@ CREATE TABLE IF NOT EXISTS orders (
   direct_base    DECIMAL(36,18)  NOT NULL DEFAULT 0,
   from_recharge  DECIMAL(36,18)  NOT NULL DEFAULT 0,
   from_reward    DECIMAL(36,18)  NOT NULL DEFAULT 0,
+  from_win       DECIMAL(36,18)  NOT NULL DEFAULT 0,
   fund_source    VARCHAR(16)     NOT NULL,
   status         VARCHAR(16)     NOT NULL DEFAULT 'active',
   exited_time    DATETIME(3)     NULL,
@@ -46,17 +50,21 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE TABLE IF NOT EXISTS recharges (
   id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id          BIGINT UNSIGNED NOT NULL,
+  asset            VARCHAR(16)     NOT NULL DEFAULT 'USDT',
   amount           DECIMAL(36,18)  NOT NULL,
   tx_hash          VARCHAR(66)     NOT NULL,
   from_address     VARCHAR(42)     NULL,
   to_address       VARCHAR(42)     NULL,
   status           VARCHAR(16)     NOT NULL DEFAULT 'pending',
+  message          TEXT            NULL,
+  expire_at        DATETIME(3)     NULL,
   confirmed_time   DATETIME(3)     NULL,
   created_time     DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_time     DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   PRIMARY KEY (id),
   UNIQUE KEY uk_recharges_tx_hash (tx_hash),
-  KEY idx_recharges_user_status (user_id, status)
+  KEY idx_recharges_user_status (user_id, status),
+  KEY idx_recharges_asset (asset)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS transfers (
