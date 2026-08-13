@@ -12,11 +12,13 @@ import (
 
 func TestFetchWinPriceLive(t *testing.T) {
 	j := NewWinPriceOracleJob(nil, &conf.WalletConfig{
-		RPCURL:                "https://rpc1.eoeo.info",
-		UsdtContract:          "0x926632975149221891f1b9B56Efd125Dfe90ba2f",
-		WinPair:               "0x15ad085fc866370b59936575565434b14d22281d",
-		WinPriceOracleEnabled: true,
-		WinPricePollSeconds:   60,
+		RPCURL:                       "https://rpc1.eoeo.info",
+		UsdtContract:                 "0x926632975149221891f1b9B56Efd125Dfe90ba2f",
+		WinPair:                      "0x15ad085fc866370b59936575565434b14d22281d",
+		WinPriceOracleEnabled:        true,
+		WinPricePollSeconds:          60,
+		WinPriceQueriesPerCycle:      10,
+		WinPriceQueryIntervalSeconds: 5,
 	}, log.DefaultLogger)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

@@ -54,8 +54,12 @@ func (j *WinPriceOracleJob) Start() {
 		return
 	}
 	go j.run()
-	j.log.Infof("win price oracle started: pair=%s interval=%ds rpc=%s",
-		j.cfg.GetWinPair(), j.cfg.GetWinPricePollSeconds(), j.cfg.GetRPCURL())
+	j.log.Infof("win price oracle started: pair=%s cycle=%ds queries=%d interval=%ds rpc=%s",
+		j.cfg.GetWinPair(),
+		j.cfg.GetWinPricePollSeconds(),
+		j.cfg.GetWinPriceQueriesPerCycle(),
+		j.cfg.GetWinPriceQueryIntervalSeconds(),
+		j.cfg.GetRPCURL())
 }
 
 func (j *WinPriceOracleJob) Stop() {
@@ -66,16 +70,52 @@ func (j *WinPriceOracleJob) Stop() {
 	}
 }
 
+// run：每分钟一轮，每轮连续查询 10 次，相邻间隔 5 秒（可用配置覆盖）。
 func (j *WinPriceOracleJob) run() {
-	j.pollOnce()
-	ticker := time.NewTicker(time.Duration(j.cfg.GetWinPricePollSeconds()) * time.Second)
-	defer ticker.Stop()
 	for {
 		select {
-		case <-ticker.C:
-			j.pollOnce()
 		case <-j.stop:
 			return
+		default:
+		}
+
+		cycleStart := time.Now()
+		queries := int(j.cfg.GetWinPriceQueriesPerCycle())
+		if queries <= 0 {
+			queries = 10
+		}
+		gap := time.Duration(j.cfg.GetWinPriceQueryIntervalSeconds()) * time.Second
+		if gap <= 0 {
+			gap = 5 * time.Second
+		}
+
+		for i := 0; i < queries; i++ {
+			select {
+			case <-j.stop:
+				return
+			default:
+			}
+			j.pollOnce()
+			if i >= queries-1 {
+				break
+			}
+			select {
+			case <-time.After(gap):
+			case <-j.stop:
+				return
+			}
+		}
+
+		cycle := time.Duration(j.cfg.GetWinPricePollSeconds()) * time.Second
+		if cycle <= 0 {
+			cycle = time.Minute
+		}
+		if remain := cycle - time.Since(cycleStart); remain > 0 {
+			select {
+			case <-time.After(remain):
+			case <-j.stop:
+				return
+			}
 		}
 	}
 }

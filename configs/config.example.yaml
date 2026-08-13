@@ -52,7 +52,10 @@ wallet:
   min_subscribe: "100"
   min_withdraw: "10"
   withdraw_fee_rate: 0.06
-  # WinSwap V2 Pair（WWIN/USDT）链上 WIN 价格预言机，每分钟写入 WinPrice
+  # WinSwap V2 Pair（WWIN/USDT）链上 WIN 价格预言机
+  # 每 60 秒一轮；每轮查询 10 次，相邻查询间隔 5 秒
   win_pair: "0x15ad085fc866370b59936575565434b14d22281d"
   win_price_oracle_enabled: true
   win_price_poll_seconds: 60
+  win_price_queries_per_cycle: 10
+  win_price_query_interval_seconds: 5

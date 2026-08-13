@@ -37,12 +37,16 @@ type WalletConfig struct {
 	// WinSwap V2 Pair（WWIN/USDT），用于链上轮询 WIN 价格
 	WinPair                string `json:"win_pair" yaml:"win_pair"`
 	WinPriceOracleEnabled  bool   `json:"win_price_oracle_enabled" yaml:"win_price_oracle_enabled"`
-	WinPricePollSeconds    int64  `json:"win_price_poll_seconds" yaml:"win_price_poll_seconds"`
+	WinPricePollSeconds    int64  `json:"win_price_poll_seconds" yaml:"win_price_poll_seconds"`                       // 每轮周期（默认 60 秒）
+	WinPriceQueriesPerCycle int32 `json:"win_price_queries_per_cycle" yaml:"win_price_queries_per_cycle"`             // 每轮查询次数（默认 10）
+	WinPriceQueryIntervalSeconds int64 `json:"win_price_query_interval_seconds" yaml:"win_price_query_interval_seconds"` // 相邻查询间隔（默认 5 秒）
 }
 
 const (
-	DefaultWinPair             = "0x15ad085fc866370b59936575565434b14d22281d"
-	DefaultWinPricePollSeconds = int64(60)
+	DefaultWinPair                     = "0x15ad085fc866370b59936575565434b14d22281d"
+	DefaultWinPricePollSeconds         = int64(60)
+	DefaultWinPriceQueriesPerCycle     = int32(10)
+	DefaultWinPriceQueryIntervalSeconds = int64(5)
 )
 
 func (w *WalletConfig) GetDepositContract() string {
@@ -234,4 +238,18 @@ func (w *WalletConfig) GetWinPricePollSeconds() int64 {
 		return DefaultWinPricePollSeconds
 	}
 	return w.WinPricePollSeconds
+}
+
+func (w *WalletConfig) GetWinPriceQueriesPerCycle() int32 {
+	if w == nil || w.WinPriceQueriesPerCycle <= 0 {
+		return DefaultWinPriceQueriesPerCycle
+	}
+	return w.WinPriceQueriesPerCycle
+}
+
+func (w *WalletConfig) GetWinPriceQueryIntervalSeconds() int64 {
+	if w == nil || w.WinPriceQueryIntervalSeconds <= 0 {
+		return DefaultWinPriceQueryIntervalSeconds
+	}
+	return w.WinPriceQueryIntervalSeconds
 }
