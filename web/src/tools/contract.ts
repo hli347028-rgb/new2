@@ -37,11 +37,11 @@ export class ETH {
           params: [
             {
               chainId: AIX_CHAIN_ID_HEX,
-              chainName: 'AIX Network',
+              chainName: 'EOEO',
               rpcUrls: [AIX_RPC_URL],
               nativeCurrency: {
-                name: 'AIX',
-                symbol: 'AIX',
+                name: 'WIN',
+                symbol: 'WIN',
                 decimals: 18
               }
             }
@@ -56,7 +56,7 @@ export class ETH {
     const chainId = Number(await ethereum.request({ method: 'eth_chainId' }))
     console.log('chainId', chainId)
     if (chainId !== AIX_CHAIN_ID) {
-      const message = `请切换至 AIX Network（Chain ID: ${AIX_CHAIN_ID}）`
+      const message = `请切换至 EOEO 网络（Chain ID: ${AIX_CHAIN_ID}）`
       showFailToast(message)
       throw new Error(message)
     }
@@ -83,6 +83,15 @@ export class ETH {
     const balance = await contract.balanceOf(ETH.account)
     return ethers.utils.formatUnits(balance, '18')
   }
+  public static async getNativeBalance() {
+    try {
+      const balance = await ETH.provider.getBalance(ETH.account)
+      return ethers.utils.formatUnits(balance, 18)
+    } catch (error) {
+      console.error('获取 WIN 余额失败:', error)
+      return '0'
+    }
+  }
   public static async getUSDTBalance() {
     try {
       const ERC20_ABI = [
@@ -91,6 +100,10 @@ export class ETH {
       ]
 
       const usdtAddress = import.meta.env.VITE_USDT
+      if (!usdtAddress) {
+        console.warn('[ETH.getUSDTBalance] VITE_USDT 未配置，跳过链上 USDT 余额查询')
+        return '0'
+      }
 
       // 1️⃣ 校验合约
       const code = await ETH.provider.getCode(usdtAddress)
@@ -143,11 +156,11 @@ export class Contract {
   async call(methods: string, params: any[] = []): Promise<any> {
     return await this.getInsance()[methods](...params)
   }
-  async send(methods: string, params: any[] = []): Promise<void> {
+  async send(methods: string, params: any[] = [], overrides: Record<string, any> = {}): Promise<{ hash: string }> {
     try {
       let tx: any = {}
       try {
-        tx = await this.getInsance()[methods](...params)
+        tx = await this.getInsance()[methods](...params, overrides)
       } catch (error: any) {
         console.log(error.reason, /balance/gi.test(error.reason))
         // console.log(1111, /^balance/ig.test(error.toString()))
@@ -161,10 +174,9 @@ export class Contract {
       }
       let receipt = await ETH.provider.waitForTransaction(tx.hash)
       if (receipt.status === 1) {
-        // alert("交易成功");
-      } else {
-        throw lang('交易失败')
+        return { hash: String(tx.hash || receipt.transactionHash) }
       }
+      throw lang('交易失败')
     } catch (error: any) {
       let msg: any = ''
       if (error.data) msg = error.data.message

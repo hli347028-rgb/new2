@@ -20,32 +20,34 @@
 
       <div class="dialog-main">
         <template v-if="assetType === 'usdt'">
-          <p class="dialog-subtitle dialog-subtitle--placeholder" aria-hidden="true">&nbsp;</p>
           <a-input-number
             autofocus
-            style="width: 100%"
+            style="width: 100%; margin-top: 20px;"
             v-model:value="amount"
-            :min="MIN_USDT_RECHARGE"
+            :min="minUsdtRecharge"
             size="large"
             :placeholder="$t('recharge.enterAmount')"
           />
           <div class="dialog-info">
-            <p><QuestionCircleOutlined style="margin-right: 5px" />{{ $t('recharge.minRechargeAmount') }}: {{ MIN_USDT_RECHARGE }} USDT</p>
+            <p><QuestionCircleOutlined style="margin-right: 5px" />{{ $t('recharge.minRechargeAmount') }}: {{ minUsdtRecharge }} USDT</p>
           </div>
         </template>
 
         <template v-else>
-          <p class="dialog-subtitle">{{ $t('recharge.winPrice') }}: {{ winPrice > 0 ? winPrice : '-' }} USDT</p>
+          <p class="dialog-subtitle">{{ $t('recharge.nativeWinBalance') }}: {{ displayAmount(nativeWinBalance) }} WIN</p>
           <a-input-number
             autofocus
             style="width: 100%"
             v-model:value="amount"
-            :min="MIN_WIN_RECHARGE"
+            :min="minWinRecharge"
+            :precision="0"
+            :step="1"
             size="large"
-            :placeholder="$t('recharge.enterAmount')"
+            :placeholder="$t('recharge.enterWinInteger')"
           />
+          <p v-if="winPayableAmount" class="dialog-payable">{{ $t('recharge.winPayable', { num: winPayableAmount }) }}</p>
           <div class="dialog-info">
-            <p>{{ $t('recharge.minWinRecharge') }}</p>
+            <p>{{ $t('recharge.minWinRecharge', { amount: minWinRecharge }) }}</p>
           </div>
         </template>
       </div>
@@ -65,13 +67,12 @@ import userPerson from '@/pinia/person'
 import { Contract, ETH } from '@/tools/contract'
 import { showToast, showLoadingToast, closeToast, showDialog } from 'vant'
 import { useI18n } from 'vue-i18n'
-import { confirmWinRecharge, createWinRecharge, errMsg } from '@/api/aix'
-import { displayDecimal, isPositiveDecimal } from '@/tools/decimal'
+import { errMsg } from '@/api/aix'
+import { displayDecimal } from '@/tools/decimal'
+import { mapWinRechargeError, pollWinBalance } from '@/tools/winRecharge'
 
 const BUY = new Contract(import.meta.env.VITE_BUY, 'BUY')
-const USDT = new Contract(import.meta.env.VITE_USDT, 'ERC20')
-const MIN_USDT_RECHARGE = 10
-const MIN_WIN_RECHARGE = 1
+const USDT = import.meta.env.VITE_USDT ? new Contract(import.meta.env.VITE_USDT, 'ERC20') : null
 
 const person = userPerson()
 const { t: $t } = useI18n()
@@ -79,6 +80,7 @@ const isOpen = ref(false)
 const assetType = ref('usdt')
 const amount = ref(null)
 const loading = ref(false)
+const nativeWinBalance = ref('0')
 
 const props = defineProps({
   getBalance: {
@@ -94,14 +96,29 @@ const props = defineProps({
   },
 })
 
-const winBalance = computed(() => String(person.profile?.win_balance || '0'))
-const winPrice = computed(() => Number(person.profile?.win_price || 0))
+const minWinRecharge = computed(() => {
+  const min = Number(person.profile?.min_win_recharge || 10)
+  return Number.isFinite(min) && min >= 10 ? min : 10
+})
+
+const minUsdtRecharge = computed(() => {
+  const min = Number(person.profile?.min_usdt_recharge || 10)
+  return Number.isFinite(min) && min >= 10 ? min : 10
+})
+
+const winPayableAmount = computed(() => {
+  const num = Number(amount.value)
+  if (!Number.isInteger(num) || num <= 0) return ''
+  return String(num)
+})
+
 const displayAmount = (value) => displayDecimal(value)
 
 const open = async () => {
   assetType.value = 'usdt'
   amount.value = null
   await person.refreshProfile?.()
+  await refreshNativeBalance()
   isOpen.value = true
 }
 
@@ -109,13 +126,13 @@ const resetAmount = () => {
   amount.value = null
 }
 
-async function transferWin(contractAddress, to, amountText, decimals) {
-  const WIN = new Contract(contractAddress, 'ERC20')
-  const amountWei = ethers.utils.parseUnits(amountText, decimals)
-  const tx = await WIN.getInsance().transfer(to, amountWei)
-  const receipt = await ETH.provider.waitForTransaction(tx.hash)
-  if (receipt.status !== 1) throw new Error($t('common.operationFailed'))
-  return String(tx.hash)
+const refreshNativeBalance = async () => {
+  try {
+    await ETH.getAccount()
+    nativeWinBalance.value = await ETH.getNativeBalance()
+  } catch {
+    nativeWinBalance.value = '0'
+  }
 }
 
 const transferUsdt = async (count) => {
@@ -137,8 +154,13 @@ const transferUsdt = async (count) => {
 }
 
 const submitUsdtRecharge = async () => {
-  if (!(Number(amount.value) >= MIN_USDT_RECHARGE)) {
-    showToast($t('recharge.minimumError', { amount: MIN_USDT_RECHARGE }))
+  if (!USDT) {
+    showToast($t('recharge.usdtNotConfigured'))
+    return
+  }
+  const count = Number(amount.value)
+  if (!Number.isFinite(count) || count < minUsdtRecharge.value) {
+    showToast($t('recharge.minimumError', { amount: minUsdtRecharge.value }))
     return
   }
 
@@ -150,36 +172,51 @@ const submitUsdtRecharge = async () => {
       '115792089237316195423570985008687907853269984665640564039457584007913129639935',
     ])
   }
-  await transferUsdt(amount.value)
+  await transferUsdt(count)
 }
 
 const submitWinRecharge = async () => {
-  const value = String(amount.value ?? '')
-  if (!isPositiveDecimal(value) || Number(value) < MIN_WIN_RECHARGE) {
-    showToast($t('recharge.minWinRechargeError'))
+  const num = Number(amount.value)
+  if (!Number.isInteger(num) || num < minWinRecharge.value) {
+    showToast($t('recharge.minWinRechargeError', { amount: minWinRecharge.value }))
     return
   }
 
   await ETH.getAccount()
-  const order = await createWinRecharge(value)
-  let txHash = ''
+  await refreshNativeBalance()
 
-  if (order.win_contract && order.deposit_address && !order.dev_mode) {
-    txHash = await transferWin(
-      order.win_contract,
-      order.deposit_address,
-      value,
-      Number(order.win_decimals || 18),
-    )
+  const value = ethers.utils.parseEther(String(num))
+  const balanceWei = ethers.utils.parseUnits(displayDecimal(nativeWinBalance.value), 18)
+  if (balanceWei.lt(value)) {
+    showToast($t('recharge.winInsufficientNative'))
+    return
   }
 
-  const signature = await ETH.signMessage(order.message)
-  await confirmWinRecharge(order.recharge_id, txHash, signature)
+  const beforeBalance = String(person.profile?.win_balance || '0')
+  const { hash } = await BUY.send('buy', [num], { value })
 
   closeToast()
+  showLoadingToast({
+    message: $t('recharge.winConfirming'),
+    duration: 0,
+    overlay: true,
+    overlayStyle: { background: 'transparent' },
+  })
+
+  const pollResult = await pollWinBalance(
+    () => person.refreshProfile?.(),
+    beforeBalance,
+  )
+
+  closeToast()
+
+  const successMessage = pollResult.updated
+    ? $t('recharge.winRechargeSuccess')
+    : $t('recharge.winRechargePending')
+
   await showDialog({
     title: $t('common.prompt'),
-    message: $t('recharge.winRechargeSuccess'),
+    message: `${successMessage}\n${$t('recharge.txHash')}: ${hash.slice(0, 10)}…${hash.slice(-8)}`,
     theme: 'round-button',
     confirmButtonColor: '#0A1724',
     confirmButtonText: $t('common.gotIt'),
@@ -188,6 +225,7 @@ const submitWinRecharge = async () => {
   await Promise.allSettled([
     person.refreshProfile?.(),
     props.onChange?.(),
+    refreshNativeBalance(),
   ])
   isOpen.value = false
 }
@@ -211,7 +249,8 @@ const handleSubmit = async () => {
     }
   } catch (error) {
     console.error('充值失败:', error)
-    showToast(errMsg(error, $t('common.operationFailed')))
+    const mapped = assetType.value === 'win' ? mapWinRechargeError(error, $t) : ''
+    showToast(mapped || errMsg(error, $t('common.operationFailed')))
   } finally {
     loading.value = false
     closeToast()
@@ -225,7 +264,7 @@ defineExpose({ open })
 @use '@/style/variables.scss' as *;
 
 .withdraw-dialog {
-  height: 260px;
+  height: 280px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -291,31 +330,6 @@ defineExpose({ open })
   gap: 10px;
 }
 
-.balance-line {
-  min-height: 44px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(21, 151, 229, 0.08);
-  border: 1px solid rgba(21, 151, 229, 0.14);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-
-  span {
-    font-size: 12px;
-    color: $text-muted;
-  }
-
-  strong {
-    font-size: 15px;
-    font-weight: 600;
-    color: $brand-primary-light;
-    word-break: break-all;
-    text-align: right;
-  }
-}
-
 .dialog-subtitle {
   margin: 0;
   min-height: 18px;
@@ -328,8 +342,13 @@ defineExpose({ open })
   visibility: hidden;
 }
 
+.dialog-payable {
+  margin: 0;
+  font-size: 13px;
+  color: $brand-primary-light;
+}
+
 .dialog-info {
-  margin-top: auto;
   display: flex;
   justify-content: flex-end;
 
@@ -344,7 +363,7 @@ defineExpose({ open })
 .withdraw-btn {
   width: 100%;
   height: 44px;
-  margin-top: 16px;
+  margin-top: 10px;
   background: $gradient-primary;
   border: none;
   color: $text-inverse;

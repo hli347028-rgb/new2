@@ -58,6 +58,8 @@ export default defineStore('person', {
       win_balance: '0',
       aix_price: 0,
       win_price: 0,
+      min_win_recharge: '10',
+      min_usdt_recharge: '10',
       aix_to_win_rate: 0,
       exchange_fee_rate: 0.05,
       static_usdt_total: '0',

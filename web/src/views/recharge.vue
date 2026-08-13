@@ -25,16 +25,14 @@
           <div class="table">
             <div class="table-header" v-if="currentRecords.length > 0">
               <div class="table-row">
-                <div class="table-cell">{{ $t('recharge.date') }}</div>
+                <div class="table-cell">{{ recordTab === 'win' ? $t('recharge.winRecordIndex') : $t('recharge.date') }}</div>
                 <div class="table-cell">{{ $t('recharge.amount') }}</div>
-                <div v-if="recordTab === 'win'" class="table-cell">{{ $t('recharge.recordStatus') }}</div>
               </div>
             </div>
             <div class="table-body">
-              <div class="table-row" v-for="(item, index) in currentRecords" :key="item.id || index">
-                <div class="table-cell">{{ item.createdAt }}</div>
+              <div class="table-row" v-for="(item, index) in currentRecords" :key="item.id ?? index">
+                <div class="table-cell">{{ recordTab === 'win' ? item.index : item.createdAt }}</div>
                 <div class="table-cell">{{ item.amount }} {{ recordTab === 'win' ? 'WIN' : 'USDT' }}</div>
-                <div v-if="recordTab === 'win'" class="table-cell">{{ rechargeStatusText(item.status) }}</div>
               </div>
             </div>
           </div>
@@ -68,11 +66,11 @@ import emptyImage from '../assets/images/custom-empty-image.png'
 import { Pagination } from "vant"
 import Header from '@/components/Header.vue'
 import { useI18n } from 'vue-i18n'
-import { listWinRecharges } from '@/api/aix'
+import { fetchWinRechargeRecords } from '@/tools/winRecharge'
 import { displayDecimal } from '@/tools/decimal'
 
-const USDT = new Contract(import.meta.env.VITE_USDT, "ERC20");
-const BUY = new Contract(import.meta.env.VITE_BUY, "BUY");
+const USDT = import.meta.env.VITE_USDT ? new Contract(import.meta.env.VITE_USDT, 'ERC20') : null
+const BUY = new Contract(import.meta.env.VITE_BUY, 'BUY')
 
 const router = useRouter()
 const { t: $t } = useI18n()
@@ -94,15 +92,6 @@ let usdtApproved = $ref(false);
 
 const currentRecords = computed(() => recordTab.value === 'win' ? winRecords : usdtRecords)
 
-const rechargeStatusText = (status) => {
-  switch (status) {
-    case 'confirmed': return $t('recharge.statusConfirmed')
-    case 'rejected': return $t('recharge.statusRejected')
-    case 'pending':
-    default: return $t('recharge.statusPending')
-  }
-}
-
 const switchRecordTab = async (tab) => {
   if (recordTab.value === tab) return
   recordTab.value = tab
@@ -110,6 +99,7 @@ const switchRecordTab = async (tab) => {
 }
 
 const getUsdtApproved = async () => {
+    if (!USDT) return false
     let res = await USDT.call("allowance", [ETH.account, BUY.address]);
     usdtApproved = Number(res) > 0;
     closeToast()
@@ -124,24 +114,15 @@ const getBalance = async () => {
 
 const getData = async () => {
     await Promise.allSettled([
-      getBalance(),
       person.refreshProfile?.(),
+      ...(import.meta.env.VITE_USDT ? [getBalance(), getUsdtApproved()] : []),
     ])
-    await getUsdtApproved();
 }
 
 getData()
 
 function showRecharge() {
   rechargeDialogRef.value?.open()
-}
-
-const formatUnixTime = (value) => {
-  const timestamp = Number(value)
-  if (!Number.isFinite(timestamp) || timestamp <= 0) return '-'
-  const date = new Date(timestamp * 1000)
-  const pad = (part) => String(part).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 const getUsdtRecords = async (pageNum = 1) => {
@@ -156,11 +137,8 @@ const getUsdtRecords = async (pageNum = 1) => {
 
 const getWinRecords = async () => {
   try {
-    const result = await listWinRecharges()
-    winRecords = (result?.recharges || []).map((item) => ({
-      ...item,
-      createdAt: formatUnixTime(item.created_at),
-    }))
+    await ETH.getAccount()
+    winRecords = await fetchWinRechargeRecords(ETH.account)
   } catch {
     winRecords = []
   }

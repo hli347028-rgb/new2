@@ -50,7 +50,8 @@ export interface AixProfile {
   win_balance?: string
   aix_price?: number
   win_price?: number
-  win_contract?: string
+  min_win_recharge?: string
+  min_usdt_recharge?: string
   aix_to_win_rate?: number
   exchange_fee_rate?: number
   pending_mgmt_reward?: string
@@ -138,55 +139,6 @@ export function getWinWithdrawRecords() {
 
 export function subscribeAix(amount: string, payFrom: 'recharge' | 'reward' | 'win') {
   return post('/v1/wallet/subscribe-aix', { amount, pay_from: payFrom })
-}
-
-export interface WinRechargeCreateResult {
-  recharge_id: number
-  asset: 'WIN'
-  amount: string
-  deposit_address: string
-  deposit_addresses: string[]
-  win_contract: string
-  win_decimals: number
-  token_symbol: 'WIN'
-  message: string
-  expire_at: number
-  dev_mode: boolean
-  win_price: number
-}
-
-export interface WinRechargeConfirmResult {
-  asset: 'WIN'
-  amount: string
-  win_balance: string
-}
-
-export interface WinRechargeRecord {
-  id: number
-  asset: 'WIN' | string
-  amount: string
-  tx_hash: string
-  status: string
-  created_at: number
-  confirmed_at?: number
-}
-
-/** 创建 WIN 充值单：链上向 deposit_address 转入 WIN 后调用 confirm */
-export function createWinRecharge(amount: string) {
-  return post<WinRechargeCreateResult>('/v1/wallet/recharge-win', { amount })
-}
-
-/** 确认 WIN 充值：校验链上 Transfer 后入账 win_balance */
-export function confirmWinRecharge(rechargeId: number, txHash: string, signature: string) {
-  return post<WinRechargeConfirmResult>('/v1/wallet/recharge-win/confirm', {
-    recharge_id: rechargeId,
-    tx_hash: txHash,
-    signature,
-  })
-}
-
-export function listWinRecharges() {
-  return get<{ recharges: WinRechargeRecord[] }>('/v1/wallet/recharges-win')
 }
 
 function formatUnixTime(value: unknown): string {
