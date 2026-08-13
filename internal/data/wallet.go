@@ -223,7 +223,7 @@ func (r *walletRepo) AutoCreditWinRecharge(
 
 		var user UserPO
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("address = ?", fromAddress).First(&user).Error; err != nil {
+			Where("LOWER(address) = ?", strings.ToLower(fromAddress)).First(&user).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return fmt.Errorf("user not found")
 			}
@@ -239,7 +239,7 @@ func (r *walletRepo) AutoCreditWinRecharge(
 			FromAddress:   fromAddress,
 			ToAddress:     toAddress,
 			Status:        biz.RechargeStatusConfirmed,
-			Message:       "win_recharge_confirm",
+			Message:       "win_deposit_only",
 			ConfirmedTime: &now,
 		}
 		if err := tx.Create(recharge).Error; err != nil {

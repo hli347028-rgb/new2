@@ -120,9 +120,9 @@ func (uc *WalletUsecase) CreateRecharge(ctx context.Context, tokenString, amount
 		return nil, err
 	}
 	amountDec, err := ParseAmount(amount)
-	minRecharge := decimal.NewFromInt(10)
+	minRecharge, _ := ParseAmount(GetMinUsdtRecharge())
 	if err != nil || amountDec.LessThan(minRecharge) {
-		return nil, errors.BadRequest("INVALID_AMOUNT", "USDT 充值金额不能小于10")
+		return nil, errors.BadRequest("INVALID_AMOUNT", fmt.Sprintf("USDT 充值金额不能小于%s", GetMinUsdtRecharge()))
 	}
 	depositAddress := uc.walletCfg.GetDepositAddress()
 	if !uc.IsDevMode() {
@@ -498,9 +498,9 @@ func (uc *WalletUsecase) CreateWinRecharge(ctx context.Context, tokenString, amo
 		return nil, err
 	}
 	amountDec, err := ParseAmount(amount)
-	minRecharge := decimal.NewFromInt(1)
+	minRecharge, _ := ParseAmount(GetMinWinRecharge())
 	if err != nil || amountDec.LessThan(minRecharge) {
-		return nil, errors.BadRequest("INVALID_AMOUNT", "WIN 充值数量不能小于1")
+		return nil, errors.BadRequest("INVALID_AMOUNT", fmt.Sprintf("WIN 充值数量不能小于%s", GetMinWinRecharge()))
 	}
 	depositAddress := uc.walletCfg.GetDepositAddress()
 	if !uc.IsDevMode() {
@@ -619,6 +619,14 @@ func (uc *WalletUsecase) WinContract() string {
 
 func (uc *WalletUsecase) WinDecimals() int32 {
 	return uc.walletCfg.GetWinDecimals()
+}
+
+func (uc *WalletUsecase) MinUsdtRecharge() string {
+	return GetMinUsdtRecharge()
+}
+
+func (uc *WalletUsecase) MinWinRecharge() string {
+	return GetMinWinRecharge()
 }
 
 func (uc *WalletUsecase) ListOrders(ctx context.Context, tokenString string) ([]*Order, error) {

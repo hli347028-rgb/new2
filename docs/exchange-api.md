@@ -476,6 +476,8 @@ AIX 代币当前**禁止**直接提现，需先兑换为 WIN 后再通过 `/v1/w
 | win_price | **number(float64)** | WIN 价格（USDT/枚） |
 | aix_to_win_rate | **number(float64)** | 直接汇率：`1 AIX = aix_to_win_rate WIN`（毛量，未扣手续费）= `aix_price / win_price` |
 | exchange_fee_rate | **number(float64)** | 当前兑换手续费率（如 `0.05` = 5%） |
+| min_usdt_recharge | string | USDT 充值最小值（管理端可配，默认 `"10"`，绝对下限 10） |
+| min_win_recharge | string | WIN 充值最小值（管理端可配，默认 `"10"`，绝对下限 10） |
 
 **响应示例（节选）：**
 ```json
@@ -487,6 +489,8 @@ AIX 代币当前**禁止**直接提现，需先兑换为 WIN 后再通过 `/v1/w
   "win_price": 2.0,
   "aix_to_win_rate": 0.5,
   "exchange_fee_rate": 0.05,
+  "min_usdt_recharge": "10",
+  "min_win_recharge": "10",
   "pending_mgmt_reward": "0.0000000000000000",
   "usdt_recharge": "1000.0000000000000000",
   "usdt_reward": "200.0000000000000000",

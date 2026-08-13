@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/url"
 	"strconv"
@@ -68,6 +69,8 @@ var legacyConfigDefs = []struct {
 	{7, "AIX价格(USDT/枚)"},
 	{8, "WIN价格(USDT/枚)"},
 	{9, "兑换手续费率(%)"},
+	{31, "USDT充值最小值"},
+	{32, "WIN充值最小值"},
 	{11, "W1 收益系数"},
 	{12, "W2 收益系数"},
 	{13, "W3 收益系数"},
@@ -425,24 +428,35 @@ func (s *AdminLegacyService) HandleRecordList(ctx khttp.Context) error {
 	q := ctx.Request().URL.Query()
 	page, pageSize, offset := parsePage(q)
 	addressFilter := strings.TrimSpace(q.Get("address"))
+	typeFilter := strings.ToLower(strings.TrimSpace(q.Get("type"))) // admin | usdt | win
 
 	type row struct {
 		ID          int64
 		Address     string
+		Asset       string
 		Amount      decimal.Decimal
 		TxHash      string
+		Message     string
 		CreatedTime time.Time
 	}
 	var rows []row
 	db := s.data.DB().WithContext(ctx).
 		Table("recharges r").
 		Select(`r.id, COALESCE(NULLIF(r.from_address,''), u.address) as address,
-			r.amount, r.tx_hash, r.created_time`).
+			r.asset, r.amount, r.tx_hash, COALESCE(r.message,'') as message, r.created_time`).
 		Joins("JOIN users u ON u.id = r.user_id").
 		Where("r.status = ?", biz.RechargeStatusConfirmed).
 		Order("r.id desc")
 	if addressFilter != "" {
 		db = db.Where("(r.from_address LIKE ? OR u.address LIKE ?)", "%"+addressFilter+"%", "%"+addressFilter+"%")
+	}
+	switch typeFilter {
+	case "admin", "后台充值":
+		db = db.Where("r.tx_hash LIKE ?", "admin-%")
+	case "win", "win充值", "win_recharge":
+		db = db.Where("UPPER(r.asset) = ? AND r.tx_hash NOT LIKE ?", biz.TokenWIN, "admin-%")
+	case "usdt", "usdt充值", "usdt_recharge":
+		db = db.Where("(UPPER(r.asset) = ? OR r.asset = '' OR r.asset IS NULL) AND r.tx_hash NOT LIKE ?", biz.TokenUSDT, "admin-%")
 	}
 	if err := db.Scan(&rows).Error; err != nil {
 		return err
@@ -451,16 +465,15 @@ func (s *AdminLegacyService) HandleRecordList(ctx khttp.Context) error {
 	pageRows := paginateSlice(rows, offset, pageSize)
 	items := make([]map[string]interface{}, 0, len(pageRows))
 	for _, r := range pageRows {
-		remark := "链上充值"
-		if strings.HasPrefix(r.TxHash, "admin-") {
-			remark = "后台充值"
-		}
+		remark, typeCode := classifyRechargeType(r.Asset, r.TxHash, r.Message)
 		items = append(items, map[string]interface{}{
 			"id":        r.ID,
 			"address":   r.Address,
+			"asset":     strings.ToUpper(strings.TrimSpace(r.Asset)),
 			"amount":    r.Amount.String(),
 			"txHash":    r.TxHash,
 			"remark":    remark,
+			"type":      typeCode,
 			"createdAt": formatLegacyTime(r.CreatedTime),
 		})
 	}
@@ -471,6 +484,19 @@ func (s *AdminLegacyService) HandleRecordList(ctx khttp.Context) error {
 		"count":     total,
 		"page":      page,
 	})
+}
+
+func classifyRechargeType(asset, txHash, message string) (remark, typeCode string) {
+	txHash = strings.TrimSpace(txHash)
+	asset = strings.ToUpper(strings.TrimSpace(asset))
+	message = strings.ToLower(strings.TrimSpace(message))
+	if strings.HasPrefix(txHash, "admin-") {
+		return "后台充值", "admin"
+	}
+	if asset == biz.TokenWIN || strings.Contains(message, "win_deposit") || strings.Contains(message, "win_recharge") {
+		return "WIN充值", "win"
+	}
+	return "USDT充值", "usdt"
 }
 
 func (s *AdminLegacyService) HandleAdminRecharge(ctx khttp.Context) error {
@@ -1126,6 +1152,16 @@ func legacyConfigValue(cfg *conf.SystemConfigSnapshot, walletCfg *conf.WalletCon
 			return strconv.FormatFloat(cfg.ExchangeFeeRate*100, 'f', -1, 64)
 		}
 		return strconv.FormatFloat(conf.DefaultExchangeFeeRate*100, 'f', -1, 64)
+	case 31:
+		if cfg != nil && strings.TrimSpace(cfg.MinUsdtRecharge) != "" {
+			return cfg.MinUsdtRecharge
+		}
+		return conf.DefaultMinUsdtRecharge
+	case 32:
+		if cfg != nil && strings.TrimSpace(cfg.MinWinRecharge) != "" {
+			return cfg.MinWinRecharge
+		}
+		return conf.DefaultMinWinRecharge
 	case 11, 12, 13, 14, 15, 16, 17, 18, 19, 20:
 		idx := id - 11
 		rates := conf.DefaultMgmtRates()
@@ -1202,6 +1238,18 @@ func applyLegacyConfigUpdate(snapshot *conf.SystemConfigSnapshot, walletCfg *con
 			return errors.BadRequest("INVALID_VALUE", "手续费率须为 0~100 的百分数（如 5 表示 5%）")
 		}
 		snapshot.ExchangeFeeRate = feePercent / 100.0
+	case 31:
+		minAmt, err := strconv.ParseFloat(value, 64)
+		if err != nil || minAmt < conf.FloorMinRechargeAmount {
+			return errors.BadRequest("INVALID_VALUE", fmt.Sprintf("USDT充值最小值必须 ≥ %g", conf.FloorMinRechargeAmount))
+		}
+		snapshot.MinUsdtRecharge = strconv.FormatFloat(minAmt, 'f', -1, 64)
+	case 32:
+		minAmt, err := strconv.ParseFloat(value, 64)
+		if err != nil || minAmt < conf.FloorMinRechargeAmount {
+			return errors.BadRequest("INVALID_VALUE", fmt.Sprintf("WIN充值最小值必须 ≥ %g", conf.FloorMinRechargeAmount))
+		}
+		snapshot.MinWinRecharge = strconv.FormatFloat(minAmt, 'f', -1, 64)
 	case 11, 12, 13, 14, 15, 16, 17, 18, 19, 20:
 		rate, err := strconv.ParseFloat(value, 64)
 		if err != nil || rate < 0 {

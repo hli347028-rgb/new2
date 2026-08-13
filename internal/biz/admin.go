@@ -207,6 +207,8 @@ func (uc *AdminUsecase) buildConfigSnapshot() *conf.SystemConfigSnapshot {
 		AixPriceInitial:      AixPriceInitial,
 		WinPrice:             WinPrice,
 		ExchangeFeeRate:      ExchangeFeeRate,
+		MinUsdtRecharge:      MinUsdtRecharge,
+		MinWinRecharge:       MinWinRecharge,
 		MgmtCountsTowardExit: MgmtCountsTowardExit,
 	}
 	conf.NormalizeBusinessDefaults(snap)

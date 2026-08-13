@@ -71,7 +71,8 @@ import { errMsg } from '@/api/aix'
 import { displayDecimal } from '@/tools/decimal'
 import { mapWinRechargeError, pollWinBalance } from '@/tools/winRecharge'
 
-const BUY = new Contract(import.meta.env.VITE_BUY, 'BUY')
+const BUY_USDT = new Contract(import.meta.env.VITE_BUY_USDT || import.meta.env.VITE_BUY, 'BUY')
+const BUY_WIN = new Contract(import.meta.env.VITE_BUY, 'BUY')
 const USDT = import.meta.env.VITE_USDT ? new Contract(import.meta.env.VITE_USDT, 'ERC20') : null
 
 const person = userPerson()
@@ -136,7 +137,7 @@ const refreshNativeBalance = async () => {
 }
 
 const transferUsdt = async (count) => {
-  await BUY.send('buy', [count])
+  await BUY_USDT.send('buy', [count])
   closeToast()
 
   await showDialog({
@@ -158,6 +159,10 @@ const submitUsdtRecharge = async () => {
     showToast($t('recharge.usdtNotConfigured'))
     return
   }
+  if (!import.meta.env.VITE_BUY_USDT && !import.meta.env.VITE_BUY) {
+    showToast($t('recharge.usdtNotConfigured'))
+    return
+  }
   const count = Number(amount.value)
   if (!Number.isFinite(count) || count < minUsdtRecharge.value) {
     showToast($t('recharge.minimumError', { amount: minUsdtRecharge.value }))
@@ -165,10 +170,10 @@ const submitUsdtRecharge = async () => {
   }
 
   await ETH.getAccount()
-  const allowance = await USDT.call('allowance', [ETH.account, BUY.address])
+  const allowance = await USDT.call('allowance', [ETH.account, BUY_USDT.address])
   if (!(Number(allowance) > 0)) {
     await USDT.send('approve', [
-      BUY.address,
+      BUY_USDT.address,
       '115792089237316195423570985008687907853269984665640564039457584007913129639935',
     ])
   }
@@ -193,7 +198,7 @@ const submitWinRecharge = async () => {
   }
 
   const beforeBalance = String(person.profile?.win_balance || '0')
-  const { hash } = await BUY.send('buy', [num], { value })
+  const { hash } = await BUY_WIN.send('buy', [num], { value })
 
   closeToast()
   showLoadingToast({
@@ -206,6 +211,8 @@ const submitWinRecharge = async () => {
   const pollResult = await pollWinBalance(
     () => person.refreshProfile?.(),
     beforeBalance,
+    30,
+    2000,
   )
 
   closeToast()

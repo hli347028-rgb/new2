@@ -20,6 +20,8 @@ var (
 	AixPriceInitial      = float64(conf.DefaultAixPrice)
 	WinPrice             = float64(conf.DefaultWinPrice)
 	ExchangeFeeRate      = float64(conf.DefaultExchangeFeeRate)
+	MinUsdtRecharge      = conf.DefaultMinUsdtRecharge
+	MinWinRecharge       = conf.DefaultMinWinRecharge
 )
 
 // ApplyAixConfig hot-updates AIX business parameters.
@@ -42,6 +44,12 @@ func ApplyAixConfig(snap *conf.SystemConfigSnapshot) {
 	}
 	if snap.ExchangeFeeRate > 0 {
 		ExchangeFeeRate = snap.ExchangeFeeRate
+	}
+	if snap.MinUsdtRecharge != "" {
+		MinUsdtRecharge = snap.MinUsdtRecharge
+	}
+	if snap.MinWinRecharge != "" {
+		MinWinRecharge = snap.MinWinRecharge
 	}
 }
 

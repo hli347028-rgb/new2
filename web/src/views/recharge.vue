@@ -70,7 +70,8 @@ import { fetchWinRechargeRecords } from '@/tools/winRecharge'
 import { displayDecimal } from '@/tools/decimal'
 
 const USDT = import.meta.env.VITE_USDT ? new Contract(import.meta.env.VITE_USDT, 'ERC20') : null
-const BUY = new Contract(import.meta.env.VITE_BUY, 'BUY')
+const BUY_USDT = new Contract(import.meta.env.VITE_BUY_USDT || import.meta.env.VITE_BUY, 'BUY')
+const BUY = BUY_USDT // 兼容：USDT 授权检查用 USDT 充值合约
 
 const router = useRouter()
 const { t: $t } = useI18n()

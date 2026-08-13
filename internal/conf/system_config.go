@@ -1,5 +1,10 @@
 package conf
 
+import (
+	"strconv"
+	"strings"
+)
+
 const SettingsKeySystemConfig = "system_config"
 
 // SystemConfigSnapshot 可热更新的系统参数（AIX）
@@ -23,6 +28,8 @@ type SystemConfigSnapshot struct {
 	AixPriceInitial       float64   `json:"aix_price_initial"`       // 初始 AIX 价格
 	WinPrice              float64   `json:"win_price"`               // WIN 代币价格（USDT/枚）
 	ExchangeFeeRate       float64   `json:"exchange_fee_rate"`       // 兑换手续费率（0.05 = 5%）
+	MinUsdtRecharge       string    `json:"min_usdt_recharge"`       // USDT 充值最小值（≥10）
+	MinWinRecharge        string    `json:"min_win_recharge"`        // WIN 充值最小值（≥10）
 	MgmtCountsTowardExit  bool      `json:"mgmt_counts_toward_exit"` // 管理奖是否计入出局
 	MgmtCountsTowardExitP *bool     `json:"-"`                       // 内部：区分 JSON 缺省与 false
 
@@ -41,9 +48,12 @@ const (
 	DefaultExitMultiplier  = 4.0
 	DefaultDirectRate      = 0.5
 	DefaultAixPrice        = 1.0
-	DefaultWinPrice        = 1.0
-	DefaultExchangeFeeRate = 0.05
-	DefaultMinSubscribe    = "100"
+	DefaultWinPrice          = 1.0
+	DefaultExchangeFeeRate   = 0.05
+	DefaultMinSubscribe      = "100"
+	DefaultMinUsdtRecharge   = "10"
+	DefaultMinWinRecharge    = "10"
+	FloorMinRechargeAmount   = 10.0 // 管理端与业务校验的绝对下限
 )
 
 // DefaultMgmtThresholds W1→W10 小区业绩门槛（USDT）
@@ -82,6 +92,8 @@ func NormalizeBusinessDefaults(s *SystemConfigSnapshot) {
 	if s.MinSubscribe == "" {
 		s.MinSubscribe = DefaultMinSubscribe
 	}
+	s.MinUsdtRecharge = normalizeMinRecharge(s.MinUsdtRecharge, DefaultMinUsdtRecharge)
+	s.MinWinRecharge = normalizeMinRecharge(s.MinWinRecharge, DefaultMinWinRecharge)
 	if len(s.MgmtThresholds) != 10 {
 		s.MgmtThresholds = DefaultMgmtThresholds()
 	}
@@ -94,4 +106,17 @@ func NormalizeBusinessDefaults(s *SystemConfigSnapshot) {
 		// 使用：若从未设置过业务开关，默认 true
 		s.MgmtCountsTowardExit = true
 	}
+}
+
+// normalizeMinRecharge 空值回落默认；若解析失败或 < 绝对下限，则抬到下限。
+func normalizeMinRecharge(raw, fallback string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		raw = fallback
+	}
+	v, err := strconv.ParseFloat(raw, 64)
+	if err != nil || v < FloorMinRechargeAmount {
+		return strconv.FormatFloat(FloorMinRechargeAmount, 'f', -1, 64)
+	}
+	return strconv.FormatFloat(v, 'f', -1, 64)
 }

@@ -2,7 +2,10 @@ package biz
 
 import (
 	"context"
+	"strings"
 	"time"
+
+	"backend/internal/conf"
 
 	"github.com/shopspring/decimal"
 )
@@ -47,6 +50,22 @@ func GetWinPrice() float64 {
 // GetExchangeFeeRate 返回兑换手续费率（如 0.05 = 5%）。
 func GetExchangeFeeRate() float64 {
 	return ExchangeFeeRate
+}
+
+// GetMinUsdtRecharge 返回 USDT 充值最小值（管理端可配，绝对下限 10）。
+func GetMinUsdtRecharge() string {
+	if strings.TrimSpace(MinUsdtRecharge) == "" {
+		return conf.DefaultMinUsdtRecharge
+	}
+	return MinUsdtRecharge
+}
+
+// GetMinWinRecharge 返回 WIN 充值最小值（管理端可配，绝对下限 10）。
+func GetMinWinRecharge() string {
+	if strings.TrimSpace(MinWinRecharge) == "" {
+		return conf.DefaultMinWinRecharge
+	}
+	return MinWinRecharge
 }
 
 // Recharge represents a USDT/WIN recharge order.

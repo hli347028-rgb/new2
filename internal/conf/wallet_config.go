@@ -7,15 +7,17 @@ import (
 )
 
 const (
-	DefaultDepositContract = "0xe11c2F7902CB03cAA38F80B27DC20702af14D5c7"
-	DefaultRPCURL          = "https://rpc1.eoeo.info"
+	DefaultDepositContract    = "0xe11c2F7902CB03cAA38F80B27DC20702af14D5c7"
+	DefaultWinDepositContract = "0x6A82cFF59da0cC4E31C13E92C396Cbdcafcf3cA9"
+	DefaultRPCURL             = "https://rpc1.eoeo.info"
 )
 
 // WalletConfig holds wallet and recharge settings.
 type WalletConfig struct {
 	DepositAddress                   string   `json:"deposit_address" yaml:"deposit_address"`
 	DepositAddresses                 []string `json:"deposit_addresses" yaml:"deposit_addresses"`
-	DepositContract                  string   `json:"deposit_contract" yaml:"deposit_contract"`
+	DepositContract                  string   `json:"deposit_contract" yaml:"deposit_contract"`         // USDT BuySomething
+	WinDepositContract               string   `json:"win_deposit_contract" yaml:"win_deposit_contract"` // 原生 WIN BuySomething
 	UsdtContract                     string   `json:"usdt_contract" yaml:"usdt_contract"`
 	UsdtDecimals                     int32    `json:"usdt_decimals" yaml:"usdt_decimals"`
 	WinContract                      string   `json:"win_contract" yaml:"win_contract"`
@@ -48,6 +50,13 @@ func (w *WalletConfig) GetDepositContract() string {
 		return DefaultDepositContract
 	}
 	return strings.TrimSpace(w.DepositContract)
+}
+
+func (w *WalletConfig) GetWinDepositContract() string {
+	if w == nil || strings.TrimSpace(w.WinDepositContract) == "" {
+		return DefaultWinDepositContract
+	}
+	return strings.TrimSpace(w.WinDepositContract)
 }
 
 func (w *WalletConfig) GetRechargeScanIntervalSeconds() int64 {

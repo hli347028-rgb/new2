@@ -385,6 +385,8 @@ func (s *WalletService) HandleAixProfile(ctx khttp.Context) error {
 		"exchange_fee_rate":    biz.GetExchangeFeeRate(),
 		"aix_contract":         "", // TODO
 		"win_contract":         s.uc.WinContract(),
+		"min_usdt_recharge":    s.uc.MinUsdtRecharge(),
+		"min_win_recharge":     s.uc.MinWinRecharge(),
 	})
 }
 

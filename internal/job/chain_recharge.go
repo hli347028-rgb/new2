@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"backend/internal/biz"
 	"backend/internal/conf"
@@ -29,6 +30,7 @@ const buySomethingABI = `[
 
 // DepositOnlyResult describes one contract-cursor synchronization.
 type DepositOnlyResult struct {
+	Asset      string `json:"asset"`
 	Contract   string `json:"contract"`
 	Total      uint64 `json:"total"`
 	CursorFrom uint64 `json:"cursor_from"`
@@ -38,14 +40,17 @@ type DepositOnlyResult struct {
 	Skipped    uint64 `json:"skipped"`
 }
 
-// ChainRechargeJob keeps the existing name for dependency compatibility. The
-// recharge flow is intentionally request-driven through DepositOnly.
+type creditFn func(ctx context.Context, recordHash, fromAddress, contractAddress, amount string, index uint64) (credited bool, err error)
+
+// ChainRechargeJob synchronizes BuySomething-style deposit ledgers into platform balances.
 type ChainRechargeJob struct {
 	walletRepo   biz.WalletRepo
 	settingsRepo biz.SettingsRepo
 	cfg          *conf.WalletConfig
 	log          *log.Helper
 	mu           sync.Mutex
+	stopCh       chan struct{}
+	stopOnce     sync.Once
 }
 
 func NewChainRechargeJob(
@@ -57,20 +62,73 @@ func NewChainRechargeJob(
 	return &ChainRechargeJob{
 		walletRepo: walletRepo, settingsRepo: settingsRepo,
 		cfg: cfg, log: log.NewHelper(logger),
+		stopCh: make(chan struct{}),
 	}
 }
 
-// Start no longer starts an internal timer. An external scheduler calls the
-// GET /api/admin_dhb/deposit_only endpoint once per minute.
+// Start runs USDT + WIN deposit_only sync on a one-minute ticker (idempotent with HTTP triggers).
 func (j *ChainRechargeJob) Start() {
-	j.log.Info("depositOnly recharge endpoint ready; internal chain scanner disabled")
+	interval := time.Duration(j.cfg.GetRechargeScanIntervalSeconds()) * time.Second
+	if interval <= 0 {
+		interval = time.Minute
+	}
+	j.log.Infof("depositOnly timers started: usdt=%s win=%s interval=%s",
+		j.cfg.GetDepositContract(), j.cfg.GetWinDepositContract(), interval)
+
+	go func() {
+		j.runOnce(context.Background())
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-j.stopCh:
+				return
+			case <-ticker.C:
+				j.runOnce(context.Background())
+			}
+		}
+	}()
 }
 
-func (j *ChainRechargeJob) Stop() {}
+func (j *ChainRechargeJob) Stop() {
+	j.stopOnce.Do(func() { close(j.stopCh) })
+}
 
-// DepositOnly mirrors new18new: use the BuySomething contract arrays as an
-// append-only recharge ledger and only process entries after the saved cursor.
+func (j *ChainRechargeJob) runOnce(ctx context.Context) {
+	if res, err := j.DepositOnly(ctx); err != nil {
+		j.log.Errorf("USDT depositOnly failed: %v", err)
+	} else if res != nil && res.Scanned > 0 {
+		j.log.Infof("USDT depositOnly: credited=%d skipped=%d scanned=%d", res.Credited, res.Skipped, res.Scanned)
+	}
+	if res, err := j.DepositOnlyWin(ctx); err != nil {
+		j.log.Errorf("WIN depositOnly failed: %v", err)
+	} else if res != nil && res.Scanned > 0 {
+		j.log.Infof("WIN depositOnly: credited=%d skipped=%d scanned=%d", res.Credited, res.Skipped, res.Scanned)
+	}
+}
+
+// DepositOnly syncs the USDT BuySomething ledger → usdt_recharge.
 func (j *ChainRechargeJob) DepositOnly(ctx context.Context) (*DepositOnlyResult, error) {
+	return j.syncDepositLedger(ctx, "USDT", j.cfg.GetDepositContract(), func(ctx context.Context, recordHash, fromAddress, contractAddress, amount string, index uint64) (bool, error) {
+		return j.walletRepo.AutoCreditChainRecharge(ctx, recordHash, fromAddress, contractAddress, amount, index)
+	})
+}
+
+// DepositOnlyWin syncs the native WIN BuySomething ledger → win_balance.
+func (j *ChainRechargeJob) DepositOnlyWin(ctx context.Context) (*DepositOnlyResult, error) {
+	return j.syncDepositLedger(ctx, "WIN", j.cfg.GetWinDepositContract(), func(ctx context.Context, recordHash, fromAddress, contractAddress, amount string, index uint64) (bool, error) {
+		credited, _, err := j.walletRepo.AutoCreditWinRecharge(ctx, recordHash, fromAddress, contractAddress, amount)
+		if err != nil {
+			if strings.Contains(strings.ToLower(err.Error()), "user not found") {
+				return false, nil
+			}
+			return false, err
+		}
+		return credited, nil
+	})
+}
+
+func (j *ChainRechargeJob) syncDepositLedger(ctx context.Context, asset, contractRaw string, credit creditFn) (*DepositOnlyResult, error) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 
@@ -78,9 +136,9 @@ func (j *ChainRechargeJob) DepositOnly(ctx context.Context) (*DepositOnlyResult,
 		return nil, fmt.Errorf("wallet config is missing")
 	}
 	rpcURL := strings.TrimSpace(j.cfg.GetRPCURL())
-	contractRaw := strings.TrimSpace(j.cfg.GetDepositContract())
+	contractRaw = strings.TrimSpace(contractRaw)
 	if rpcURL == "" || !common.IsHexAddress(contractRaw) {
-		return nil, fmt.Errorf("rpc or deposit contract is not configured")
+		return nil, fmt.Errorf("rpc or %s deposit contract is not configured", asset)
 	}
 
 	contractAddress := common.HexToAddress(contractRaw)
@@ -92,10 +150,10 @@ func (j *ChainRechargeJob) DepositOnly(ctx context.Context) (*DepositOnlyResult,
 
 	code, err := client.CodeAt(ctx, contractAddress, nil)
 	if err != nil {
-		return nil, fmt.Errorf("read deposit contract: %w", err)
+		return nil, fmt.Errorf("read %s deposit contract: %w", asset, err)
 	}
 	if len(code) == 0 {
-		return nil, fmt.Errorf("deposit contract has no code")
+		return nil, fmt.Errorf("%s deposit contract has no code", asset)
 	}
 
 	parsedABI, err := abi.JSON(strings.NewReader(buySomethingABI))
@@ -121,7 +179,7 @@ func (j *ChainRechargeJob) DepositOnly(ctx context.Context) (*DepositOnlyResult,
 	}
 
 	result := &DepositOnlyResult{
-		Contract: contractAddress.Hex(), Total: totalCount,
+		Asset: asset, Contract: contractAddress.Hex(), Total: totalCount,
 		CursorFrom: cursor, CursorTo: cursor,
 	}
 	for cursor < totalCount {
@@ -148,7 +206,7 @@ func (j *ChainRechargeJob) DepositOnly(ctx context.Context) (*DepositOnlyResult,
 				result.Skipped++
 				continue
 			}
-			credited, err := j.walletRepo.AutoCreditChainRecharge(
+			credited, err := credit(
 				ctx,
 				depositOnlyRecordHash(contractAddress, index),
 				users[i].Hex(),
@@ -157,7 +215,7 @@ func (j *ChainRechargeJob) DepositOnly(ctx context.Context) (*DepositOnlyResult,
 				index,
 			)
 			if err != nil {
-				return nil, fmt.Errorf("credit deposit index %d: %w", index, err)
+				return nil, fmt.Errorf("credit %s deposit index %d: %w", asset, index, err)
 			}
 			if credited {
 				result.Credited++
@@ -175,8 +233,8 @@ func (j *ChainRechargeJob) DepositOnly(ctx context.Context) (*DepositOnlyResult,
 	}
 
 	j.log.Infof(
-		"depositOnly synchronized: contract=%s total=%d from=%d to=%d credited=%d skipped=%d",
-		result.Contract, result.Total, result.CursorFrom, result.CursorTo, result.Credited, result.Skipped,
+		"%s depositOnly synchronized: contract=%s total=%d from=%d to=%d credited=%d skipped=%d",
+		asset, result.Contract, result.Total, result.CursorFrom, result.CursorTo, result.Credited, result.Skipped,
 	)
 	return result, nil
 }

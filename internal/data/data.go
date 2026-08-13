@@ -135,6 +135,8 @@ func seedDefaults(db *gorm.DB) error {
 		WinPrice:             conf.DefaultWinPrice,
 		MgmtCountsTowardExit: true,
 		MinSubscribe:         conf.DefaultMinSubscribe,
+		MinUsdtRecharge:      conf.DefaultMinUsdtRecharge,
+		MinWinRecharge:       conf.DefaultMinWinRecharge,
 	}
 	if cnt == 0 {
 		conf.NormalizeBusinessDefaults(&snap)

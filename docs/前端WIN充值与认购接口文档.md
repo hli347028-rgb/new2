@@ -1,242 +1,347 @@
-# WIN 充值 & WIN 认购 — 前端接口文档
+# WIN 充值 — 前端接口文档
 
-> 版本：v1 · 更新时间：2026-08-13  
-> 基础路径：用户端 `/v1/wallet/*` · 管理端 `/api/admin_dhb/*`  
-> 数据精度：金额字段均为 **decimal(36,18)** 字符串，前端请使用 `decimal.js` / `BigNumber`，禁止浮点直接运算。
+> 版本：v3 · 更新时间：2026-08-13  
+> 适用：用户端 H5 / DApp  
+> 说明：WIN 在 EOEO 链上是 **原生 Gas 币**（类似 ETH），**不是** ERC-20。充值通过合约 `BuySomething.buy` 附带 `msg.value` 完成，**无需** `approve` / `transfer`。
 
 ---
 
-## 0. 业务说明
+## 1. 通用约定
 
-| 能力 | 说明 |
+| 项 | 说明 |
+|----|------|
+| 请求格式 | `application/json` |
+| 金额字段 | 一律用 **字符串**（如 `"10"`），禁止 JS 浮点直接运算 |
+| 用户 Token | `Authorization: Bearer <jwt>`（亦可 Body `token` / Header `Access-Token`） |
+| 局域网 API | `http://192.168.3.6:8081`（经 Nginx）或直连 `http://192.168.3.6:9000` |
+| Radmin VPN | `http://26.3.54.166:8081` |
+
+同域部署时推荐相对路径，例如 `/v1/wallet/aix-profile`。
+
+---
+
+## 2. 链信息
+
+| 项 | 值 |
+|----|-----|
+| 网络名 | EOEO |
+| RPC | `https://rpc1.eoeo.info` |
+| Chain ID | `86233268`（十进制） / `0x523E714`（十六进制） |
+| 原生币 | WIN（18 decimals，Gas + 充值） |
+| 充值合约 | `BuySomething` |
+| 合约地址 | `0x6A82cFF59da0cC4E31C13E92C396Cbdcafcf3cA9` |
+
+### 2.1 钱包加链 / 切链
+
+```js
+await window.ethereum.request({
+  method: 'wallet_addEthereumChain',
+  params: [{
+    chainId: '0x523E714',
+    chainName: 'EOEO',
+    nativeCurrency: { name: 'WIN', symbol: 'WIN', decimals: 18 },
+    rpcUrls: ['https://rpc1.eoeo.info'],
+  }],
+})
+
+await window.ethereum.request({
+  method: 'wallet_switchEthereumChain',
+  params: [{ chainId: '0x523E714' }],
+})
+```
+
+项目内亦可复用 `web/src/tools/contract.ts`（`VITE_CHAINID` 默认 `86233268`）。
+
+---
+
+## 3. 业务规则
+
+### 3.1 怎么充
+
+```text
+buy(num)  +  transaction value = num × 10^18
+```
+
+| 规则 | 说明 |
 |------|------|
-| WIN 充值 | 用户链上向平台收款地址转入 WIN，确认后入账 `users.win_balance` |
-| WIN 认购 | `pay_from=win`，认购金额仍为 **USDT 面额**；按当前 `win_price` 折算扣减 WIN：`WIN = USDT ÷ win_price` |
-| 直推 | WIN 认购 **等同充值钱包报单**，`direct_base = USDT 本金`，产生直推奖 |
-| 出局/管理奖 | 订单本金、出局倍数仍按 USDT 记账，与 USDT 认购一致 |
+| `num` | 充值份数，**整数** |
+| 最小值 | 以接口 `min_win_recharge` 为准（默认 `"10"`，管理端可改，且 **≥ 10**） |
+| 应付原生币 | `num` 个 WIN（`value = num × 1e18` wei） |
+| 合约校验 | `msg.value` 必须 **精确等于** `num × 1e18`，否则回滚 `bad value` |
 
-**折算示例：** 认购 `100` USDT，`win_price = 2` → 扣 `50` WIN，订单本金记 `100` USDT。
+示例：
+
+| num | 应付 WIN | value（wei） |
+|-----|----------|--------------|
+| 10 | 10 | `10000000000000000000` |
+| 100 | 100 | `100000000000000000000` |
+
+### 3.2 合约内自动分账（前端不要自己拆）
+
+| 比例 | 说明 |
+|------|------|
+| 98% | 主收款地址 |
+| 1.5% | 分账地址 A |
+| 0.5% | 分账地址 B |
+
+前端只调用一次 `buy(num)`。
+
+### 3.3 与 ERC-20 方案的区别（勿混用）
+
+| | 原生 WIN（当前） | ERC-20 WIN（旧，勿用） |
+|--|------------------|------------------------|
+| 调用 | `buy` + `msg.value` | `approve` + `transfer` |
+| 代币合约字段 | 无 | `win_contract` |
+| 授权 | 不需要 | 需要 |
 
 ---
 
-## 1. 认证机制
+## 4. 获取充值最小值 / 余额
 
-与现有钱包接口一致，JWT 优先级：
-
-| 优先级 | 位置 | 格式 |
-|--------|------|------|
-| 1 | JSON Body | `{ "token": "<jwt>" }` |
-| 2 | Header | `Authorization: Bearer <jwt>` |
-| 3 | Header | `Access-Token: <jwt>` |
-| 4 | Query | `?token=<jwt>` |
-
----
-
-## 2. 资产总览（含 WIN 价格 / 合约）
-
-### 2.1 获取 AIX/WIN 资产画像
+充值页打开时先拉资产画像，用服务端下发的最小值做校验（与管理端配置实时同步）。
 
 - **Method:** `GET`
 - **Path:** `/v1/wallet/aix-profile`
 - **Auth:** ✅
 
-**成功响应关键字段：**
+**与 WIN 充值相关字段：**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| usdt_recharge | string | 充值钱包 USDT |
-| usdt_reward | string | 奖励钱包 USDT |
-| win_balance | string | WIN 余额 |
-| win_price | number | WIN 现价（USDT/枚） |
-| win_contract | string | WIN ERC20 合约（未配置为空） |
-| exchange_fee_rate | number | AIX→WIN 兑换手续费率 |
+| `win_balance` | string | 平台内 WIN 余额（入账后刷新可见） |
+| `win_price` | number | WIN 现价（USDT/枚），认购折算用 |
+| `min_win_recharge` | string | **WIN 充值最小值**（默认 `"10"`，管理端可配，≥10） |
+| `min_usdt_recharge` | string | USDT 充值最小值（同规则，充值 USDT 时用） |
 
-前端认购页用 `win_balance` + `win_price` 估算：`need_win = amount_usdt / win_price`。
+**响应节选：**
+
+```json
+{
+  "win_balance": "50.0000000000000000",
+  "win_price": 2,
+  "min_win_recharge": "10",
+  "min_usdt_recharge": "10"
+}
+```
+
+**前端校验示例：**
+
+```ts
+const profile = await getAixProfile()
+const minWin = Number(profile.min_win_recharge || 10)
+if (!Number.isInteger(num) || num < minWin) {
+  throw new Error(`充值数量不能小于 ${minWin}`)
+}
+```
+
+封装：`web/src/api/aix.ts` → `getAixProfile()`。
 
 ---
 
-## 3. WIN 充值模块
-
-### 3.1 创建 WIN 充值单
-
-- **Method:** `POST`
-- **Path:** `/v1/wallet/recharge-win`
-- **Auth:** ✅
-
-**请求参数：**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| amount | string | ✅ | WIN 数量，≥ 1 |
-| token | string | 否* | JWT（推荐 Header） |
-
-**请求示例：**
+## 5. 合约 ABI（前端最小集）
 
 ```json
-{
-  "amount": "100"
-}
+[
+  {
+    "inputs": [{ "internalType": "uint256", "name": "num", "type": "uint256" }],
+    "name": "buy",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getUserLength",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "startIndex", "type": "uint256" },
+      { "internalType": "uint256", "name": "endIndex", "type": "uint256" }
+    ],
+    "name": "getUsersByIndex",
+    "outputs": [{ "internalType": "address[]", "name": "", "type": "address[]" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "startIndex", "type": "uint256" },
+      { "internalType": "uint256", "name": "endIndex", "type": "uint256" }
+    ],
+    "name": "getUsersAmountByIndex",
+    "outputs": [{ "internalType": "uint256[]", "name": "", "type": "uint256[]" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
 ```
 
-**成功响应 (200)：**
+常量建议：
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| recharge_id | number | 充值单 ID |
-| asset | string | 固定 `"WIN"` |
-| amount | string | 充值数量 |
-| deposit_address | string | 主收款地址 |
-| deposit_addresses | string[] | 全部收款地址 |
-| win_contract | string | WIN 合约地址 |
-| win_decimals | number | WIN 精度（默认 18） |
-| token_symbol | string | `"WIN"` |
-| message | string | 待签名原文（确认时用） |
-| expire_at | number | 过期 Unix 秒 |
-| dev_mode | boolean | 开发模式（无 RPC 时为 true） |
-| win_price | number | 当前 WIN 价格（展示用） |
-
-**响应示例：**
-
-```json
-{
-  "recharge_id": 2001,
-  "asset": "WIN",
-  "amount": "100",
-  "deposit_address": "0x...",
-  "deposit_addresses": ["0x..."],
-  "win_contract": "0x...",
-  "win_decimals": 18,
-  "token_symbol": "WIN",
-  "message": "Recharge WIN to AIX account\n...",
-  "expire_at": 1755057600,
-  "dev_mode": false,
-  "win_price": 2
-}
+```ts
+export const EOEO_CHAIN_ID = 86233268
+export const EOEO_RPC = 'https://rpc1.eoeo.info'
+export const BUY_SOMETHING = '0x6A82cFF59da0cC4E31C13E92C396Cbdcafcf3cA9'
+// 或使用环境变量：import.meta.env.VITE_BUY
 ```
-
-**错误码：**
-
-| HTTP | Code | 说明 |
-|------|------|------|
-| 400 | `INVALID_AMOUNT` | 数量 < 1 |
-| 400 | `DEPOSIT_NOT_CONFIGURED` | 收款地址未配置 |
-| 400 | `WIN_NOT_CONFIGURED` | `win_contract` 未配置（非开发模式） |
-
-**前端流程：**
-
-1. 调用本接口拿到 `deposit_address` / `win_contract` / `message`
-2. 用户钱包：`WIN.approve`（如需）→ `WIN.transfer(deposit_address, amount)`
-3. 对 `message` 做 personal_sign
-4. 调用确认接口（见 3.2）
 
 ---
 
-### 3.2 确认 WIN 充值
+## 6. 前端充值流程（推荐）
 
-- **Method:** `POST`
-- **Path:** `/v1/wallet/recharge-win/confirm`
-- **Auth:** ✅
+```
+1. 登录拿到 JWT
+2. GET /v1/wallet/aix-profile → min_win_recharge、win_balance
+3. 连接钱包，确认 chainId = 86233268
+4. 用户输入整数 num（≥ min_win_recharge）
+5. 检查原生 WIN 余额 ≥ num（并预留 Gas）
+6. 调用 buy(num)，value = parseEther(String(num))
+7. 等待交易成功，拿到 txHash
+8. 刷新 GET /v1/wallet/aix-profile，展示最新 win_balance
+```
 
-校验链上 ERC20 `Transfer` 日志（from=用户，to=平台收款地址，合约=`win_contract`，数量≥下单量）后，**直接入账** `win_balance`。
+> 入账说明：链上成功后，平台按 `BuySomething` 合约账本扫描入账到 `users.win_balance`（与 USDT 充值扫 `deposit_contract` 类似）。前端以 **刷新 profile** 为准，不要写死立刻到账；可短轮询 2～5 次。
 
-**请求参数：**
+### 6.1 参考现有 USDT 充值页
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| recharge_id | number | ✅ | 创建接口返回的 ID |
-| tx_hash | string | ✅ | 链上交易哈希 |
-| signature | string | ✅ | 对创建接口 `message` 的个人签名 |
-| token | string | 否* | JWT |
+USDT 现网逻辑在 `web/src/views/subpage/components/rechargeDialog.vue`：先 `approve` 再 `BUY.send("buy", [count])`。  
+**WIN 原生充值不要 approve**，只需：
 
-**请求示例：**
+```ts
+await BUY.send("buy", [num], { value: parseEther(String(num)) })
+// 具体封装以项目 Contract 工具是否支持 value 参数为准；
+// 若不支持，请直接用 ethers / viem 发 payable 交易。
+```
 
-```json
-{
-  "recharge_id": 2001,
-  "tx_hash": "0xabc...",
-  "signature": "0xdef..."
+### 6.2 ethers 示例
+
+```ts
+import { BrowserProvider, Contract, parseEther } from 'ethers'
+
+const BUY_ABI = ['function buy(uint256 num) payable']
+
+async function rechargeWin(num: number, minWin: number) {
+  if (!Number.isInteger(num) || num < minWin) {
+    throw new Error(`num 必须是 ≥ ${minWin} 的整数`)
+  }
+
+  const provider = new BrowserProvider(window.ethereum)
+  const network = await provider.getNetwork()
+  if (Number(network.chainId) !== 86233268) {
+    throw new Error('请切换到 EOEO 网络')
+  }
+
+  const signer = await provider.getSigner()
+  const balance = await provider.getBalance(await signer.getAddress())
+  const value = parseEther(String(num))
+  if (balance < value) throw new Error('WIN 余额不足')
+
+  const contract = new Contract(BUY_SOMETHING, BUY_ABI, signer)
+  const tx = await contract.buy(num, { value })
+  const receipt = await tx.wait()
+  return { txHash: receipt.hash, num }
 }
 ```
 
-**成功响应 (200)：**
+### 6.3 viem / wagmi 示例
 
-```json
-{
-  "asset": "WIN",
-  "amount": "100",
-  "win_balance": "150.0000000000000000"
-}
+```ts
+import { parseEther } from 'viem'
+
+await writeContract({
+  address: '0x6A82cFF59da0cC4E31C13E92C396Cbdcafcf3cA9',
+  abi: [{
+    name: 'buy',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [{ name: 'num', type: 'uint256' }],
+    outputs: [],
+  }],
+  functionName: 'buy',
+  args: [BigInt(num)],
+  value: parseEther(String(num)),
+  chainId: 86233268,
+})
 ```
-
-**错误码：**
-
-| HTTP | Code | 说明 |
-|------|------|------|
-| 404 | `RECHARGE_NOT_FOUND` | 充值单不存在 |
-| 403 | `RECHARGE_FORBIDDEN` | 非本人订单 |
-| 400 | `INVALID_ASSET` | 非 WIN 充值单 |
-| 400 | `RECHARGE_CONFIRMED` | 已确认 |
-| 400 | `RECHARGE_EXPIRED` | 已过期 |
-| 400 | `INVALID_TX_HASH` | 哈希为空 |
-| 400 | `TX_HASH_USED` | 哈希已被占用 |
-| 401 | `INVALID_SIGNATURE` | 签名失败 |
-| 400 | `TX_VERIFY_FAILED` | 链上校验失败 |
 
 ---
 
-### 3.3 WIN 充值记录
+## 7. 链上查询（调试 / 对账）
 
-- **Method:** `GET`
-- **Path:** `/v1/wallet/recharges-win`
-- **Auth:** ✅
+| 方法 | 说明 |
+|------|------|
+| `getUserLength()` | 历史充值条数 |
+| `getUsersByIndex(start, end)` | 按区间取用户地址（含端点） |
+| `getUsersAmountByIndex(start, end)` | 按区间取对应 `num` |
 
-**成功响应：**
-
-```json
-{
-  "recharges": [
-    {
-      "id": 2001,
-      "asset": "WIN",
-      "amount": "100",
-      "tx_hash": "0xabc...",
-      "status": "confirmed",
-      "created_at": 1755054000,
-      "confirmed_at": 1755054100
-    }
-  ]
-}
-```
-
-`status`：`pending` | `confirmed` | `rejected`
+每次成功 `buy` 会追加一条记录（同一地址多次充值会有多条）。
 
 ---
 
-## 4. WIN 替代 USDT 认购
+## 8. 管理端配置
 
-### 4.1 认购 / 复投 / WIN 支付
+管理后台「AIX 配置项」：
+
+| 名称 | 配置 id | 规则 |
+|------|---------|------|
+| WIN充值最小值 | `32` | 任意数值 **≥ 10**，热更新 |
+| USDT充值最小值 | `31` | 同上 |
+
+修改后用户端再次请求 `/v1/wallet/aix-profile` 即可读到新的 `min_win_recharge`。
+
+---
+
+## 9. 常见错误与前端提示
+
+| 现象 | 前端提示建议 |
+|------|----------------|
+| `err num` | 充值数量不能低于最小值 |
+| `bad value` | 支付金额必须等于 num 个 WIN（检查 `value = parseEther(num)`） |
+| `send failed` | 链上转账失败，稍后重试 |
+| 用户拒签 | 已取消 |
+| 余额 / Gas 不足 | WIN 不够支付本金或 Gas |
+| 错链 | 请切换到 EOEO（86233268） |
+| profile 余额未变 | 等待扫链入账后重试刷新 |
+
+---
+
+## 10. UI 建议
+
+- 输入：整数 `num`，`min = min_win_recharge`，步进 1  
+- 展示：`应付 = num WIN` + 预估 Gas  
+- 按钮：`充值 WIN`  
+- 成功：展示 `txHash`，然后刷新 `win_balance`  
+- **不要** 展示 ERC-20 合约地址，**不要** 引导 `approve`
+
+---
+
+## 11. WIN 替代充值钱包 USDT 认购
+
+平台内 `win_balance` 可替代 **充值钱包 USDT** 认购。订单仍按 **USDT 面额** 记账；扣款按 **实时 `win_price`** 折成 WIN。
+
+### 11.1 规则
+
+| 项 | 说明 |
+|----|------|
+| 下单金额 `amount` | **USDT 面额**（例：认购 100U → `"100"`） |
+| 扣 WIN 数量 | `WIN = amount ÷ win_price`（保留 8 位小数） |
+| `win_price` | USDT/枚，由链上 Pair 预言机约每分钟更新（亦可管理端覆盖） |
+| 订单本金 / 出局 | 仍按 USDT：本金=`amount`，出局上限=`amount × 倍数`（默认 4×） |
+| 直推 | **与充值钱包认购相同**：`direct_base = amount`（USDT），产生直推奖 |
+| 管理奖 | 与 USDT 认购相同，按本金级差计算 |
+
+**示例：** 认购 `100` USDT，`win_price = 2` → 扣 `50` WIN；订单本金记 `100` USDT，出局 `400` USDT。
+
+### 11.2 接口
 
 - **Method:** `POST`
 - **Path:** `/v1/wallet/subscribe-aix`
 - **Auth:** ✅
 
-**请求参数：**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| amount | string | ✅ | **USDT 面额**本金，≥ `min_subscribe`（默认 100） |
-| pay_from | string | ✅ | `recharge` \| `reward` \| **`win`** |
-| token | string | 否* | JWT |
-
-**`pay_from` 对照：**
-
-| 值 | 扣款账户 | 是否直推 | 说明 |
-|----|----------|----------|------|
-| `recharge` | `usdt_recharge` | ✅ | 充值钱包 USDT |
-| `reward` | `usdt_reward` | ❌ | 奖励钱包复投 |
-| `win` | `win_balance` | ✅ | 按 `win_price` 折算扣 WIN |
-
-**请求示例（WIN 认购）：**
+**请求：**
 
 ```json
 {
@@ -245,150 +350,66 @@
 }
 ```
 
-**成功响应 (200) — pay_from=win：**
+| 字段 | 说明 |
+|------|------|
+| `amount` | USDT 面额本金，≥ `min_subscribe`（默认 100） |
+| `pay_from` | `recharge` \| `reward` \| **`win`** |
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| order_id | number | 订单 ID |
-| principal | string | USDT 本金 |
-| exit_cap | string | 出局上限（默认 4×） |
-| fund_source | string | `"win"` |
-| direct_base | string | 直推基数（= principal） |
-| status | string | `"active"` |
-| balance | string | 扣款后 WIN 余额 |
-| total_amount | string | 同 principal |
-| from_win | string | 实际扣减的 WIN 数量 |
-| win_price | string | 下单时 WIN 价格快照 |
-| win_balance | string | 同 balance |
+**`pay_from` 对照：**
 
-**响应示例：**
+| 值 | 扣款 | 直推 |
+|----|------|------|
+| `recharge` | `usdt_recharge` | ✅ |
+| `reward` | `usdt_reward` | ❌ |
+| `win` | `win_balance`（按价折算） | ✅（等同充值钱包） |
 
-```json
-{
-  "order_id": 501,
-  "principal": "100",
-  "exit_cap": "400",
-  "fund_source": "win",
-  "direct_base": "100",
-  "status": "active",
-  "balance": "50.00000000",
-  "total_amount": "100",
-  "from_win": "50.00000000",
-  "win_price": "2",
-  "win_balance": "50.00000000"
-}
-```
-
-**错误码：**
-
-| HTTP | Code | 说明 |
-|------|------|------|
-| 400 | `INVALID_PAY_FROM` | 非 recharge/reward/win |
-| 400 | `INVALID_AMOUNT` | 金额 ≤ 0 |
-| 400 | `MIN_SUBSCRIBE_LIMIT` | 低于最低认购额 |
-| 400 | `WIN_PRICE_NOT_CONFIGURED` | WIN 价格未配置 |
-| 400 | `INSUFFICIENT_WIN` | WIN 余额不足 |
-| 400 | `INSUFFICIENT_BALANCE` | USDT 钱包余额不足 |
-
-### 4.2 订单列表（资金来源展示）
-
-- **Method:** `GET`
-- **Path:** `/v1/wallet/orders`
-
-订单 `product_name` / `fund_source` 可能为：`recharge` | `reward` | `win`。  
-前端文案建议：`recharge`→充值，`reward`→奖励，`win`→WIN。
-
----
-
-## 5. 管理端：人工充值 WIN
-
-- **Method:** `POST`
-- **Path:** `/api/admin_dhb/admin_recharge_win`
-- **Content-Type:** `application/x-www-form-urlencoded`
-- **Auth:** ✅ 管理端 Token
-
-**表单字段：**
+**成功响应关键字段：**
 
 | 字段 | 说明 |
 |------|------|
-| address | 用户钱包地址 |
-| amount | WIN 数量 |
+| `principal` | USDT 本金 |
+| `exit_cap` | 出局上限 |
+| `fund_source` | `"win"` |
+| `from_win` | 实际扣减的 WIN |
+| `win_price` | 下单时价格快照 |
+| `win_balance` / `balance` | 扣款后 WIN 余额 |
+| `direct_base` | 直推基数（= principal） |
 
-**成功响应：**
+**错误码：**
 
-```json
-{
-  "status": "ok",
-  "asset": "WIN",
-  "win_balance": "100",
-  "amount": "100",
-  "message": "WIN 充值成功"
-}
-```
+| Code | 说明 |
+|------|------|
+| `WIN_PRICE_NOT_CONFIGURED` | 价格未配置或为 0 |
+| `INSUFFICIENT_WIN` | WIN 余额不足 |
+| `MIN_SUBSCRIBE_LIMIT` | 低于最低认购额 |
+| `INVALID_PAY_FROM` | pay_from 非法 |
 
-> USDT 人工充值仍用原接口 `POST /api/admin_dhb/admin_recharge`。
-
----
-
-## 6. 配置项（运维）
-
-`configs/*.yaml` → `wallet:`：
-
-```yaml
-win_contract: "0x..."   # WIN ERC20，用户链上充值必填
-win_decimals: 18
-deposit_address: "0x..." # 与 USDT 共用平台收款地址
-# win_price 由预言机 / 管理后台维护，认购时读取内存价
-```
-
----
-
-## 7. 前端封装示例（TypeScript）
-
-项目内已提供：`web/src/api/aix.ts`
+### 11.3 前端封装
 
 ```ts
-import {
-  getAixProfile,
-  createWinRecharge,
-  confirmWinRecharge,
-  listWinRecharges,
-  subscribeAix,
-} from '@/api/aix'
+import { getAixProfile, subscribeAix } from '@/api/aix'
 
-// 画像
 const profile = await getAixProfile()
-
-// WIN 充值
-const order = await createWinRecharge('100')
-// ... 链上 transfer + personal_sign(order.message) ...
-await confirmWinRecharge(order.recharge_id, txHash, signature)
-
-// WIN 认购（amount 为 USDT 面额）
-await subscribeAix('100', 'win')
-
-// 记录
-await listWinRecharges()
+const amountUsdt = 100
+const needWin = amountUsdt / Number(profile.win_price) // 展示用
+await subscribeAix(String(amountUsdt), 'win')
 ```
 
-**Axios 直调示例：**
+用户端节点页已支持三档支付：`报单` / `复投` / **`WIN 认购`**（`web/src/views/node.vue`）。
 
-```ts
-await axios.post('/v1/wallet/subscribe-aix', {
-  amount: '100',
-  pay_from: 'win',
-}, {
-  headers: { Authorization: `Bearer ${token}` },
-})
-```
+### 11.4 价格来源
+
+`GET /v1/wallet/aix-profile` → `win_price`  
+由 `WinPriceOracleJob` 从 Pair `0x15ad085fc866370b59936575565434b14d22281d` 轮询写入（约 1 分钟），认购时用内存实时价折算。
 
 ---
 
-## 8. 与旧接口关系
+## 12. 变更摘要
 
-| 旧路径 / 行为 | 新能力 |
-|---------------|--------|
-| `POST /v1/wallet/recharge` | 仍为 **USDT** 充值 |
-| `POST /v1/wallet/subscribe-aix` `pay_from=recharge\|reward` | 新增 `win` |
-| 适配器 `app_server/buy*` | 支持 `pay_from=win` |
-| 适配器新增 | `deposit_win` / `deposit_win_confirm` / `deposit_win_list` |
+| 项 | 说明 |
+|----|------|
+| 充值方式 | 原生币 `buy(num)` + `value`，非 ERC-20 |
+| 最小值 | `GET /v1/wallet/aix-profile` → `min_win_recharge`（默认 10，管理端可配 ≥10） |
+| 入账确认 | 链上成功后刷新 profile；由后端扫合约账本写入 `win_balance` |
+| WIN 认购 | `pay_from=win`，`WIN = USDT ÷ win_price`，等同充值钱包直推 |
+| 禁止 | `approve` / `transfer` / 依赖 `win_contract` 的旧 ERC-20 充值流程 |

@@ -5,6 +5,14 @@
                 <a-col :xs="12" :md="6" :lg="6" :xl="4">
                     <a-input v-model="searchData.address" placeholder="账户" @keyup.enter="getListTwo" />
                 </a-col>
+                <a-col :xs="12" :md="6" :lg="5" :xl="4">
+                    <a-select v-model="searchData.type" allowClear placeholder="充值类型" style="width:100%" @change="getListTwo">
+                        <a-select-option value="">全部类型</a-select-option>
+                        <a-select-option value="admin">后台充值</a-select-option>
+                        <a-select-option value="usdt">USDT充值</a-select-option>
+                        <a-select-option value="win">WIN充值</a-select-option>
+                    </a-select>
+                </a-col>
                 <a-col :xs="12" :md="10" :lg="8" :xl="6">
                     <a-button-group>
                         <a-button type="primary" :loading="loading" @click="getListTwo">确定筛选</a-button>
@@ -35,10 +43,19 @@ export default {
                 {
                     title: '充值数量',
                     dataIndex: 'amount',
+                    customRender: (v, row) => {
+                        const asset = (row && row.asset) || (row && row.type === 'win' ? 'WIN' : 'USDT')
+                        return `${v || 0} ${asset}`
+                    }
                 },
                 {
                     title: '类型',
                     dataIndex: 'remark',
+                    customRender: (v) => {
+                        if (v === '后台充值' || v === 'USDT充值' || v === 'WIN充值') return v
+                        if (v === '链上充值') return 'USDT充值'
+                        return v || '-'
+                    }
                 },
                 {
                     title: '交易订单',
@@ -51,17 +68,22 @@ export default {
             ],
             searchData: {
                 address: '',
+                type: '',
             },
         }
     },
     methods: {
         getList() {
             this.loading = true
-            Gai.record_list({
+            const params = {
                 page: this.current,
                 pageSize: this.pageSize,
-                ...this.searchData
-            }).then((res) => {
+                address: this.searchData.address || '',
+            }
+            if (this.searchData.type) {
+                params.type = this.searchData.type
+            }
+            Gai.record_list(params).then((res) => {
                 const list = (res && (res.rewards || res.list || res.locations)) || []
                 this.data = list.map((value, key) => {
                     return { ...value, key }
@@ -95,7 +117,7 @@ export default {
                             />
                         </div>
                         <div style="margin-top:10px;color:#999;font-size:12px;">
-                            充值后进入用户 usdt_recharge，可用于报单并触发直推
+                            充值后进入用户 usdt_recharge，可用于报单并触发直推（类型：后台充值）
                         </div>
                     </div>
                 ),
