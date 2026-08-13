@@ -188,6 +188,8 @@ export default {
     winPayFailed: 'WIN 申込失敗',
     winPriceMissing: 'WIN 価格が未設定です',
     winPayHint: '現在の WIN 価格 {price} USDT；約 {cost} WIN 必要',
+    customWinCostHint: 'カスタム金額は約 {cost} WIN 必要',
+    insufficientWin: 'WIN残高が不足しています',
     reportNow: '今すぐ申し込む',
     reinvestNow: '今すぐ再投資',
     reportSuccess: '申込に成功しました',
@@ -253,10 +255,23 @@ export default {
   },
   recharge: {
     recharge: 'チャージ',
+    usdtRecharge: 'USDTチャージ',
+    winRecharge: 'WINチャージ',
     rechargeRecord: 'チャージ記録',
+    usdtRechargeRecord: 'USDT記録',
+    winRechargeRecord: 'WIN記録',
     currentBalance: '現在の残高',
+    winBalance: 'WIN残高',
+    winPrice: 'WIN価格',
     enterAmount: '金額を入力してください',
     minRechargeAmount: '最低チャージ金額',
+    minWinRecharge: '最低 1 WIN',
+    minWinRechargeError: 'WINチャージは 1 以上必要です',
+    winRechargeSuccess: 'WINチャージ成功',
+    recordStatus: '状態',
+    statusPending: '確認待ち',
+    statusConfirmed: '入金済み',
+    statusRejected: '拒否',
     date: '日付',
     amount: '金額', balance: 'チャージ残高', currentRechargeBalance: '現在のチャージ残高',
     success: 'チャージが完了しました', processing: 'チャージ中...', minimumError: 'チャージ金額は {amount} USDT 以上必要です'
@@ -315,7 +330,7 @@ export default {
     noDirectReferral: '直紹介なし',
     income: '収益',
     exitProgress: '出局進捗', rechargeBalance: 'チャージ残高', rewardBalance: '報酬残高',
-    withdrawableAix: '出金可能 AIX', aixBalance: 'AIX残高', winBalance: 'WIN残高', exchange: '交換', directReferralReward: '直接紹介報酬', managementReward: '管理報酬', releasedManagementReward: '支払済み管理報酬', pendingManagementReward: '保留中の管理報酬', overflowReward: 'オーバーフロー報酬', totalIncome: '累計収益'
+    withdrawableAix: '出金可能 AIX', aixBalance: 'AIX残高', winBalance: 'WIN残高', rawNewBalance: 'トークン残高', exchange: '交換', directReferralReward: '直接紹介報酬', managementReward: '管理報酬', releasedManagementReward: '支払済み管理報酬', pendingManagementReward: '保留中の管理報酬', overflowReward: 'オーバーフロー報酬', totalIncome: '累計収益'
   },
   exchange: {
     title: 'AIXをWINに交換', availableAix: '利用可能なAIX', currentWin: 'WIN残高', exchangeAmount: '交換数量', all: 'すべて',

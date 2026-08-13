@@ -188,6 +188,8 @@ export default {
     winPayFailed: 'Đăng ký WIN thất bại',
     winPriceMissing: 'Giá WIN chưa được cấu hình',
     winPayHint: 'Giá WIN hiện tại {price} USDT; cần khoảng {cost} WIN',
+    customWinCostHint: 'Số tiền tùy chọn cần khoảng {cost} WIN',
+    insufficientWin: 'Số dư WIN không đủ',
     reportNow: 'Đăng ký ngay',
     reinvestNow: 'Tái đầu tư ngay',
     reportSuccess: 'Đăng ký thành công',
@@ -253,10 +255,23 @@ export default {
   },
   recharge: {
     recharge: 'Nạp tiền',
+    usdtRecharge: 'Nạp USDT',
+    winRecharge: 'Nạp WIN',
     rechargeRecord: 'Lịch sử nạp tiền',
+    usdtRechargeRecord: 'Lịch sử USDT',
+    winRechargeRecord: 'Lịch sử WIN',
     currentBalance: 'Số dư hiện tại',
+    winBalance: 'Số dư WIN',
+    winPrice: 'Giá WIN',
     enterAmount: 'Vui lòng nhập số lượng',
     minRechargeAmount: 'Số tiền nạp tối thiểu',
+    minWinRecharge: 'Tối thiểu 1 WIN',
+    minWinRechargeError: 'Số lượng nạp WIN phải từ 1 trở lên',
+    winRechargeSuccess: 'Nạp WIN thành công',
+    recordStatus: 'Trạng thái',
+    statusPending: 'Đang chờ',
+    statusConfirmed: 'Đã nhận',
+    statusRejected: 'Đã từ chối',
     date: 'Ngày',
     amount: 'Số tiền', balance: 'Số dư nạp', currentRechargeBalance: 'Số dư nạp hiện tại',
     success: 'Nạp tiền thành công', processing: 'Đang nạp...', minimumError: 'Số tiền nạp tối thiểu là {amount} USDT'
@@ -315,7 +330,7 @@ export default {
     noDirectReferral: 'Chưa có giới thiệu trực tiếp',
     income: 'Thu nhập',
     exitProgress: 'Tiến độ thoát', rechargeBalance: 'Số dư nạp', rewardBalance: 'Số dư thưởng',
-    withdrawableAix: 'AIX có thể rút', aixBalance: 'Số dư AIX', winBalance: 'Số dư WIN', exchange: 'Đổi', directReferralReward: 'Thưởng giới thiệu trực tiếp', managementReward: 'Thưởng quản lý', releasedManagementReward: 'Thưởng quản lý đã phát hành', pendingManagementReward: 'Thưởng quản lý đang chờ', overflowReward: 'Thưởng tràn', totalIncome: 'Tổng thu nhập'
+    withdrawableAix: 'AIX có thể rút', aixBalance: 'Số dư AIX', winBalance: 'Số dư WIN', rawNewBalance: 'Số dư token', exchange: 'Đổi', directReferralReward: 'Thưởng giới thiệu trực tiếp', managementReward: 'Thưởng quản lý', releasedManagementReward: 'Thưởng quản lý đã phát hành', pendingManagementReward: 'Thưởng quản lý đang chờ', overflowReward: 'Thưởng tràn', totalIncome: 'Tổng thu nhập'
   },
   exchange: {
     title: 'Đổi AIX sang WIN', availableAix: 'AIX khả dụng', currentWin: 'Số dư WIN', exchangeAmount: 'Số lượng đổi', all: 'Tất cả',

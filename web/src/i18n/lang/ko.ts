@@ -188,6 +188,8 @@ export default {
     winPayFailed: 'WIN 청약 실패',
     winPriceMissing: 'WIN 가격이 설정되지 않았습니다',
     winPayHint: '현재 WIN 가격 {price} USDT; 약 {cost} WIN 필요',
+    customWinCostHint: '사용자 지정 금액은 약 {cost} WIN 필요',
+    insufficientWin: 'WIN 잔액이 부족합니다',
     reportNow: '지금 청약',
     reinvestNow: '지금 재투자',
     reportSuccess: '청약 성공',
@@ -253,10 +255,23 @@ export default {
   },
   recharge: {
     recharge: '충전',
+    usdtRecharge: 'USDT 충전',
+    winRecharge: 'WIN 충전',
     rechargeRecord: '충전 기록',
+    usdtRechargeRecord: 'USDT 기록',
+    winRechargeRecord: 'WIN 기록',
     currentBalance: '현재 잔액',
+    winBalance: 'WIN 잔액',
+    winPrice: 'WIN 가격',
     enterAmount: '금액을 입력하세요',
     minRechargeAmount: '최소 충전 금액',
+    minWinRecharge: '최소 1 WIN',
+    minWinRechargeError: 'WIN 충전 수량은 1 이상이어야 합니다',
+    winRechargeSuccess: 'WIN 충전 성공',
+    recordStatus: '상태',
+    statusPending: '대기 중',
+    statusConfirmed: '입금 완료',
+    statusRejected: '거절됨',
     date: '날짜',
     amount: '금액', balance: '충전 잔액', currentRechargeBalance: '현재 충전 잔액',
     success: '충전 성공', processing: '충전 중...', minimumError: '충전 금액은 {amount} USDT 이상이어야 합니다'
@@ -315,7 +330,7 @@ export default {
     noDirectReferral: '직추가 없습니다',
     income: '수익',
     exitProgress: '아웃 진행', rechargeBalance: '충전 잔액', rewardBalance: '보상 잔액',
-    withdrawableAix: '출금 가능 AIX', aixBalance: 'AIX 잔액', winBalance: 'WIN 잔액', exchange: '교환', directReferralReward: '직접 추천 보상', managementReward: '관리 보상', releasedManagementReward: '지급된 관리 보상', pendingManagementReward: '대기 중인 관리 보상', overflowReward: '초과 보상', totalIncome: '누적 수익'
+    withdrawableAix: '출금 가능 AIX', aixBalance: 'AIX 잔액', winBalance: 'WIN 잔액', rawNewBalance: '토큰 잔액', exchange: '교환', directReferralReward: '직접 추천 보상', managementReward: '관리 보상', releasedManagementReward: '지급된 관리 보상', pendingManagementReward: '대기 중인 관리 보상', overflowReward: '초과 보상', totalIncome: '누적 수익'
   },
   exchange: {
     title: 'AIX를 WIN으로 교환', availableAix: '사용 가능 AIX', currentWin: 'WIN 잔액', exchangeAmount: '교환 수량', all: '전체',

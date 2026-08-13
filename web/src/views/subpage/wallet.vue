@@ -55,6 +55,10 @@
             <p>{{ $t('wallet.earnedIncome') }}</p>
             <p>{{ userinfo.all || 0 }}</p>
           </div>
+          <div class="pledge-item">
+            <p>{{ $t('wallet.overflowReward') }}</p>
+            <p>{{ userinfo.overflowReward || 0 }}</p>
+          </div>
         </div>
       </div>
       <div class="pledge-frame">
@@ -69,10 +73,6 @@
         <div class="pledge-frame-item">
           <p>{{ $t('wallet.managementReward') }}</p>
           <p>{{ formatFour(userinfo.team) }}</p>
-        </div>
-        <div class="pledge-frame-item">
-          <p>{{ $t('wallet.overflowReward') }}</p>
-          <p>{{ formatFour(userinfo.overflowReward) }}</p>
         </div>
         <div class="pledge-frame-item">
           <p>{{ $t('wallet.totalIncome') }}</p>
@@ -347,7 +347,7 @@ const handleBack = () => {
       background-image: url(@/assets/images/a1.png);
       background-repeat: no-repeat;
       background-size: 100% 111px;
-      padding: 20px 20px 0 20px;
+      padding: 24px 20px 6px 20px;
       display: flex;
       box-sizing: border-box;
       font-size: 12px;
@@ -616,7 +616,6 @@ const handleBack = () => {
         }
       }
       .pledge-frame {
-        min-height: 330px;
         background: url('@/assets/images/boxbg1.png') no-repeat;
         background-size: 100% 100%;
         box-sizing: border-box;

@@ -50,6 +50,7 @@ export interface AixProfile {
   win_balance?: string
   aix_price?: number
   win_price?: number
+  win_contract?: string
   aix_to_win_rate?: number
   exchange_fee_rate?: number
   pending_mgmt_reward?: string

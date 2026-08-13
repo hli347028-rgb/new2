@@ -50,6 +50,9 @@
         <p v-if="activeMode === 'win' && winPrice > 0" class="mode-tip win-cost-tip">
           {{ $t('node.winPayHint', { price: winPrice, cost: estimatedWinCost }) }}
         </p>
+        <p v-if="activeMode === 'win' && customWinCost" class="mode-tip win-cost-tip">
+          {{ $t('node.customWinCostHint', { cost: customWinCost }) }}
+        </p>
         <p class="mode-tip">{{ modeTip }}</p>
       </div>
 
@@ -100,11 +103,14 @@
             <span>{{ $t('node.fundingSource') }}</span>
             <span>{{ $t('node.time') }}</span>
           </div>
-          <div class="order-list" v-for="(item, index) in orderList" :key="index">
+          <div class="order-list" v-for="(item, index) in orderList" :key="item.id || index">
             <div class="table-row">
-              <span>{{ item.total_amount ?? item.amount }}</span>
+              <span>
+                {{ item.total_amount ?? item.amount }} USDT
+                <small v-if="item.from_win" class="win-deduct">-{{ displayAmount(item.from_win) }} WIN</small>
+              </span>
               <span>{{ orderStatusText(item.status) }}</span>
-              <span>{{ fundingSourceText(item.product_name) }}</span>
+              <span>{{ fundingSourceText(item.fund_source || item.product_name) }}</span>
               <span>{{ item.created_at ?? item.createdAt }}</span>
             </div>
           </div>
@@ -125,6 +131,7 @@ import request from '@/tools/request'
 import { showSuccessToast, showFailToast, showLoadingToast, closeToast } from 'vant'
 import userPerson from '@/pinia/person'
 import { errMsg, listAixOrders, subscribeAix } from '@/api/aix'
+import { compareDecimals, displayDecimal, divDecimal, isPositiveDecimal } from '@/tools/decimal'
 
 const { t: $t } = useI18n()
 const person = userPerson()
@@ -149,11 +156,27 @@ const modeTip = computed(() => {
   if (activeMode.value === 'win') return $t('node.winReferralTip')
   return $t('node.referralRewardTip')
 })
-const estimatedWinCost = computed(() => {
-  const amount = selectedTier.value || Number(customAmount.value) || minSubscribe.value
-  if (!winPrice.value || winPrice.value <= 0) return '-'
-  return (amount / winPrice.value).toFixed(4)
+const estimatedWinCost = computed(() => calcWinCost(selectedTier.value || minSubscribe.value))
+const customWinCost = computed(() => {
+  if (activeMode.value !== 'win' || !customAmount.value) return ''
+  const amount = Number(customAmount.value)
+  if (!Number.isFinite(amount) || amount <= 0) return ''
+  return calcWinCost(amount)
 })
+
+function calcWinCost(usdtAmount: number) {
+  if (!winPrice.value || winPrice.value <= 0 || !usdtAmount) return '-'
+  return displayAmount(divDecimal(String(usdtAmount), String(winPrice.value)))
+}
+
+function displayAmount(value: unknown) {
+  return displayDecimal(value)
+}
+
+function calcNeedWin(usdtAmount: number) {
+  if (!winPrice.value || winPrice.value <= 0) return null
+  return divDecimal(String(usdtAmount), String(winPrice.value))
+}
 const actionText = computed(() => {
   if (activeMode.value === 'reward') return $t('node.reinvestNow')
   if (activeMode.value === 'win') return $t('node.winPayNow')
@@ -226,18 +249,21 @@ const handleSubscribe = async (amount: number) => {
     return
   }
   const mode = activeMode.value
-  const bal = Number(accountBalance.value)
   if (mode === 'win') {
     if (!winPrice.value || winPrice.value <= 0) {
       showFailToast($t('node.winPriceMissing'))
       return
     }
-    const needWin = amount / winPrice.value
-    if (Number.isFinite(bal) && needWin > bal) {
-      showFailToast($t('common.insufficientBalance'))
+    const needWin = calcNeedWin(amount)
+    if (!needWin || !isPositiveDecimal(needWin)) {
+      showFailToast($t('node.winPriceMissing'))
       return
     }
-  } else if (Number.isFinite(bal) && amount > bal) {
+    if (compareDecimals(needWin, accountBalance.value) > 0) {
+      showFailToast($t('node.insufficientWin'))
+      return
+    }
+  } else if (compareDecimals(String(amount), accountBalance.value) > 0) {
     showFailToast($t('common.insufficientBalance'))
     return
   }
@@ -254,15 +280,25 @@ const handleSubscribe = async (amount: number) => {
         : $t('node.reportSuccess')
     showSuccessToast(okMsg)
     customAmount.value = ''
+    selectedTier.value = null
     await Promise.all([person.refreshProfile(), getOrderList()])
   } catch (error: any) {
     closeToast()
+    const code = error?.response?.data?.reason || error?.response?.data?.code
+    const messageKey: Record<string, string> = {
+      MIN_SUBSCRIBE_LIMIT: 'node.minSubscribeAmount',
+      WIN_PRICE_NOT_CONFIGURED: 'node.winPriceMissing',
+      INSUFFICIENT_WIN: 'node.insufficientWin',
+      INSUFFICIENT_BALANCE: 'common.insufficientBalance',
+      INVALID_AMOUNT: 'node.enterSubscribeAmount',
+    }
     const failMsg = mode === 'reward'
       ? $t('node.reinvestFailed')
       : mode === 'win'
         ? $t('node.winPayFailed')
         : $t('node.reportFailed')
-    showFailToast(errMsg(error, failMsg))
+    const mapped = messageKey[code] ? $t(messageKey[code], { amount: minSubscribe.value }) : ''
+    showFailToast(mapped || errMsg(error, failMsg))
   } finally {
     submitting.value = false
   }
@@ -548,6 +584,13 @@ onMounted(async () => {
         text-align: center;
         font-size: 14px;
         color: $text-primary;
+
+        .win-deduct {
+          display: block;
+          margin-top: 2px;
+          font-size: 11px;
+          color: $text-muted;
+        }
       }
     }
   }

@@ -3,102 +3,119 @@
   <Header />
   <div class="page-main">
     <div class="withdraw-info">
-      <p class="withdraw-balance">{{ $t('recharge.balance') }}: {{ userinfo.usdt || 0.0000 }}</p>
-      <!-- <p class="withdraw-balance">BRC20: {{ userinfo.rawNew || 0.0000 }}</p> -->
+      <p class="withdraw-balance">{{ $t('recharge.balance') }}: {{ displayAmount(rechargeBalance) }}</p>
+      <p class="withdraw-balance">{{ $t('recharge.winBalance') }}: {{ displayAmount(winBalance) }}</p>
+      <!-- <p v-if="winPrice > 0" class="withdraw-balance withdraw-price">{{ $t('recharge.winPrice') }}: {{ winPrice }} USDT</p> -->
       <div class="withdraw-actions">
-        <button class="withdraw-btn" @click="showWithdraw"><van-icon name="balance-pay" />{{ $t('recharge.recharge') }}</button>
+        <button class="withdraw-btn" @click="showRecharge"><van-icon name="balance-pay" />{{ $t('recharge.recharge') }}</button>
         <button class="withdraw-btn" @click="router.push('/transfer')"><van-icon name="exchange" />{{ $t('transfer.title') }}</button>
       </div>
     </div>
     <div class="withdraw-tab">
+      <div class="section-title-wrap">
+        <div class="title-bar"></div>
+        <h3 class="section-title">{{ $t('recharge.rechargeRecord') }}</h3>
+      </div>
       <ul class="withdraw-tab-title">
-        <li class="active">{{ $t('recharge.rechargeRecord') }}</li>
+        <li :class="{ active: recordTab === 'usdt' }" @click="switchRecordTab('usdt')">USDT</li>
+        <li :class="{ active: recordTab === 'win' }" @click="switchRecordTab('win')">WIN</li>
       </ul>
       <div class="withdrawal-list">
         <div class="withdrawal-list-content">
           <div class="table">
-            <div class="table-header" v-if="amountList.length > 0">
+            <div class="table-header" v-if="currentRecords.length > 0">
               <div class="table-row">
                 <div class="table-cell">{{ $t('recharge.date') }}</div>
                 <div class="table-cell">{{ $t('recharge.amount') }}</div>
+                <div v-if="recordTab === 'win'" class="table-cell">{{ $t('recharge.recordStatus') }}</div>
               </div>
             </div>
             <div class="table-body">
-              <div class="table-row" v-for="(item, index) in amountList" :key="index">
-                <div class="table-cell">{{item.createdAt}}</div>
-                <div class="table-cell">{{item.amount}}</div>
+              <div class="table-row" v-for="(item, index) in currentRecords" :key="item.id || index">
+                <div class="table-cell">{{ item.createdAt }}</div>
+                <div class="table-cell">{{ item.amount }} {{ recordTab === 'win' ? 'WIN' : 'USDT' }}</div>
+                <div v-if="recordTab === 'win'" class="table-cell">{{ rechargeStatusText(item.status) }}</div>
               </div>
             </div>
           </div>
-          <div class="empty" v-if="amountList.length === 0">
+          <div class="empty" v-if="currentRecords.length === 0">
             <img :src="emptyImage" />
             <div class="empty-text">{{ $t('common.noData') }}</div>
           </div>
           <Pagination
-            v-if="amountList.length > 0"
+            v-if="recordTab === 'usdt' && usdtRecords.length > 0 && allPageCount > 1"
             v-model="page"
             :page-count="allPageCount"
             mode="simple"
-            @change="getAmountList"
+            @change="getUsdtRecords"
           />
         </div>
       </div>
     </div>
   </div>
-  <RechargeDialog :getBalance="getBalance" :usdtBalance="usdtBalance" :onChange="getAmountList" ref="rechargeDialogRef" />
+  <RechargeDialog :getBalance="getBalance" :usdtBalance="usdtBalance" :onChange="handleRechargeChange" ref="rechargeDialogRef" />
 </div>
 </template>
 <script setup>
 import userPerson from "@/pinia/person";
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { Contract, ETH } from "@/tools/contract";
 import { ref, computed } from 'vue'
 import request from "@/tools/request";
-import { showLoadingToast, closeToast, showFailToast, showDialog, closeDialog, showSuccessToast, showToast } from "vant";
+import { closeToast, showLoadingToast } from "vant";
 import RechargeDialog from "./subpage/components/rechargeDialog.vue";
 import emptyImage from '../assets/images/custom-empty-image.png'
 import { Pagination } from "vant"
 import Header from '@/components/Header.vue'
 import { useI18n } from 'vue-i18n'
+import { listWinRecharges } from '@/api/aix'
+import { displayDecimal } from '@/tools/decimal'
 
 const USDT = new Contract(import.meta.env.VITE_USDT, "ERC20");
 const BUY = new Contract(import.meta.env.VITE_BUY, "BUY");
-const route = useRoute()
 
 const router = useRouter()
 const { t: $t } = useI18n()
 const person = userPerson();
 const userinfo = $computed(() => person.userinfo);
+const profile = $computed(() => person.profile);
+const rechargeBalance = $computed(() => String(profile.usdt_recharge || userinfo.usdt || '0'))
+const winBalance = $computed(() => String(profile.win_balance || '0'))
+const winPrice = $computed(() => Number(profile.win_price || 0))
+const displayAmount = (value) => displayDecimal(value)
 const rechargeDialogRef = ref(null)
-let amountList = $ref([])
+const recordTab = ref('usdt')
+let usdtRecords = $ref([])
+let winRecords = $ref([])
 const page = $ref(1)
 let allPageCount = $ref(1)
 let usdtBalance = $ref("0");
 let usdtApproved = $ref(false);
 
-/* 获取授权 */
+const currentRecords = computed(() => recordTab.value === 'win' ? winRecords : usdtRecords)
+
+const rechargeStatusText = (status) => {
+  switch (status) {
+    case 'confirmed': return $t('recharge.statusConfirmed')
+    case 'rejected': return $t('recharge.statusRejected')
+    case 'pending':
+    default: return $t('recharge.statusPending')
+  }
+}
+
+const switchRecordTab = async (tab) => {
+  if (recordTab.value === tab) return
+  recordTab.value = tab
+  if (tab === 'win') await getWinRecords()
+}
+
 const getUsdtApproved = async () => {
     let res = await USDT.call("allowance", [ETH.account, BUY.address]);
-    console.log('getUsdtApproved', Number(res))
     usdtApproved = Number(res) > 0;
     closeToast()
-
     return usdtApproved
 }
 
-const usdtApprove = async () => {
-    showLoadingToast({
-        message: $t('common.authorizing'), duration: 0, overlay: true, overlayStyle: {
-            background: "transparent"
-        }
-    });
-    await USDT.send("approve", [
-        BUY.address,
-        "115792089237316195423570985008687907853269984665640564039457584007913129639935"
-    ]).then(getUsdtApproved).catch(() => closeToast());
-}
-
-/* 获取代币余额 */
 const getBalance = async () => {
   await ETH.getAccount()
   const res = await ETH.getUSDTBalance()
@@ -106,35 +123,59 @@ const getBalance = async () => {
 }
 
 const getData = async () => {
-    // showLoadingToast({
-    //     message: $t('common.authorizing'), duration: 0, overlay: true, overlayStyle: {
-    //         background: "transparent"
-    //     }
-    // });
-    await getBalance();
+    await Promise.allSettled([
+      getBalance(),
+      person.refreshProfile?.(),
+    ])
     await getUsdtApproved();
-    // closeToast();
 }
 
 getData()
 
-function showWithdraw() {
-  rechargeDialogRef.value?.open('USDT')
+function showRecharge() {
+  rechargeDialogRef.value?.open()
 }
 
+const formatUnixTime = (value) => {
+  const timestamp = Number(value)
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return '-'
+  const date = new Date(timestamp * 1000)
+  const pad = (part) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 
-const getAmountList = async (page = 1) => {
+const getUsdtRecords = async (pageNum = 1) => {
     await request.get("app_server/deposit_list", {
-      params: {
-        page
-      }
+      params: { page: pageNum }
     }).then((res) => {
-      allPageCount = Math.ceil(res.count / 10);
-      amountList = res.list
+      allPageCount = Math.max(1, Math.ceil(Number(res.count || 0) / 10));
+      usdtRecords = res.list || []
+      page = pageNum
     })
 }
 
-getAmountList()
+const getWinRecords = async () => {
+  try {
+    const result = await listWinRecharges()
+    winRecords = (result?.recharges || []).map((item) => ({
+      ...item,
+      createdAt: formatUnixTime(item.created_at),
+    }))
+  } catch {
+    winRecords = []
+  }
+}
+
+const handleRechargeChange = async (pageNum = 1) => {
+  await Promise.allSettled([
+    person.refreshProfile?.(),
+    getBalance(),
+    getUsdtRecords(pageNum),
+    getWinRecords(),
+  ])
+}
+
+getUsdtRecords()
 
 </script>
 <style lang='scss' scoped>
@@ -158,42 +199,46 @@ getAmountList()
       flex: 0 0 auto;
       width: 100%;
       aspect-ratio: 694 / 310;
-      background: url('@/assets/images/boxbg3.png') no-repeat center;
-      background-size: cover;
+      height: auto;
+      min-height: 0;
+      overflow: hidden;
+      background: url('@/assets/images/boxbg3.png') no-repeat center / 100% 100%;
       box-sizing: border-box;
-      padding:30px 20px;
+      padding: 22px 20px;
       display: flex;
       margin-bottom: 20px;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       align-items: flex-start;
-      justify-content: space-around;
+      justify-content: center;
       .withdraw-balance {
-        font-size: 16px;
+        margin: 0;
+        line-height: 1.35;
+        font-size: 14px;
         color: $text-primary;
       }
-      .withdraw-name {
-        font-size: 16px;
-        color: $text-primary;
+      .withdraw-price {
+        font-size: 12px;
+        color: $text-muted;
       }
       .withdraw-actions {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        gap: 10px;
-        // margin-top: 10px;
+        gap: 8px;
+        margin-top: 4px;
       }
       .withdraw-btn {
-        padding: 0 20px;
+        padding: 0 14px;
         display: inline-flex;
-        height: 36px;
+        height: 34px;
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid $border-color;
         border-radius: 22px;
-        display: flex;
         gap: 5px;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: 13px;
         color: $brand-primary;
         transition: $transition-base;
 
@@ -204,7 +249,7 @@ getAmountList()
         }
 
         i {
-          font-size: 20px;
+          font-size: 18px;
         }
       }
     }
@@ -214,16 +259,42 @@ getAmountList()
       display: flex;
       flex-direction: column;
 
+      .section-title-wrap {
+        flex: 0 0 auto;
+        position: relative;
+        margin-bottom: 8px;
+        margin-left: 10px;
+        display: flex;
+        align-items: center;
+
+        .title-bar {
+          position: absolute;
+          left: -10px;
+          top: 50%;
+          width: 4px;
+          height: 16px;
+          border-radius: 2px;
+          background: linear-gradient(180deg, #1597E5 0%, #075FB8 100%);
+          transform: translateY(-50%);
+        }
+
+        .section-title {
+          margin: 0 0 0 8px;
+          font-size: 16px;
+          font-weight: bold;
+          color: #fff;
+        }
+      }
+
       .withdraw-tab-title {
         flex: 0 0 44px;
         height: 44px;
         display: flex;
         gap: 20px;
-        margin-top: 20px;
+        margin-top: 0;
         border-top-left-radius: 20px;
         border-top-right-radius: 20px;
         background: linear-gradient(0deg, rgba(5, 5, 5, 0), $bg-card);
-        display: flex;
         align-items: center;
         justify-content: flex-start;
         padding: 0 20px;
@@ -231,6 +302,7 @@ getAmountList()
           font-size: 14px;
           color: $text-primary;
           position: relative;
+          cursor: pointer;
           &.active {
             &::before {
               width: 25px;
@@ -263,9 +335,6 @@ getAmountList()
         color: rgba(255, 255, 255, 0.3);
       }
     }
-    .withdraw-tab-content {
-      padding: 50px 0;
-    }
     .withdrawal-list {
       flex: 1 1 auto;
       min-height: 0;
@@ -275,9 +344,6 @@ getAmountList()
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
 
-      .withdrawal-list-title {
-        font-size: 16px;
-      }
       .withdrawal-list-content {
         min-height: 200px;
         .table {
@@ -299,10 +365,7 @@ getAmountList()
               box-sizing: border-box;
               font-weight: 500;
               color: $text-muted;
-              &:nth-child(2) {
-                text-align: center;
-              }
-              &:nth-child(3) {
+              &:nth-child(n+2) {
                 text-align: center;
               }
             }
@@ -324,36 +387,9 @@ getAmountList()
               box-sizing: border-box;
               padding: 10px;
               color: $text-primary;
-              p {
-                height: 16px;
-                padding: 5px 0;
-                margin: 0;
-              }
-              &:nth-child(2) {
+              &:nth-child(n+2) {
                 text-align: center;
               }
-              &:nth-child(3) {
-                text-align: center;
-              }
-            }
-          }
-        }
-      }
-    }
-    .recharge {
-      min-height: 200px;
-      background: rgba(8, 19, 30, .8);
-      border: 1px solid #666;
-      border-radius: 18px;
-      padding: 15px;
-      .recharge-info {
-        .recharge-info-list {
-          li {
-            height: 32px;
-            line-height: 32px;
-            border-bottom: 1px solid #EEE;
-            &::last-child {
-              border-bottom: 0;
             }
           }
         }
