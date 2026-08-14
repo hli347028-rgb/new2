@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"backend/internal/biz"
@@ -32,11 +33,12 @@ const uniswapV2PairABI = `[
 
 // WinPriceOracleJob 定时从 WinSwap V2 Pair 读取 WWIN/USDT 储备并写入 WIN 价格。
 type WinPriceOracleJob struct {
-	admin *biz.AdminUsecase
-	cfg   *conf.WalletConfig
-	log   *log.Helper
-	stop  chan struct{}
-	mu    sync.Mutex
+	admin   *biz.AdminUsecase
+	cfg     *conf.WalletConfig
+	log     *log.Helper
+	stop    chan struct{}
+	mu      sync.Mutex
+	cycling atomic.Bool
 }
 
 func NewWinPriceOracleJob(admin *biz.AdminUsecase, cfg *conf.WalletConfig, logger log.Logger) *WinPriceOracleJob {
@@ -120,7 +122,50 @@ func (j *WinPriceOracleJob) run() {
 	}
 }
 
-func (j *WinPriceOracleJob) pollOnce() {
+// WinPriceOracleResult is returned by a single poll.
+type WinPriceOracleResult struct {
+	OK    bool    `json:"ok"`
+	Price float64 `json:"price"`
+	Pair  string  `json:"pair"`
+}
+
+// TriggerCycle starts a background cycle: N price polls, gap seconds apart (cron once/min).
+func (j *WinPriceOracleJob) TriggerCycle() *CycleTriggerResult {
+	queries := int(j.cfg.GetWinPriceQueriesPerCycle())
+	if queries <= 0 {
+		queries = 10
+	}
+	gap := time.Duration(j.cfg.GetWinPriceQueryIntervalSeconds()) * time.Second
+	if gap <= 0 {
+		gap = 5 * time.Second
+	}
+	res := &CycleTriggerResult{
+		Asset: "WIN_PRICE", Queries: queries, IntervalSeconds: int64(gap / time.Second),
+	}
+	if !j.cycling.CompareAndSwap(false, true) {
+		res.Accepted = false
+		res.Reason = "cycle already running"
+		return res
+	}
+	res.Accepted = true
+	go func() {
+		defer j.cycling.Store(false)
+		j.log.Infof("win price oracle cycle started: queries=%d interval=%s", queries, gap)
+		for i := 0; i < queries; i++ {
+			j.pollOnce()
+			j.log.Infof("win price oracle cycle #%d/%d done", i+1, queries)
+			if i >= queries-1 {
+				break
+			}
+			time.Sleep(gap)
+		}
+		j.log.Info("win price oracle cycle finished")
+	}()
+	return res
+}
+
+// RunOnce fetches pair reserves once and upserts WIN price.
+func (j *WinPriceOracleJob) RunOnce() (*WinPriceOracleResult, error) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 
@@ -129,14 +174,23 @@ func (j *WinPriceOracleJob) pollOnce() {
 
 	price, err := j.fetchWinPriceUSDT(ctx)
 	if err != nil {
-		j.log.Errorf("win price oracle fetch failed: %v", err)
-		return
+		return nil, err
 	}
 	if err := j.admin.SetWinPriceFromOracle(ctx, price); err != nil {
-		j.log.Errorf("win price oracle persist failed: %v", err)
-		return
+		return nil, err
 	}
 	j.log.Infof("win price oracle updated: 1 WIN = %s USDT", decimal.NewFromFloat(price).StringFixed(8))
+	pair := ""
+	if j.cfg != nil {
+		pair = j.cfg.GetWinPair()
+	}
+	return &WinPriceOracleResult{OK: true, Price: price, Pair: pair}, nil
+}
+
+func (j *WinPriceOracleJob) pollOnce() {
+	if _, err := j.RunOnce(); err != nil {
+		j.log.Errorf("win price oracle fetch/persist failed: %v", err)
+	}
 }
 
 func (j *WinPriceOracleJob) fetchWinPriceUSDT(ctx context.Context) (float64, error) {

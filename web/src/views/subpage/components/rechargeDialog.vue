@@ -215,32 +215,13 @@ const submitWinRecharge = async () => {
     return
   }
 
+  // 不校验链上余额 / Gas，直接唤起钱包确认充值
   await ETH.getAccount()
-  await refreshNativeBalance()
-
   const value = ethers.utils.parseEther(String(num))
-  const balanceWei = await ETH.provider.getBalance(ETH.account)
-
-  let gasCost
-  try {
-    const gasLimit = await BUY_WIN.getInsance().estimateGas.buy(num, { value })
-    const gasPrice = await ETH.provider.getGasPrice()
-    gasCost = gasLimit.mul(gasPrice)
-  } catch (error) {
-    console.warn('WIN 充值 Gas 估算失败，使用默认缓冲', error)
-    gasCost = ethers.utils.parseEther('0.01')
-  }
-
-  if (balanceWei.lt(value.add(gasCost))) {
-    showRechargeToast($t('recharge.winInsufficientNative'))
-    return
-  }
-
-  startRechargeLoading($t('recharge.processing'))
   const beforeBalance = String(person.profile?.win_balance || '0')
-  const { hash } = await BUY_WIN.send('buy', [num], { value })
+  // 指定 gasLimit，避免 estimateGas 因余额不足而拦截、导致钱包不弹窗
+  const { hash } = await BUY_WIN.send('buy', [num], { value, gasLimit: 350000 })
 
-  stopRechargeLoading()
   startRechargeLoading($t('recharge.winConfirming'))
 
   const pollResult = await pollWinBalance(

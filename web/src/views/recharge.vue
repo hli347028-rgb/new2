@@ -25,7 +25,7 @@
           <div class="table">
             <div class="table-header" v-if="currentRecords.length > 0">
               <div class="table-row">
-                <div class="table-cell col-date">{{ recordTab === 'win' ? $t('recharge.winRecordIndex') : $t('recharge.date') }}</div>
+                <div class="table-cell col-date">{{ $t('recharge.date') }}</div>
                 <div class="table-cell col-amount">{{ $t('recharge.amount') }}</div>
                 <div class="table-cell col-status">{{ $t('recharge.recordStatus') }}</div>
               </div>
@@ -33,14 +33,11 @@
             <div class="table-body">
               <div class="table-row" v-for="(item, index) in currentRecords" :key="item.id ?? index">
                 <div class="table-cell col-date">
-                  <template v-if="recordTab === 'win'">{{ item.index }}</template>
-                  <template v-else>
-                    <span class="date-text">{{ splitDateTime(item.createdAt).date }}</span>
-                    <span class="time-text">{{ splitDateTime(item.createdAt).time }}</span>
-                  </template>
+                  <span class="date-text">{{ splitDateTime(item.createdAt).date }}</span>
+                  <span class="time-text">{{ splitDateTime(item.createdAt).time }}</span>
                 </div>
                 <div class="table-cell col-amount">
-                  <span class="amount-value">{{ item.amount }}</span>
+                  <span class="amount-value">{{ displayAmount(item.amount) }}</span>
                   <span class="amount-unit">{{ recordTab === 'win' ? 'WIN' : 'USDT' }}</span>
                 </div>
                 <div class="table-cell col-status" :class="statusClass(item.status)">
@@ -54,11 +51,11 @@
             <div class="empty-text">{{ $t('common.noData') }}</div>
           </div>
           <Pagination
-            v-if="recordTab === 'usdt' && usdtRecords.length > 0 && allPageCount > 1"
+            v-if="currentRecords.length > 0 && allPageCount > 1"
             v-model="page"
             :page-count="allPageCount"
             mode="simple"
-            @change="getUsdtRecords"
+            @change="onPageChange"
           />
         </div>
       </div>
@@ -133,7 +130,9 @@ const splitDateTime = (value) => {
 const switchRecordTab = async (tab) => {
   if (recordTab.value === tab) return
   recordTab.value = tab
-  if (tab === 'win') await getWinRecords()
+  page = 1
+  if (tab === 'win') await getWinRecords(1)
+  else await getUsdtRecords(1)
 }
 
 const getUsdtApproved = async () => {
@@ -163,46 +162,54 @@ function showRecharge() {
   rechargeDialogRef.value?.open()
 }
 
-const formatUnixTime = (value) => {
-  const timestamp = Number(value)
-  if (!Number.isFinite(timestamp) || timestamp <= 0) return '-'
-  const date = new Date(timestamp < 1e12 ? timestamp * 1000 : timestamp)
-  const pad = (part) => String(part).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
 const getUsdtRecords = async (pageNum = 1) => {
-    await request.get("app_server/deposit_list", {
-      params: { page: pageNum }
-    }).then((res) => {
-      allPageCount = Math.max(1, Math.ceil(Number(res.count || 0) / 10));
-      usdtRecords = res.list || []
-      page = pageNum
-    })
-}
-
-const getWinRecords = async () => {
   try {
-    const res = await request.get('app_server/deposit_win_list')
-    const list = res?.list || res?.recharges || []
-    winRecords = list.map((item, index) => ({
+    const res = await request.get('app_server/deposit_list', {
+      params: { page: pageNum },
+    })
+    allPageCount = Math.max(1, Math.ceil(Number(res.count || 0) / 10))
+    usdtRecords = (res.list || []).map((item, index) => ({
       ...item,
       id: item.id ?? index,
-      index: index + 1,
-      createdAt: formatUnixTime(item.created_at),
+      createdAt: item.createdAt || item.created_at || '-',
       status: item.status || 'pending',
     }))
+    page = pageNum
+  } catch {
+    usdtRecords = []
+    allPageCount = 1
+  }
+}
+
+const getWinRecords = async (pageNum = 1) => {
+  try {
+    const res = await request.get('app_server/deposit_win_list', {
+      params: { page: pageNum },
+    })
+    allPageCount = Math.max(1, Math.ceil(Number(res.count || 0) / 10))
+    winRecords = (res.list || res.recharges || []).map((item, index) => ({
+      ...item,
+      id: item.id ?? index,
+      createdAt: item.createdAt || item.created_at || '-',
+      status: item.status || 'pending',
+    }))
+    page = pageNum
   } catch {
     winRecords = []
+    allPageCount = 1
   }
+}
+
+const onPageChange = async (pageNum = 1) => {
+  if (recordTab.value === 'win') await getWinRecords(pageNum)
+  else await getUsdtRecords(pageNum)
 }
 
 const handleRechargeChange = async (pageNum = 1) => {
   await Promise.allSettled([
     person.refreshProfile?.(),
     getBalance(),
-    getUsdtRecords(pageNum),
-    getWinRecords(),
+    recordTab.value === 'win' ? getWinRecords(pageNum) : getUsdtRecords(pageNum),
   ])
 }
 

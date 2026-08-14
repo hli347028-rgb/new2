@@ -198,6 +198,15 @@ func (w *WalletConfig) GetRPCURL() string {
 	return strings.TrimSpace(w.RPCURL)
 }
 
+// IsRechargeMonitorEnabled controls the in-process depositOnly ticker.
+// When false, only cron/HTTP may trigger USDT/WIN deposit sync (avoids double-scan with crontab).
+func (w *WalletConfig) IsRechargeMonitorEnabled() bool {
+	if w == nil {
+		return true
+	}
+	return w.RechargeMonitorEnabled
+}
+
 func (w *WalletConfig) GetMinSubscribe() string {
 	if w == nil || w.MinSubscribe == "" {
 		return "100"

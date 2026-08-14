@@ -307,7 +307,8 @@ func (uc *WalletUsecase) ListRecharges(ctx context.Context, tokenString string) 
 	if err != nil {
 		return nil, err
 	}
-	return uc.walletRepo.ListRechargesByUser(ctx, user.ID)
+	// /v1/wallet/recharges 仅返回 USDT；WIN 走 /v1/wallet/recharges-win
+	return uc.walletRepo.ListRechargesByUserAsset(ctx, user.ID, TokenUSDT)
 }
 
 func (uc *WalletUsecase) ClaimToAccount(ctx context.Context, tokenString, amount string) (string, string, string, error) {

@@ -44,7 +44,7 @@ func wireApp(confServer *conf.Server, dbCfg *conf.DatabaseConfig, authCfg *conf.
 	chainRechargeJob := job.NewChainRechargeJob(walletRepo, settingsRepo, walletCfg, logger)
 	winPriceOracleJob := job.NewWinPriceOracleJob(adminUsecase, walletCfg, logger)
 	grpcServer := server.NewGRPCServer(confServer, authService, walletService, logger)
-	httpServer := server.NewHTTPServer(confServer, authService, walletService, adminService, adminLegacyService, chainRechargeJob, logger)
+	httpServer := server.NewHTTPServer(confServer, authService, walletService, adminService, adminLegacyService, chainRechargeJob, winPriceOracleJob, logger)
 	app := newApp(logger, grpcServer, httpServer)
 	return app, settlementJob, chainRechargeJob, winPriceOracleJob, adminUsecase, func() {
 		cleanup()

@@ -15,7 +15,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, auth *service.AuthService, wallet *service.WalletService, admin *service.AdminService, legacy *service.AdminLegacyService, recharge *job.ChainRechargeJob, _ log.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, auth *service.AuthService, wallet *service.WalletService, admin *service.AdminService, legacy *service.AdminLegacyService, recharge *job.ChainRechargeJob, oracle *job.WinPriceOracleJob, _ log.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Filter(authmw.CORS()),
 		http.Middleware(
@@ -44,6 +44,6 @@ func NewHTTPServer(c *conf.Server, auth *service.AuthService, wallet *service.Wa
 	adminv1.RegisterAdminHTTPServer(srv, admin)
 	service.RegisterWalletExtraRoutes(srv, wallet)
 	RegisterAdminLegacyRoutes(srv, legacy)
-	RegisterDepositOnlyRoute(srv, recharge)
+	RegisterDepositOnlyRoute(srv, recharge, oracle)
 	return srv
 }

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"backend/internal/biz"
@@ -42,6 +43,15 @@ type DepositOnlyResult struct {
 
 type creditFn func(ctx context.Context, recordHash, fromAddress, contractAddress, amount string, index uint64) (credited bool, err error)
 
+// CycleTriggerResult is returned when cron/HTTP starts a background poll cycle.
+type CycleTriggerResult struct {
+	Accepted        bool   `json:"accepted"`
+	Asset           string `json:"asset,omitempty"`
+	Queries         int    `json:"queries"`
+	IntervalSeconds int64  `json:"interval_seconds"`
+	Reason          string `json:"reason,omitempty"`
+}
+
 // ChainRechargeJob synchronizes BuySomething-style deposit ledgers into platform balances.
 type ChainRechargeJob struct {
 	walletRepo   biz.WalletRepo
@@ -51,6 +61,8 @@ type ChainRechargeJob struct {
 	mu           sync.Mutex
 	stopCh       chan struct{}
 	stopOnce     sync.Once
+	usdtCycling  atomic.Bool
+	winCycling   atomic.Bool
 }
 
 func NewChainRechargeJob(
@@ -67,7 +79,12 @@ func NewChainRechargeJob(
 }
 
 // Start runs USDT + WIN deposit_only sync on a one-minute ticker (idempotent with HTTP triggers).
+// When recharge_monitor_enabled is false, the ticker is not started; cron/HTTP still work.
 func (j *ChainRechargeJob) Start() {
+	if j.cfg == nil || !j.cfg.IsRechargeMonitorEnabled() {
+		j.log.Info("recharge monitor disabled; use cron/HTTP only (no in-process ticker)")
+		return
+	}
 	interval := time.Duration(j.cfg.GetRechargeScanIntervalSeconds()) * time.Second
 	if interval <= 0 {
 		interval = time.Minute
@@ -126,6 +143,84 @@ func (j *ChainRechargeJob) DepositOnlyWin(ctx context.Context) (*DepositOnlyResu
 		}
 		return credited, nil
 	})
+}
+
+func (j *ChainRechargeJob) depositCycleParams() (queries int, gap time.Duration) {
+	queries = int(j.cfg.GetRechargeScanQueriesPerCycle())
+	if queries <= 0 {
+		queries = 10
+	}
+	gap = time.Duration(j.cfg.GetRechargeScanQueryIntervalSeconds()) * time.Second
+	if gap <= 0 {
+		gap = 5 * time.Second
+	}
+	return queries, gap
+}
+
+// TriggerDepositOnlyCycle starts a background cycle: N syncs, gap seconds apart (cron once/min).
+func (j *ChainRechargeJob) TriggerDepositOnlyCycle() *CycleTriggerResult {
+	queries, gap := j.depositCycleParams()
+	res := &CycleTriggerResult{
+		Asset: "USDT", Queries: queries, IntervalSeconds: int64(gap / time.Second),
+	}
+	if !j.usdtCycling.CompareAndSwap(false, true) {
+		res.Accepted = false
+		res.Reason = "cycle already running"
+		return res
+	}
+	res.Accepted = true
+	go func() {
+		defer j.usdtCycling.Store(false)
+		j.log.Infof("USDT depositOnly cycle started: queries=%d interval=%s", queries, gap)
+		for i := 0; i < queries; i++ {
+			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+			if _, err := j.DepositOnly(ctx); err != nil {
+				j.log.Errorf("USDT depositOnly cycle #%d/%d failed: %v", i+1, queries, err)
+			} else {
+				j.log.Infof("USDT depositOnly cycle #%d/%d ok", i+1, queries)
+			}
+			cancel()
+			if i >= queries-1 {
+				break
+			}
+			time.Sleep(gap)
+		}
+		j.log.Info("USDT depositOnly cycle finished")
+	}()
+	return res
+}
+
+// TriggerDepositOnlyWinCycle starts a background WIN deposit cycle (same cadence as USDT).
+func (j *ChainRechargeJob) TriggerDepositOnlyWinCycle() *CycleTriggerResult {
+	queries, gap := j.depositCycleParams()
+	res := &CycleTriggerResult{
+		Asset: "WIN", Queries: queries, IntervalSeconds: int64(gap / time.Second),
+	}
+	if !j.winCycling.CompareAndSwap(false, true) {
+		res.Accepted = false
+		res.Reason = "cycle already running"
+		return res
+	}
+	res.Accepted = true
+	go func() {
+		defer j.winCycling.Store(false)
+		j.log.Infof("WIN depositOnly cycle started: queries=%d interval=%s", queries, gap)
+		for i := 0; i < queries; i++ {
+			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+			if _, err := j.DepositOnlyWin(ctx); err != nil {
+				j.log.Errorf("WIN depositOnly cycle #%d/%d failed: %v", i+1, queries, err)
+			} else {
+				j.log.Infof("WIN depositOnly cycle #%d/%d ok", i+1, queries)
+			}
+			cancel()
+			if i >= queries-1 {
+				break
+			}
+			time.Sleep(gap)
+		}
+		j.log.Info("WIN depositOnly cycle finished")
+	}()
+	return res
 }
 
 func (j *ChainRechargeJob) syncDepositLedger(ctx context.Context, asset, contractRaw string, credit creditFn) (*DepositOnlyResult, error) {

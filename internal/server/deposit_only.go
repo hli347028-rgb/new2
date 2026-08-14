@@ -6,22 +6,18 @@ import (
 	"github.com/go-kratos/kratos/v2/transport/http"
 )
 
-// RegisterDepositOnlyRoute exposes idempotent contract-cursor recharge
-// synchronization endpoints (also driven by the internal one-minute ticker).
-func RegisterDepositOnlyRoute(srv *http.Server, recharge *job.ChainRechargeJob) {
+// RegisterDepositOnlyRoute exposes cron/HTTP triggers that accept a background
+// poll cycle (default: 10 queries, 5s apart). Returns immediately so HTTP
+// timeout (often 5s) does not cut the cycle short.
+func RegisterDepositOnlyRoute(srv *http.Server, recharge *job.ChainRechargeJob, oracle *job.WinPriceOracleJob) {
 	r := srv.Route("/")
 	r.GET("/api/admin_dhb/deposit_only", func(ctx http.Context) error {
-		result, err := recharge.DepositOnly(ctx)
-		if err != nil {
-			return err
-		}
-		return ctx.JSON(200, result)
+		return ctx.JSON(200, recharge.TriggerDepositOnlyCycle())
 	})
 	r.GET("/api/admin_dhb/deposit_only_win", func(ctx http.Context) error {
-		result, err := recharge.DepositOnlyWin(ctx)
-		if err != nil {
-			return err
-		}
-		return ctx.JSON(200, result)
+		return ctx.JSON(200, recharge.TriggerDepositOnlyWinCycle())
+	})
+	r.GET("/api/admin_dhb/win_price_oracle", func(ctx http.Context) error {
+		return ctx.JSON(200, oracle.TriggerCycle())
 	})
 }

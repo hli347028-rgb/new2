@@ -39,8 +39,10 @@ wallet:
   win_contract: ""
   win_decimals: 18
   rpc_url: "https://rpc1.eoeo.info"
-  recharge_monitor_enabled: true
-  # 每60秒启动一轮；每轮查询10次，相邻查询间隔5秒。
+  # 进程内充值轮询。改用 crontab 时必须为 false，否则会与 cron 重复扫链。
+  # false 时仍可通过 GET /api/admin_dhb/deposit_only 与 deposit_only_win 触发（幂等）。
+  recharge_monitor_enabled: false
+  # 每60秒启动一轮；每轮查询10次，相邻查询间隔5秒。（仅 recharge_monitor_enabled=true 时生效）
   recharge_scan_interval_seconds: 60
   recharge_scan_queries_per_cycle: 10
   recharge_scan_query_interval_seconds: 5
@@ -53,9 +55,11 @@ wallet:
   min_withdraw: "10"
   withdraw_fee_rate: 0.06
   # WinSwap V2 Pair（WWIN/USDT）链上 WIN 价格预言机
-  # 每 60 秒一轮；每轮查询 10 次，相邻查询间隔 5 秒
   win_pair: "0x15ad085fc866370b59936575565434b14d22281d"
-  win_price_oracle_enabled: true
+  # 进程内价格轮询。改用 crontab 时必须为 false，与 cron 互斥。
+  # false 时仍可通过 GET /api/admin_dhb/win_price_oracle 触发。
+  win_price_oracle_enabled: false
+  # 以下仅 win_price_oracle_enabled=true 时生效
   win_price_poll_seconds: 60
   win_price_queries_per_cycle: 10
   win_price_query_interval_seconds: 5

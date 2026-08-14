@@ -363,17 +363,40 @@ function mapWithdrawals(list: any[]) {
   })
 }
 
+function trimAmountText(value: any) {
+  const text = String(value ?? '0').trim()
+  if (!text) return '0'
+  if (!/^-?\d+(\.\d+)?$/.test(text)) return text
+  if (!text.includes('.')) return text
+  const [integer, fraction = ''] = text.split('.')
+  const trimmedFraction = fraction.replace(/0+$/, '')
+  return trimmedFraction ? `${integer}.${trimmedFraction}` : integer
+}
+
 function mapRecharges(list: any[]) {
-  return list.map((item) => {
-    const createdAt = formatUnixTime(item.created_at)
+  return (list || []).map((item, index) => {
+    const createdRaw = item.created_at ?? item.createdAt
+    const createdAt = formatUnixTime(createdRaw)
     return {
-      amount: item.amount,
-      status: item.status,
-      tx_hash: item.tx_hash,
+      id: item.id ?? index,
+      amount: trimAmountText(item.amount),
+      status: String(item.status || 'pending').toLowerCase(),
+      tx_hash: item.tx_hash ?? item.txHash ?? '',
+      asset: String(item.asset || '').toUpperCase(),
       createdAt,
       created_at: createdAt,
     }
   })
+}
+
+function paginateList(list: any[], pageRaw: any, pageSize = 10) {
+  const page = Math.max(1, Number(pageRaw) || 1)
+  const start = (page - 1) * pageSize
+  return {
+    count: list.length,
+    list: list.slice(start, start + pageSize),
+    page,
+  }
 }
 
 function mapOrders(list: any[]) {
@@ -727,7 +750,7 @@ export async function adaptRequest(
     case 'app_server/deposit_list': {
       const res = await authGet('/v1/wallet/recharges')
       const list = mapRecharges(res.data?.recharges || [])
-      return { count: list.length, list }
+      return paginateList(list, mergedParams.page)
     }
     case 'app_server/deposit': {
       const res = await authPost('/v1/wallet/recharge', {
@@ -882,7 +905,9 @@ export async function adaptRequest(
     }
     case 'app_server/deposit_win_list': {
       const res = await authGet('/v1/wallet/recharges-win')
-      return { status: 'ok', list: res.data?.recharges || [] }
+      const list = mapRecharges(res.data?.recharges || [])
+      const pageData = paginateList(list, mergedParams.page)
+      return { status: 'ok', ...pageData }
     }
     case 'app_server/exchange':
     case 'app_server/set_info':
