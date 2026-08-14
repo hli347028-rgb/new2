@@ -285,6 +285,8 @@ const handleSubmit = async () => {
   } catch (error) {
     console.error('充值失败:', error)
     pendingLoading = false
+    // Contract.send / ETH.getAccount 内部已 showFailToast，避免 closeToast 覆盖后再弹一次
+    if (typeof error === 'string') return
     const mapped = assetType.value === 'win' ? mapWinRechargeError(error, $t) : ''
     showRechargeToast(mapped || errMsg(error, $t('common.operationFailed')))
   } finally {
