@@ -271,7 +271,7 @@ export default {
     nativeWinBalance: '온체인 WIN 잔액',
     winPayable: '지불 {num} WIN',
     winBadValueError: '지불액은 충전 단위와 일치해야 합니다',
-    winInsufficientNative: 'WIN 잔액 부족 (Gas 예약)',
+    winInsufficientNative: 'WIN 잔액 부족',
     userCancelled: '취소됨',
     wrongChain: 'EOEO 네트워크(86233268)로 전환하세요',
     winConfirming: '체인 성공, 입금 대기…',

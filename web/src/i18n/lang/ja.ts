@@ -271,7 +271,7 @@ export default {
     nativeWinBalance: 'チェーン上 WIN 残高',
     winPayable: '支払い {num} WIN',
     winBadValueError: '支払額は充值份数と一致する必要があります',
-    winInsufficientNative: 'WIN 残高不足（Gas を確保）',
+    winInsufficientNative: 'WIN 残高不足',
     userCancelled: 'キャンセルしました',
     wrongChain: 'EOEO ネットワーク（86233268）に切り替えてください',
     winConfirming: 'チェーン成功、入金待ち…',

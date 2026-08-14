@@ -34,10 +34,9 @@
         </template>
 
         <template v-else>
-          <p class="dialog-subtitle">{{ $t('recharge.nativeWinBalance') }}: {{ displayAmount(nativeWinBalance) }} WIN</p>
           <a-input-number
             autofocus
-            style="width: 100%"
+            style="width: 100%; margin-top: 20px;"
             v-model:value="amount"
             :min="minWinRecharge"
             :precision="0"
@@ -115,6 +114,34 @@ const winPayableAmount = computed(() => {
 
 const displayAmount = (value) => displayDecimal(value)
 
+const TOAST_DURATION = 3500
+let pendingLoading = false
+
+const showRechargeToast = (message) => {
+  closeToast()
+  showToast({
+    message,
+    position: 'middle',
+    duration: TOAST_DURATION,
+  })
+}
+
+const startRechargeLoading = (message) => {
+  pendingLoading = true
+  showLoadingToast({
+    message,
+    duration: 0,
+    overlay: true,
+    overlayStyle: { background: 'transparent' },
+  })
+}
+
+const stopRechargeLoading = () => {
+  if (!pendingLoading) return
+  pendingLoading = false
+  closeToast()
+}
+
 const open = async () => {
   assetType.value = 'usdt'
   amount.value = null
@@ -138,7 +165,7 @@ const refreshNativeBalance = async () => {
 
 const transferUsdt = async (count) => {
   await BUY_USDT.send('buy', [count])
-  closeToast()
+  stopRechargeLoading()
 
   await showDialog({
     title: $t('common.prompt'),
@@ -156,19 +183,20 @@ const transferUsdt = async (count) => {
 
 const submitUsdtRecharge = async () => {
   if (!USDT) {
-    showToast($t('recharge.usdtNotConfigured'))
+    showRechargeToast($t('recharge.usdtNotConfigured'))
     return
   }
   if (!import.meta.env.VITE_BUY_USDT && !import.meta.env.VITE_BUY) {
-    showToast($t('recharge.usdtNotConfigured'))
+    showRechargeToast($t('recharge.usdtNotConfigured'))
     return
   }
   const count = Number(amount.value)
   if (!Number.isFinite(count) || count < minUsdtRecharge.value) {
-    showToast($t('recharge.minimumError', { amount: minUsdtRecharge.value }))
+    showRechargeToast($t('recharge.minimumError', { amount: minUsdtRecharge.value }))
     return
   }
 
+  startRechargeLoading($t('recharge.processing'))
   await ETH.getAccount()
   const allowance = await USDT.call('allowance', [ETH.account, BUY_USDT.address])
   if (!(Number(allowance) > 0)) {
@@ -183,7 +211,7 @@ const submitUsdtRecharge = async () => {
 const submitWinRecharge = async () => {
   const num = Number(amount.value)
   if (!Number.isInteger(num) || num < minWinRecharge.value) {
-    showToast($t('recharge.minWinRechargeError', { amount: minWinRecharge.value }))
+    showRechargeToast($t('recharge.minWinRechargeError', { amount: minWinRecharge.value }))
     return
   }
 
@@ -191,22 +219,29 @@ const submitWinRecharge = async () => {
   await refreshNativeBalance()
 
   const value = ethers.utils.parseEther(String(num))
-  const balanceWei = ethers.utils.parseUnits(displayDecimal(nativeWinBalance.value), 18)
-  if (balanceWei.lt(value)) {
-    showToast($t('recharge.winInsufficientNative'))
+  const balanceWei = await ETH.provider.getBalance(ETH.account)
+
+  let gasCost
+  try {
+    const gasLimit = await BUY_WIN.getInsance().estimateGas.buy(num, { value })
+    const gasPrice = await ETH.provider.getGasPrice()
+    gasCost = gasLimit.mul(gasPrice)
+  } catch (error) {
+    console.warn('WIN 充值 Gas 估算失败，使用默认缓冲', error)
+    gasCost = ethers.utils.parseEther('0.01')
+  }
+
+  if (balanceWei.lt(value.add(gasCost))) {
+    showRechargeToast($t('recharge.winInsufficientNative'))
     return
   }
 
+  startRechargeLoading($t('recharge.processing'))
   const beforeBalance = String(person.profile?.win_balance || '0')
   const { hash } = await BUY_WIN.send('buy', [num], { value })
 
-  closeToast()
-  showLoadingToast({
-    message: $t('recharge.winConfirming'),
-    duration: 0,
-    overlay: true,
-    overlayStyle: { background: 'transparent' },
-  })
+  stopRechargeLoading()
+  startRechargeLoading($t('recharge.winConfirming'))
 
   const pollResult = await pollWinBalance(
     () => person.refreshProfile?.(),
@@ -215,7 +250,7 @@ const submitWinRecharge = async () => {
     2000,
   )
 
-  closeToast()
+  stopRechargeLoading()
 
   const successMessage = pollResult.updated
     ? $t('recharge.winRechargeSuccess')
@@ -241,13 +276,6 @@ const handleSubmit = async () => {
   if (loading.value) return
 
   loading.value = true
-  showLoadingToast({
-    message: $t('recharge.processing'),
-    duration: 0,
-    overlay: true,
-    overlayStyle: { background: 'transparent' },
-  })
-
   try {
     if (assetType.value === 'usdt') {
       await submitUsdtRecharge()
@@ -256,11 +284,12 @@ const handleSubmit = async () => {
     }
   } catch (error) {
     console.error('充值失败:', error)
+    pendingLoading = false
     const mapped = assetType.value === 'win' ? mapWinRechargeError(error, $t) : ''
-    showToast(mapped || errMsg(error, $t('common.operationFailed')))
+    showRechargeToast(mapped || errMsg(error, $t('common.operationFailed')))
   } finally {
     loading.value = false
-    closeToast()
+    stopRechargeLoading()
   }
 }
 

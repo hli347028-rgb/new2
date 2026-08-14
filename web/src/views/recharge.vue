@@ -25,14 +25,27 @@
           <div class="table">
             <div class="table-header" v-if="currentRecords.length > 0">
               <div class="table-row">
-                <div class="table-cell">{{ recordTab === 'win' ? $t('recharge.winRecordIndex') : $t('recharge.date') }}</div>
-                <div class="table-cell">{{ $t('recharge.amount') }}</div>
+                <div class="table-cell col-date">{{ recordTab === 'win' ? $t('recharge.winRecordIndex') : $t('recharge.date') }}</div>
+                <div class="table-cell col-amount">{{ $t('recharge.amount') }}</div>
+                <div class="table-cell col-status">{{ $t('recharge.recordStatus') }}</div>
               </div>
             </div>
             <div class="table-body">
               <div class="table-row" v-for="(item, index) in currentRecords" :key="item.id ?? index">
-                <div class="table-cell">{{ recordTab === 'win' ? item.index : item.createdAt }}</div>
-                <div class="table-cell">{{ item.amount }} {{ recordTab === 'win' ? 'WIN' : 'USDT' }}</div>
+                <div class="table-cell col-date">
+                  <template v-if="recordTab === 'win'">{{ item.index }}</template>
+                  <template v-else>
+                    <span class="date-text">{{ splitDateTime(item.createdAt).date }}</span>
+                    <span class="time-text">{{ splitDateTime(item.createdAt).time }}</span>
+                  </template>
+                </div>
+                <div class="table-cell col-amount">
+                  <span class="amount-value">{{ item.amount }}</span>
+                  <span class="amount-unit">{{ recordTab === 'win' ? 'WIN' : 'USDT' }}</span>
+                </div>
+                <div class="table-cell col-status" :class="statusClass(item.status)">
+                  {{ rechargeStatusText(item.status) }}
+                </div>
               </div>
             </div>
           </div>
@@ -66,7 +79,6 @@ import emptyImage from '../assets/images/custom-empty-image.png'
 import { Pagination } from "vant"
 import Header from '@/components/Header.vue'
 import { useI18n } from 'vue-i18n'
-import { fetchWinRechargeRecords } from '@/tools/winRecharge'
 import { displayDecimal } from '@/tools/decimal'
 
 const USDT = import.meta.env.VITE_USDT ? new Contract(import.meta.env.VITE_USDT, 'ERC20') : null
@@ -92,6 +104,31 @@ let usdtBalance = $ref("0");
 let usdtApproved = $ref(false);
 
 const currentRecords = computed(() => recordTab.value === 'win' ? winRecords : usdtRecords)
+
+const rechargeStatusText = (status) => {
+  switch (String(status || '').toLowerCase()) {
+    case 'confirmed': return $t('recharge.statusConfirmed')
+    case 'rejected': return $t('recharge.statusRejected')
+    case 'pending':
+    default: return $t('recharge.statusPending')
+  }
+}
+
+const statusClass = (status) => {
+  const value = String(status || 'pending').toLowerCase()
+  if (value === 'confirmed') return 'is-confirmed'
+  if (value === 'rejected') return 'is-rejected'
+  return 'is-pending'
+}
+
+const splitDateTime = (value) => {
+  const text = String(value || '-')
+  const parts = text.split(' ')
+  if (parts.length >= 2) {
+    return { date: parts[0], time: parts.slice(1).join(' ') }
+  }
+  return { date: text, time: '' }
+}
 
 const switchRecordTab = async (tab) => {
   if (recordTab.value === tab) return
@@ -126,6 +163,14 @@ function showRecharge() {
   rechargeDialogRef.value?.open()
 }
 
+const formatUnixTime = (value) => {
+  const timestamp = Number(value)
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return '-'
+  const date = new Date(timestamp < 1e12 ? timestamp * 1000 : timestamp)
+  const pad = (part) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 const getUsdtRecords = async (pageNum = 1) => {
     await request.get("app_server/deposit_list", {
       params: { page: pageNum }
@@ -138,8 +183,15 @@ const getUsdtRecords = async (pageNum = 1) => {
 
 const getWinRecords = async () => {
   try {
-    await ETH.getAccount()
-    winRecords = await fetchWinRechargeRecords(ETH.account)
+    const res = await request.get('app_server/deposit_win_list')
+    const list = res?.list || res?.recharges || []
+    winRecords = list.map((item, index) => ({
+      ...item,
+      id: item.id ?? index,
+      index: index + 1,
+      createdAt: formatUnixTime(item.created_at),
+      status: item.status || 'pending',
+    }))
   } catch {
     winRecords = []
   }
@@ -325,51 +377,112 @@ getUsdtRecords()
 
       .withdrawal-list-content {
         min-height: 200px;
+
         .table {
-          display: table;
           width: 100%;
-          border-collapse: collapse;
+
+          .table-row {
+            display: grid;
+            grid-template-columns: 92px minmax(0, 1fr) 58px;
+            column-gap: 6px;
+            align-items: center;
+            min-height: 44px;
+          }
+
           .table-header {
-            display: table-header-group;
-            font-weight: bold;
             border-bottom: 0.5px dashed $border-color;
-            .table-row {
-              width: 100%;
-              display: table-row;
-            }
+            margin-bottom: 4px;
+
             .table-cell {
-              display: table-cell;
-              padding: 10px;
-              text-align: left;
-              box-sizing: border-box;
+              padding: 8px 0;
+              font-size: 12px;
               font-weight: 500;
               color: $text-muted;
-              &:nth-child(n+2) {
-                text-align: center;
-              }
             }
           }
+
           .table-body {
-            display: table-row-group;
-            overflow-y: auto;
             .table-row {
-              width: 100%;
-              display: table-row;
               border-bottom: 1px solid $border-light;
+
               &:last-child {
                 border-bottom: none;
               }
             }
+
             .table-cell {
-              display: table-cell;
-              text-align: left;
-              box-sizing: border-box;
-              padding: 10px;
+              padding: 10px 0;
               color: $text-primary;
-              &:nth-child(n+2) {
-                text-align: center;
-              }
             }
+          }
+
+          .col-date {
+            min-width: 0;
+            max-width: 92px;
+
+            .date-text,
+            .time-text {
+              display: block;
+              line-height: 1.3;
+              white-space: nowrap;
+            }
+
+            .date-text {
+              font-size: 11px;
+            }
+
+            .time-text {
+              margin-top: 2px;
+              font-size: 10px;
+              color: $text-muted;
+            }
+          }
+
+          .col-amount {
+            text-align: center;
+            white-space: nowrap;
+
+            .amount-value {
+              display: block;
+              font-size: 13px;
+              font-weight: 600;
+              line-height: 1.3;
+            }
+
+            .amount-unit {
+              display: block;
+              margin-top: 2px;
+              font-size: 11px;
+              color: $text-muted;
+              line-height: 1.2;
+            }
+          }
+
+          .col-status {
+            text-align: right;
+            white-space: nowrap;
+            font-size: 12px;
+            line-height: 1.2;
+
+            &.is-confirmed {
+              color: #52c41a;
+            }
+
+            &.is-pending {
+              color: #faad14;
+            }
+
+            &.is-rejected {
+              color: #ff4d4f;
+            }
+          }
+
+          .table-header .col-amount {
+            text-align: center;
+          }
+
+          .table-header .col-status {
+            text-align: right;
           }
         }
       }

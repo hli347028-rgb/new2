@@ -271,7 +271,7 @@ export default {
     nativeWinBalance: 'Số dư WIN on-chain',
     winPayable: 'Thanh toán {num} WIN',
     winBadValueError: 'Số tiền phải bằng số đơn vị nạp',
-    winInsufficientNative: 'Không đủ WIN (dự phòng Gas)',
+    winInsufficientNative: 'Số dư WIN không đủ',
     userCancelled: 'Đã hủy',
     wrongChain: 'Vui lòng chuyển sang mạng EOEO (86233268)',
     winConfirming: 'Giao dịch thành công, đang ghi có…',

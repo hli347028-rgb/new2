@@ -271,7 +271,7 @@ export default {
     nativeWinBalance: '鏈上 WIN 餘額',
     winPayable: '應付 {num} WIN',
     winBadValueError: '支付金額必須等於充值份數',
-    winInsufficientNative: 'WIN 餘額不足，請預留 Gas',
+    winInsufficientNative: 'WIN 餘額不足',
     userCancelled: '已取消',
     wrongChain: '請切換到 EOEO 網絡（86233268）',
     winConfirming: '鏈上成功，等待入賬…',

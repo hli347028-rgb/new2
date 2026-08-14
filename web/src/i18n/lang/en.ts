@@ -271,7 +271,7 @@ export default {
     nativeWinBalance: 'On-chain WIN balance',
     winPayable: 'Payable: {num} WIN',
     winBadValueError: 'Payment must equal recharge units (check value)',
-    winInsufficientNative: 'Insufficient WIN (reserve gas)',
+    winInsufficientNative: 'Insufficient WIN balance',
     userCancelled: 'Cancelled',
     wrongChain: 'Please switch to EOEO network (86233268)',
     winConfirming: 'On-chain success, crediting…',
