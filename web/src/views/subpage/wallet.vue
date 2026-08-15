@@ -59,6 +59,10 @@
             <p>{{ $t('wallet.overflowReward') }}</p>
             <p>{{ userinfo.overflowReward || 0 }}</p>
           </div>
+          <div class="pledge-item">
+            <p>AIX-USD</p>
+            <p>{{ profile.points_all || userinfo.points_all || 0 }}</p>
+          </div>
         </div>
       </div>
       <div class="pledge-frame">
@@ -86,36 +90,61 @@
         <div v-if="rewardLoading" class="records-loading">
           <van-loading type="spinner" color="#1597E5" />
         </div>
-        <van-empty v-else-if="rewardList.length === 0" :description="active === '1' ? $t('wallet.noSubscribeRecords') : $t('wallet.noIncomeOfType')" :image="emptyImage" />
+        <div v-else-if="isTableTab" class="subscribe-table" :class="{ 'is-two-col': isTwoColTab }">
+          <div class="table-header">
+            <span class="col-amount">{{ active === 'points' ? 'AIX-USD' : $t('node.amount') }}</span>
+            <span v-if="!isTwoColTab" class="col-status">{{ tableMiddleTitle }}</span>
+            <span class="col-time">{{ $t('node.time') }}</span>
+          </div>
+          <van-empty v-if="rewardList.length === 0" :description="emptyRecordsText" :image="emptyImage" />
+          <div v-else class="subscribe-table-body">
+            <div
+              class="income-list-item"
+              v-for="(item, index) in rewardList"
+              :key="item.id || `${active}-${page}-${index}`"
+            >
+              <span class="col-amount">{{ formatFour(item.reward) }}</span>
+              <span v-if="active === '1'" class="col-status" :class="item.exited ? 'is-exited' : 'is-active'">
+                <span class="status-text">{{ item.exited ? $t('node.statusExited') : $t('node.statusActive') }}</span>
+                <template v-if="item.progressAcc != null && item.progressTarget">
+                  <span class="progress-text">{{ item.progressAcc }} / {{ item.progressTarget }}</span>
+                  <span class="progress-bar">
+                    <i :style="{ width: `${progressPercent(item)}%` }" />
+                  </span>
+                </template>
+              </span>
+              <span v-else-if="active === '3'" class="col-status">
+                <span class="status-text">{{ item.address ? formatShortAddr(item.address) : '—' }}</span>
+                <span v-if="item.num" class="progress-text">{{ $t('community.generationNum', { num: item.num }) }}</span>
+              </span>
+              <span class="col-time">
+                <span class="date-text">{{ splitDateTime(item.createdAt).date }}</span>
+                <span class="time-text">{{ splitDateTime(item.createdAt).time }}</span>
+              </span>
+            </div>
+            <Pagination
+              v-if="allPageCount > 1"
+              v-model="page"
+              :page-count="allPageCount"
+              mode="simple"
+              @change="getRewardList"
+            />
+          </div>
+        </div>
+        <van-empty v-else-if="rewardList.length === 0" :description="$t('wallet.noIncomeOfType')" :image="emptyImage" />
         <div class="income-list" v-else>
           <div class="income-list-main">
             <div class="income-list-item" v-for="(item, index) in rewardList" :key="item.id || `${active}-${page}-${index}`">
               <div class="income-list-item-info">
-                <p>
-                  <template v-if="active === '1'">
-                    {{ item.name || $t('community.subscribe') }}
-                    <span v-if="item.exited != null" style="margin-left:6px;opacity:.7">
-                      {{ item.exited ? $t('node.statusExited') : $t('node.statusActive') }}
-                    </span>
-                  </template>
-                  <template v-else>
-                    {{ item.name || $t('wallet.income') }}
-                    <span v-if="active === '3' && item.num" style="margin-left:6px;opacity:.7">
-                      {{ $t('community.generationNum', { num: item.num }) }}
-                    </span>
-                  </template>
-                </p>
+                <p>{{ item.name || $t('wallet.income') }}</p>
                 <p class="income-list-item-time">
                   <span>{{ item.createdAt }}</span>
                   <span class="income-list-item-money">{{ item.reward }}</span>
                 </p>
-                <p v-if="active === '1' && item.progressAcc != null && item.progressTarget" style="font-size: 12px; opacity: .7;">
-                  {{ $t('wallet.exitProgress') }} {{ item.progressAcc }} / {{ item.progressTarget }}
-                </p>
                 <p v-if="item.address" style="font-size: 12px; opacity: .7;">{{ formatShortAddr(item.address) }}</p>
-				<p v-if="active === '5'" style="font-size: 12px; opacity: .7;">
-				  {{ $t('wallet.releasedManagementReward') }}: {{ item.released || 0 }} / {{ $t('wallet.pendingManagementReward') }}: {{ item.pending || 0 }}
-				</p>
+                <p v-if="active === '5'" style="font-size: 12px; opacity: .7;">
+                  {{ $t('wallet.releasedManagementReward') }}: {{ item.released || 0 }} / {{ $t('wallet.pendingManagementReward') }}: {{ item.pending || 0 }}
+                </p>
               </div>
             </div>
             <Pagination
@@ -149,6 +178,7 @@ import { onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import emptyImage from '../../assets/images/custom-empty-image.png'
 import request from "@/tools/request";
+import { listPointsRecords } from "@/api/aix";
 import { Pagination } from "vant"
 
 const { t: $t, locale } = useI18n()
@@ -171,7 +201,22 @@ const menuType = computed(() => [
   ['2', $t('wallet.staticIncome')],
   ['3', $t('wallet.directReferralReward')],
   ['5', $t('wallet.managementReward')],
+  ['points', 'AIX-USD'],
 ])
+
+const isTableTab = computed(() => ['1', '2', '3', 'points'].includes(String(active)))
+const isTwoColTab = computed(() => active === '2' || active === 'points')
+
+const tableMiddleTitle = computed(() => {
+  if (active === '3') return $t('community.source')
+  return $t('node.status')
+})
+
+const emptyRecordsText = computed(() => {
+  if (active === '1') return $t('wallet.noSubscribeRecords')
+  if (active === 'points') return $t('wallet.noPointsRecords')
+  return $t('wallet.noIncomeOfType')
+})
 const expandedKeys = $ref([]);
 const selectedKeys = $ref([]);
 let treeData = $ref([]);
@@ -189,6 +234,28 @@ const formatFour = (value) => {
   const absStr = neg ? str.slice(1) : str
   const [intPart = '0', decPart = ''] = absStr.split('.')
   return `${neg ? '-' : ''}${intPart}.${(decPart + '0000').slice(0, 4)}`
+}
+
+const splitDateTime = (value) => {
+  const text = String(value || '').trim()
+  if (!text) return { date: '—', time: '' }
+  const [date, ...rest] = text.split(/\s+/)
+  return { date, time: rest.join(' ') }
+}
+
+const progressPercent = (item) => {
+  const acc = Number(item?.progressAcc)
+  const target = Number(item?.progressTarget)
+  if (!target || Number.isNaN(acc) || Number.isNaN(target)) return 0
+  return Math.min(100, Math.max(0, (acc / target) * 100))
+}
+
+const formatUnixDisplay = (value) => {
+  const n = Number(value)
+  if (!n) return String(value || '')
+  const d = new Date(n < 1e12 ? n * 1000 : n)
+  const pad = (x) => String(x).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 const getRewardList = async (pageNum = 1, reqType = active) => {
@@ -217,6 +284,38 @@ const getRewardList = async (pageNum = 1, reqType = active) => {
           address: person.address || address || '',
         }
       })
+      page = pageNum
+      return
+    }
+    if (requestedType === 'points') {
+      const res = await listPointsRecords()
+      if (requestId !== rewardRequestId || requestedType !== active) return
+      const payload = Array.isArray(res?.records) ? res : (res?.data || res || {})
+      const records = Array.isArray(payload?.records) ? payload.records : []
+      const count = Number(payload?.count || records.length || 0)
+      allPageCount = Math.max(1, Math.ceil(count / 10))
+      const start = (pageNum - 1) * 10
+      rewardList = records.slice(start, start + 10).map((item) => {
+        const status = String(item.status || '').toLowerCase()
+        return {
+          id: item.id || item.order_id,
+          reward: item.points || '0',
+          exited: status === 'exited' || status === '2',
+          createdAt: formatUnixDisplay(item.created_at ?? item.created_time),
+        }
+      })
+      if (payload?.points != null || payload?.points_all != null) {
+        person.userinfo = {
+          ...person.userinfo,
+          points: payload.points ?? person.userinfo.points,
+          points_all: payload.points_all ?? person.userinfo.points_all,
+        }
+        person.profile = {
+          ...person.profile,
+          points: payload.points ?? person.profile.points,
+          points_all: payload.points_all ?? person.profile.points_all,
+        }
+      }
       page = pageNum
       return
     }
@@ -559,9 +658,154 @@ const handleBack = () => {
         align-items: center;
         justify-content: center;
       }
-      .records-panel > :deep(.van-empty) {
+      .records-panel > :deep(.van-empty),
+      .subscribe-table > :deep(.van-empty) {
         min-height: 100%;
         box-sizing: border-box;
+      }
+      .subscribe-table {
+        min-height: 100%;
+        border: 1px solid #183247;
+        border-radius: 12px;
+        background: #0D1B2A;
+
+        .table-header,
+        .income-list-item {
+          display: grid;
+          grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.35fr) minmax(0, 1fr);
+          align-items: center;
+          column-gap: 6px;
+        }
+
+        &.is-two-col {
+          .table-header,
+          .income-list-item {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          }
+        }
+
+        .table-header {
+          position: sticky;
+          top: 0;
+          z-index: 1;
+          padding: 10px 8px;
+          border-radius: 12px 12px 0 0;
+          background: #030A11;
+
+          span {
+            min-width: 0;
+            text-align: center;
+            color: rgba(255, 255, 255, .55);
+            font-size: 11px;
+            font-weight: 500;
+            line-height: 1.3;
+          }
+        }
+
+        .subscribe-table-body {
+          padding: 0 0 8px;
+        }
+
+        .income-list-item {
+          min-height: 52px;
+          padding: 10px 8px;
+          border-bottom: 1px solid rgba(255, 255, 255, .06);
+          box-sizing: border-box;
+
+          &:nth-child(2n) {
+            background: rgba(8, 123, 193, .06);
+          }
+
+          &:last-of-type {
+            border-bottom: none;
+          }
+
+          > span {
+            min-width: 0;
+            text-align: center;
+            color: #fff;
+            font-size: 12px;
+            line-height: 1.3;
+          }
+        }
+
+        .col-amount {
+          font-weight: 600;
+          font-size: 13px;
+        }
+
+        .col-status {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+
+          .status-text {
+            max-width: 100%;
+            overflow: hidden;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 500;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          &.is-active .status-text {
+            color: #39b7ff;
+          }
+
+          &.is-exited .status-text {
+            color: #52c41a;
+          }
+
+          .progress-text {
+            max-width: 100%;
+            overflow: hidden;
+            color: #CCC;
+            font-size: 11px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .progress-bar {
+            width: 100%;
+            max-width: 72px;
+            height: 4px;
+            overflow: hidden;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, .08);
+
+            i {
+              display: block;
+              height: 100%;
+              border-radius: 4px;
+              background: linear-gradient(90deg, #087BC1 0%, #39b7ff 100%);
+            }
+          }
+        }
+
+        .col-time {
+          .date-text,
+          .time-text {
+            display: block;
+            line-height: 1.3;
+            white-space: nowrap;
+          }
+
+          .date-text {
+            font-size: 11px;
+          }
+
+          .time-text {
+            margin-top: 2px;
+            color: rgba(255, 255, 255, .5);
+            font-size: 10px;
+          }
+        }
+
+        :deep(.van-pagination) {
+          padding-top: 8px;
+        }
       }
       .pledge {
         background: #0B1824;
@@ -585,19 +829,41 @@ const handleBack = () => {
           }
         }
         .pledge-info {
-          display: flex;
-          margin: 20px 15px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          margin: 8px 0;
           .pledge-item {
-            flex: 1;
+            min-height: 76px;
+            padding: 14px 10px;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 6px;
+            border-right: 1px solid rgba(255, 255, 255, .08);
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+            &:nth-child(2n) {
+              border-right: none;
+            }
+            &:nth-last-child(-n + 2) {
+              border-bottom: none;
+            }
             p {
+              margin: 0;
+              text-align: center;
+              &:first-child {
+                color: rgba(255, 255, 255, .65);
+                font-size: 12px;
+                line-height: 1.3;
+              }
               &:nth-child(2) {
+                max-width: 100%;
+                overflow: hidden;
                 font-weight: 500;
                 font-size: 18px;
+                text-overflow: ellipsis;
+                white-space: nowrap;
               }
             }
           }

@@ -341,7 +341,8 @@ export default {
     noDirectReferral: '直紹介なし',
     income: '収益',
     exitProgress: '出局進捗', rechargeBalance: 'チャージ残高', rewardBalance: '報酬残高',
-    withdrawableAix: '出金可能 AIX', aixBalance: 'AIX残高', winBalance: 'WIN残高', rawNewBalance: 'トークン残高', exchange: '交換', directReferralReward: '直接紹介報酬', managementReward: '管理報酬', releasedManagementReward: '支払済み管理報酬', pendingManagementReward: '保留中の管理報酬', overflowReward: 'オーバーフロー報酬', totalIncome: '累計収益'
+    withdrawableAix: '出金可能 AIX', aixBalance: 'AIX残高', winBalance: 'WIN残高', rawNewBalance: 'トークン残高', exchange: '交換', directReferralReward: '直接紹介報酬', managementReward: '管理報酬', releasedManagementReward: '支払済み管理報酬', pendingManagementReward: '保留中の管理報酬', overflowReward: 'オーバーフロー報酬', totalIncome: '累計収益',
+    points: '現在のポイント', pointsAll: '累計ポイント', pointsRecords: 'AIX-USD', noPointsRecords: 'AIX-USD記録なし'
   },
   exchange: {
     title: 'AIXをWINに交換', availableAix: '利用可能なAIX', currentWin: 'WIN残高', exchangeAmount: '交換数量', all: 'すべて',

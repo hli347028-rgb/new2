@@ -59,6 +59,8 @@ export interface AixProfile {
   mgmt_reward_total?: string
   usdt_recharge?: string
   usdt_reward?: string
+  points?: string
+  points_all?: string
   [key: string]: unknown
 }
 
@@ -158,4 +160,24 @@ export async function listAixOrders() {
       return { ...order, created_at: createdAt, createdAt }
     }),
   }
+}
+
+export interface PointsRecord {
+  id?: number
+  order_id?: number
+  points?: string
+  principal?: string
+  fund_source?: string
+  status?: string
+  created_at?: number
+  created_time?: number
+}
+
+export function listPointsRecords() {
+  return get<{
+    points?: string
+    points_all?: string
+    count?: number
+    records?: PointsRecord[]
+  }>('/v1/wallet/points-records')
 }

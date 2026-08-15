@@ -303,6 +303,8 @@ async function fetchUserInfo() {
       team: String(numOrZero(aixProfile.mgmt_reward_total)),
       // 溢出奖励 = 订单全部出局后剩余直推/管理奖
       overflowReward: String(numOrZero(aixProfile.overflow_reward ?? aixProfile.pending_mgmt_reward)),
+      points: String(aixProfile.points || '0'),
+      points_all: String(aixProfile.points_all || '0'),
       // 代数奖励合计（1代+≥2代，累计）
       generationReward: String(generationProfit),
       // 社区基础奖累计（不含平级）

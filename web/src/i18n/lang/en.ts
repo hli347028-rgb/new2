@@ -344,7 +344,8 @@ export default {
     income: 'Income',
     exitProgress: 'Exit Progress', rechargeBalance: 'Recharge Balance', rewardBalance: 'Reward Balance',
     withdrawableAix: 'Withdrawable AIX', aixBalance: 'AIX Balance', winBalance: 'WIN Balance', rawNewBalance: 'Token Balance', exchange: 'Exchange', directReferralReward: 'Direct Referral Reward',
-    managementReward: 'Management Reward', releasedManagementReward: 'Released Management Reward', pendingManagementReward: 'Pending Management Reward', overflowReward: 'Overflow Reward', totalIncome: 'Total Income'
+    managementReward: 'Management Reward', releasedManagementReward: 'Released Management Reward', pendingManagementReward: 'Pending Management Reward', overflowReward: 'Overflow Reward', totalIncome: 'Total Income',
+    points: 'Points', pointsAll: 'Total Points', pointsRecords: 'AIX-USD', noPointsRecords: 'No AIX-USD records'
   },
   exchange: {
     title: 'Exchange AIX to WIN', availableAix: 'Available AIX', currentWin: 'WIN Balance', exchangeAmount: 'Exchange Amount', all: 'All',

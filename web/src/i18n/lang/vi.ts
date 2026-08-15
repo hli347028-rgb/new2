@@ -341,7 +341,8 @@ export default {
     noDirectReferral: 'Chưa có giới thiệu trực tiếp',
     income: 'Thu nhập',
     exitProgress: 'Tiến độ thoát', rechargeBalance: 'Số dư nạp', rewardBalance: 'Số dư thưởng',
-    withdrawableAix: 'AIX có thể rút', aixBalance: 'Số dư AIX', winBalance: 'Số dư WIN', rawNewBalance: 'Số dư token', exchange: 'Đổi', directReferralReward: 'Thưởng giới thiệu trực tiếp', managementReward: 'Thưởng quản lý', releasedManagementReward: 'Thưởng quản lý đã phát hành', pendingManagementReward: 'Thưởng quản lý đang chờ', overflowReward: 'Thưởng tràn', totalIncome: 'Tổng thu nhập'
+    withdrawableAix: 'AIX có thể rút', aixBalance: 'Số dư AIX', winBalance: 'Số dư WIN', rawNewBalance: 'Số dư token', exchange: 'Đổi', directReferralReward: 'Thưởng giới thiệu trực tiếp', managementReward: 'Thưởng quản lý', releasedManagementReward: 'Thưởng quản lý đã phát hành', pendingManagementReward: 'Thưởng quản lý đang chờ', overflowReward: 'Thưởng tràn', totalIncome: 'Tổng thu nhập',
+    points: 'Điểm hiện tại', pointsAll: 'Tổng điểm', pointsRecords: 'AIX-USD', noPointsRecords: 'Chưa có lịch sử AIX-USD'
   },
   exchange: {
     title: 'Đổi AIX sang WIN', availableAix: 'AIX khả dụng', currentWin: 'Số dư WIN', exchangeAmount: 'Số lượng đổi', all: 'Tất cả',

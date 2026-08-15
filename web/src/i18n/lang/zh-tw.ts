@@ -342,7 +342,8 @@ export default {
     income: '收益',
     exitProgress: '出局進度', rechargeBalance: '充值餘額', rewardBalance: '獎勵餘額',
     withdrawableAix: '可提 AIX', aixBalance: 'AIX 餘額', winBalance: 'WIN 餘額', rawNewBalance: '代幣餘額', exchange: '兌換', directReferralReward: '直推獎勵',
-    managementReward: '管理獎', releasedManagementReward: '已釋放管理獎', pendingManagementReward: '待釋放管理獎', overflowReward: '溢出獎勵', totalIncome: '累計收益'
+    managementReward: '管理獎', releasedManagementReward: '已釋放管理獎', pendingManagementReward: '待釋放管理獎', overflowReward: '溢出獎勵', totalIncome: '累計收益',
+    points: '當前積分', pointsAll: '總積分', pointsRecords: 'AIX-USD', noPointsRecords: '暫無 AIX-USD 記錄'
   },
   exchange: {
     title: 'AIX 兌換 WIN', availableAix: '可用 AIX', currentWin: 'WIN 餘額', exchangeAmount: '兌換數量', all: '全部',

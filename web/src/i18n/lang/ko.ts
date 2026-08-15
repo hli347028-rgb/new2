@@ -341,7 +341,8 @@ export default {
     noDirectReferral: '직추가 없습니다',
     income: '수익',
     exitProgress: '아웃 진행', rechargeBalance: '충전 잔액', rewardBalance: '보상 잔액',
-    withdrawableAix: '출금 가능 AIX', aixBalance: 'AIX 잔액', winBalance: 'WIN 잔액', rawNewBalance: '토큰 잔액', exchange: '교환', directReferralReward: '직접 추천 보상', managementReward: '관리 보상', releasedManagementReward: '지급된 관리 보상', pendingManagementReward: '대기 중인 관리 보상', overflowReward: '초과 보상', totalIncome: '누적 수익'
+    withdrawableAix: '출금 가능 AIX', aixBalance: 'AIX 잔액', winBalance: 'WIN 잔액', rawNewBalance: '토큰 잔액', exchange: '교환', directReferralReward: '직접 추천 보상', managementReward: '관리 보상', releasedManagementReward: '지급된 관리 보상', pendingManagementReward: '대기 중인 관리 보상', overflowReward: '초과 보상', totalIncome: '누적 수익',
+    points: '현재 포인트', pointsAll: '누적 포인트', pointsRecords: 'AIX-USD', noPointsRecords: 'AIX-USD 기록이 없습니다'
   },
   exchange: {
     title: 'AIX를 WIN으로 교환', availableAix: '사용 가능 AIX', currentWin: 'WIN 잔액', exchangeAmount: '교환 수량', all: '전체',
