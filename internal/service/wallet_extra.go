@@ -30,6 +30,7 @@ func RegisterWalletExtraRoutes(srv *khttp.Server, wallet *WalletService) {
 	r.GET("/v1/wallet/rewards", wallet.HandleRewards)
 	r.GET("/v1/wallet/management-rewards", wallet.HandleManagementRewards)
 	r.GET("/v1/wallet/aix-profile", wallet.HandleAixProfile)
+	r.GET("/v1/wallet/points-records", wallet.HandlePointsRecords)
 	r.POST("/v1/wallet/recharge-win", wallet.HandleCreateWinRecharge)
 	r.POST("/v1/wallet/recharge-win/confirm", wallet.HandleConfirmWinRecharge)
 	r.GET("/v1/wallet/recharges-win", wallet.HandleListWinRecharges)
@@ -118,6 +119,11 @@ func (s *WalletService) HandleSubscribeAIX(ctx khttp.Context) error {
 		"status":       order.Status,
 		"balance":      bal,
 		"total_amount": order.Principal,
+		"points":       order.Points, // 本单获得积分（= 认购金额）
+	}
+	if user, _, _, _, _, _, _, _, _, uerr := s.uc.GetBalance(ctx, token); uerr == nil && user != nil {
+		resp["points_balance"] = user.Points
+		resp["points_all"] = user.PointsAll
 	}
 	if order.FundSource == biz.PayFromWin {
 		resp["from_win"] = order.FromWin
@@ -366,6 +372,8 @@ func (s *WalletService) HandleAixProfile(ctx khttp.Context) error {
 		"win_balance":          user.WinBalance,
 		"pending_mgmt_reward":  user.OverflowReward, // 兼容旧字段，值为溢出奖励
 		"overflow_reward":      user.OverflowReward,
+		"points":               zeroIfEmpty(user.Points),
+		"points_all":           zeroIfEmpty(user.PointsAll),
 		"static_usdt_total":    staticTotal,
 		"pending_amount":       pending,
 		"unexited_amount":      unexited,
@@ -387,6 +395,52 @@ func (s *WalletService) HandleAixProfile(ctx khttp.Context) error {
 		"win_contract":         s.uc.WinContract(),
 		"min_usdt_recharge":    s.uc.MinUsdtRecharge(),
 		"min_win_recharge":     s.uc.MinWinRecharge(),
+	})
+}
+
+// HandlePointsRecords 用户端：积分获取记录（认购产生，时间=订单创建时间）
+func (s *WalletService) HandlePointsRecords(ctx khttp.Context) error {
+	token := tokenFromRequest(ctx, "")
+	user, _, _, _, _, _, _, _, _, err := s.uc.GetBalance(ctx, token)
+	if err != nil {
+		return err
+	}
+	orders, err := s.uc.ListOrders(ctx, token)
+	if err != nil {
+		return err
+	}
+	items := make([]map[string]any, 0, len(orders))
+	for _, o := range orders {
+		pts := o.Points
+		if pts == "" {
+			pts = o.Principal
+		}
+		items = append(items, map[string]any{
+			"id":           o.ID,
+			"order_id":     o.ID,
+			"points":       pts,
+			"principal":    o.Principal,
+			"fund_source":  o.FundSource,
+			"status":       o.Status,
+			"created_at":   o.CreatedTime.Unix(),
+			"created_time": o.CreatedTime.Unix(),
+		})
+	}
+	points := "0"
+	pointsAll := "0"
+	if user != nil {
+		if user.Points != "" {
+			points = user.Points
+		}
+		if user.PointsAll != "" {
+			pointsAll = user.PointsAll
+		}
+	}
+	return ctx.JSON(http.StatusOK, map[string]any{
+		"points":     points,
+		"points_all": pointsAll,
+		"records":    items,
+		"count":      len(items),
 	})
 }
 

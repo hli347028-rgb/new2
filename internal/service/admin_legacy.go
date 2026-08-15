@@ -189,6 +189,8 @@ func (s *AdminLegacyService) HandleUserList(ctx khttp.Context) error {
 			"win_balance":         u.WinBalance,        // WIN 代币数
 			"pending_mgmt_reward": u.OverflowReward, // 兼容旧字段
 			"overflow_reward":     u.OverflowReward, // 溢出奖励
+			"points":              u.Points,         // 当前积分
+			"points_all":          u.PointsAll,      // 累计总积分
 			"static_usdt_total":   u.StaticUsdtTotal,   // 静态总收益 USDT
 			"mgmt_level":          u.MgmtLevel,
 			"large_area_perf":     u.LargeAreaPerf,
@@ -996,6 +998,7 @@ func mapLegacyBuyOrder(o *biz.AdminOrderDetail) map[string]interface{} {
 		"money":       exitCap.String(),
 		"amountGet":   earned.String(),
 		"amountLast":  remain.String(),
+		"points":      o.Order.Points,
 		"fund_source": o.Order.FundSource,
 		"status":      status,
 		"createdAt":   formatLegacyTime(o.Order.CreatedAt),

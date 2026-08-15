@@ -41,6 +41,9 @@ func NewData(dbCfg *conf.DatabaseConfig, logger log.Logger) (*Data, func(), erro
 	if err := migrateOverflowReward(db); err != nil {
 		return nil, nil, err
 	}
+	if err := migrateSubscribePoints(db); err != nil {
+		return nil, nil, err
+	}
 	if err := seedDefaults(db); err != nil {
 		return nil, nil, err
 	}
@@ -112,6 +115,28 @@ func migrateOverflowReward(db *gorm.DB) error {
 		UPDATE users
 		SET overflow_reward = pending_mgmt_reward
 		WHERE overflow_reward = 0 AND pending_mgmt_reward > 0
+	`).Error
+}
+
+// migrateSubscribePoints 回填历史订单积分与用户累计积分（仅补零值，不覆盖已有）。
+func migrateSubscribePoints(db *gorm.DB) error {
+	if err := db.Exec(`
+		UPDATE orders
+		SET points = principal
+		WHERE points = 0 AND principal > 0
+	`).Error; err != nil {
+		return err
+	}
+	return db.Exec(`
+		UPDATE users u
+		SET
+			points_all = COALESCE((
+				SELECT SUM(o.points) FROM orders o WHERE o.user_id = u.id
+			), 0),
+			points = COALESCE((
+				SELECT SUM(o.points) FROM orders o WHERE o.user_id = u.id
+			), 0)
+		WHERE u.points_all = 0
 	`).Error
 }
 

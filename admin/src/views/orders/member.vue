@@ -59,6 +59,11 @@ export default {
                     customRender: (v, row) => v || (row && row.pending_mgmt_reward) || '0'
                 },
                 {
+                    title: '总积分',
+                    dataIndex: 'points_all',
+                    customRender: (v, row) => v || (row && row.points) || '0'
+                },
+                {
                     title: '静态总收益',
                     dataIndex: 'static_usdt_total',
                 },

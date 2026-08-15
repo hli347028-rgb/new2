@@ -78,6 +78,11 @@ export default {
                     dataIndex: 'amountLast',
                 },
                 {
+                    title: '积分',
+                    dataIndex: 'points',
+                    customRender: (v) => v || '0',
+                },
+                {
                     title: '资金来源',
                     dataIndex: 'fund_source',
                     customRender: (v) => fundSourceText[v] || v || '-',

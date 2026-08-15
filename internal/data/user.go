@@ -451,6 +451,8 @@ func (r *userRepo) toBiz(ctx context.Context, po *UserPO) *biz.User {
 		WinBalance:           po.WinBalance.String(),
 		PendingMgmtReward:    po.OverflowReward.String(), // 兼容旧字段名，映射溢出奖励
 		OverflowReward:       po.OverflowReward.String(),
+		Points:               po.Points.String(),
+		PointsAll:            po.PointsAll.String(),
 		StaticUsdtTotal:      po.StaticUsdtTotal.String(),
 		MgmtLevel:            po.MgmtLevel,
 		CommunityLevelLocked: po.MgmtLevelLocked,

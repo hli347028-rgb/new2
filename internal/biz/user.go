@@ -16,6 +16,8 @@ type User struct {
 	WinBalance        string // WIN 代币数
 	PendingMgmtReward string // 兼容旧字段 = OverflowReward
 	OverflowReward    string // 溢出奖励（USDT）
+	Points            string // 当前积分
+	PointsAll         string // 累计总积分
 	StaticUsdtTotal   string // 静态总收益（USDT）
 	MgmtLevel       int32
 	LargeAreaPerf   string

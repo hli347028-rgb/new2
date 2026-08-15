@@ -232,6 +232,7 @@ type Order struct {
 	FromRecharge string
 	FromReward   string
 	FromWin      string
+	Points       string // 本单获得积分（= 认购金额）
 	WinPrice     string // 认购时 WIN 价格快照（仅 pay_from=win）
 	FundSource   string
 	Status       string

@@ -19,6 +19,8 @@ type UserPO struct {
 	WinBalance        decimal.Decimal `gorm:"column:win_balance;type:decimal(36,18);default:0;not null"`         // WIN 代币数
 	PendingMgmtReward decimal.Decimal `gorm:"column:pending_mgmt_reward;type:decimal(36,18);default:0;not null"` // 兼容旧列；业务以 OverflowReward 为准
 	OverflowReward    decimal.Decimal `gorm:"column:overflow_reward;type:decimal(36,18);default:0;not null"`     // 溢出奖励（订单全部出局后剩余直推/管理奖）
+	Points            decimal.Decimal `gorm:"column:points;type:decimal(36,18);default:0;not null"`               // 当前积分
+	PointsAll         decimal.Decimal `gorm:"column:points_all;type:decimal(36,18);default:0;not null"`           // 累计总积分（认购金额累计）
 	StaticUsdtTotal   decimal.Decimal `gorm:"column:static_usdt_total;type:decimal(36,18);default:0;not null"`   // 静态总收益（USDT 金本位累计）
 	MgmtLevel         int32           `gorm:"column:mgmt_level;default:0;not null"`
 	MgmtLevelLocked   bool            `gorm:"column:mgmt_level_locked;default:false;not null"`
@@ -43,6 +45,7 @@ type OrderPO struct {
 	FromRecharge decimal.Decimal `gorm:"column:from_recharge;type:decimal(36,18);default:0;not null"`
 	FromReward   decimal.Decimal `gorm:"column:from_reward;type:decimal(36,18);default:0;not null"`
 	FromWin      decimal.Decimal `gorm:"column:from_win;type:decimal(36,18);default:0;not null"` // WIN 扣款数量（按认购时 win_price 折算）
+	Points       decimal.Decimal `gorm:"column:points;type:decimal(36,18);default:0;not null"`   // 本单获得积分（= 认购金额）
 	FundSource   string          `gorm:"column:fund_source;size:16;not null"`
 	Status       string          `gorm:"size:16;default:active;not null"`
 	ExitedTime   *time.Time      `gorm:"column:exited_time"`

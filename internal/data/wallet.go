@@ -366,10 +366,20 @@ func (r *walletRepo) Subscribe(ctx context.Context, userID int64, amount, payFro
 			FromRecharge: fromRecharge,
 			FromReward:   fromReward,
 			FromWin:      fromWin,
+			Points:       principal, // 认购金额即本单积分
 			FundSource:   payFrom,
 			Status:       biz.OrderStatusActive,
 		}
 		if err := tx.Create(po).Error; err != nil {
+			return err
+		}
+		// 用户积分：当前积分与累计总积分均增加认购金额
+		user.Points = user.Points.Add(principal)
+		user.PointsAll = user.PointsAll.Add(principal)
+		if err := tx.Model(&user).Updates(map[string]interface{}{
+			"points":     user.Points,
+			"points_all": user.PointsAll,
+		}).Error; err != nil {
 			return err
 		}
 		created = r.orderToBiz(po)
@@ -1389,6 +1399,7 @@ func (r *walletRepo) orderToBiz(po *OrderPO) *biz.Order {
 		FromRecharge: po.FromRecharge.String(),
 		FromReward:   po.FromReward.String(),
 		FromWin:      po.FromWin.String(),
+		Points:       po.Points.String(),
 		FundSource:   po.FundSource,
 		Status:       po.Status,
 		ExitedTime:   po.ExitedTime,
